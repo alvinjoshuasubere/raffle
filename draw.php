@@ -4,12 +4,12 @@ require_once 'config.php';
 if (isset($_POST['draw_winner'])) {
     $prize_id = intval($_POST['prize_id']);
 
-    $drawn_number = trim($_POST['drawn_number']); // "00001"
-    $drawn_number = ltrim($drawn_number, '0');    // "1"
+    $drawn_number = trim($_POST['drawn_number']);
+    $drawn_number = ltrim($drawn_number, '0');
     if ($drawn_number === '') {
         $drawn_number = '0';
     }
-    $drawn_number = (int) $_POST['drawn_number'];
+    $drawn_number = (int)$drawn_number;
 
     // Validation
     if (empty($prize_id)) {
@@ -42,7 +42,7 @@ if (isset($_POST['draw_winner'])) {
 
     // Check if participant exists
     $stmt = $conn->prepare("SELECT * FROM participants WHERE number = ?");
-    $stmt->bind_param("s", $drawn_number);
+    $stmt->bind_param("i", $drawn_number);
     $stmt->execute();
     $participant_query = $stmt->get_result();
 
@@ -54,9 +54,8 @@ if (isset($_POST['draw_winner'])) {
     $participant = $participant_query->fetch_assoc();
 
    if ($prize['type'] == 'Minor') {
-        // Check if already won Minor
         $stmt = $conn->prepare("SELECT * FROM winners WHERE number = ? AND prize_type = 'Minor'");
-        $stmt->bind_param("s", $drawn_number);
+        $stmt->bind_param("i", $drawn_number);
         $stmt->execute();
         $check_winner = $stmt->get_result();
 
@@ -67,9 +66,8 @@ if (isset($_POST['draw_winner'])) {
     }
 
     if ($prize['type'] == 'Major') {
-        // Check if already won Major
         $stmt = $conn->prepare("SELECT * FROM winners WHERE number = ? AND prize_type = 'Major'");
-        $stmt->bind_param("s", $drawn_number);
+        $stmt->bind_param("i", $drawn_number);
         $stmt->execute();
         $check_winner = $stmt->get_result();
 
@@ -96,12 +94,43 @@ if (isset($_POST['draw_winner'])) {
     exit;
 }
 
+if (isset($_POST['get_participant_name'])) {
+    header('Content-Type: application/json');
+
+    $number = trim($_POST['number']);
+    
+    // Remove leading zeros for lookup
+    $number = ltrim($number, '0');
+    if ($number === '') {
+        $number = '0';
+    }
+    $number = (int)$number;
+
+    if ($number === 0) {
+        echo json_encode(['success' => false]);
+        exit;
+    }
+
+    $stmt = $conn->prepare("SELECT name FROM participants WHERE number = ?");
+    $stmt->bind_param("i", $number);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    if ($row = $result->fetch_assoc()) {
+        echo json_encode(['success' => true, 'name' => $row['name']]);
+    } else {
+        echo json_encode(['success' => false]);
+    }
+
+    exit;
+}
+
 
 // Handle Confirm Winner
 if (isset($_POST['confirm_winner'])) {
     $prize_id = intval($_POST['prize_id']);
     $participant_id = intval($_POST['participant_id']);
-    $number = sanitize_input($_POST['number']);
+    $number = intval($_POST['number']);
     $name = sanitize_input($_POST['name']);
     $barangay = sanitize_input($_POST['barangay']);
     $prize_name = sanitize_input($_POST['prize_name']);
@@ -109,7 +138,7 @@ if (isset($_POST['confirm_winner'])) {
     
     // Insert into winners table
     $stmt = $conn->prepare("INSERT INTO winners (participant_id, prize_id, number, name, barangay, prize_name, prize_type) VALUES (?, ?, ?, ?, ?, ?, ?)");
-    $stmt->bind_param("iisssss", $participant_id, $prize_id, $number, $name, $barangay, $prize_name, $prize_type);
+    $stmt->bind_param("iiissss", $participant_id, $prize_id, $number, $name, $barangay, $prize_name, $prize_type);
     
     if ($stmt->execute()) {
         // Decrease prize quantity
@@ -147,33 +176,35 @@ $active_prizes = $conn->query("SELECT * FROM prizes WHERE quantity > 0 ORDER BY 
 <?php else: ?>
 <div class="container1">
     <div class="draw-section">
-        <br>
-        <div class="form-group">
-            <!-- <label>Select Prize *</label> -->
-            <select id="prize_select" class="form-control prize-center" required>
-                <option value="">Select a prize...</option>
-                <?php while ($prize = $active_prizes->fetch_assoc()): ?>
-                <option value="<?php echo $prize['id']; ?>" data-type="<?php echo $prize['type']; ?>">
-                    <?php echo htmlspecialchars($prize['prize_name']); ?>
-                    (<?php echo $prize['type']; ?> - <?php echo $prize['quantity']; ?> left)
-                </option>
-                <?php endwhile; ?>
-            </select>
+        <div class="top-row">
+            <div class="form-column">
+                <select id="prize_select" class="form-control prize-center" required>
+                    <option value="">Select a prize...</option>
+                    <?php while ($prize = $active_prizes->fetch_assoc()): ?>
+                    <option value="<?php echo $prize['id']; ?>" data-type="<?php echo $prize['type']; ?>">
+                        <?php echo htmlspecialchars($prize['prize_name']); ?>
+                        (<?php echo $prize['type']; ?> - <?php echo $prize['quantity']; ?> left)
+                    </option>
+                    <?php endwhile; ?>
+                </select>
+            </div>
+
+            <div class="button-column">
+                <button type="button" id="draw_btn" class="btn btn-primary">🔍 Check Winner</button>
+                <button type="button" id="reset_drawn_number" class="btn btn-secondary">Reset</button>
+            </div>
         </div>
-        <div class="text-center">
-            <input type="text" id="drawn_number" class="number-draw" placeholder="00000" maxlength="5" required>
+
+        <div class="center-row">
+            <input type="text" id="drawn_number" class="number-draw form-control text-center" placeholder="00000"
+                maxlength="5" required>
+
+            <div id="participant_name_hint"
+                style="text-align:center; color:#fcc301; font-weight:bold; margin-top:-60px">
+            </div>
         </div>
-        <button type="button" id="draw_btn" class="btn btn-primary"
-        style="font-size: 1.2rem; font-weight: bold; padding: 12px 40px; border-radius: 12px; box-shadow: 0 4px 8px rgba(0,0,0,0.2); display: block; margin: 20px auto;">
-        🔍 Check Winner
-    </button>
-    <button type="button" id="reset_drawn_number" class="btn btn-secondary"
-        style="font-size: 1.2rem; font-weight: bold; padding: 12px 40px; border-radius: 12px; box-shadow: 0 4px 8px rgba(0,0,0,0.2); display: block; margin: 20px auto;">
-        Reset</button>
     </div>
 </div>
-
-
 <?php endif; ?>
 
 <!-- Winner Modal -->
@@ -187,15 +218,11 @@ $active_prizes = $conn->query("SELECT * FROM prizes WHERE quantity > 0 ORDER BY 
             <div class="winner-number" id="winner_number" style="display:none;"></div>
             <div class="winner-number" id="winner_name"></div>
             <div class="winner-info">
-                <!-- <p><strong>Name:</strong> <span id="winner_name"></span></p> -->
                 <h4 class="winner_barangay">Barangay&nbsp;<span id="winner_barangay"></span></h4>
-                </h4>
                 <p style="display:none;"><strong>Contact:</strong> <span id="winner_contact"></span></p>
-                <h4 class="winner_prize">Prize:&nbsp;<span id="winner_prize"></span></h4>
-                </h4>
+                <h6 class="winner-prize">Prize:&nbsp;<span id="winner_prize"></span></h6>
                 <p style="display:none;"><strong>Type:</strong> <span id="winner_type"></span></p>
             </div>
-
         </div>
         <div class="modal-footer">
             <button type="button" id="confirm_btn" class="btn btn-success">Confirm Winner</button>
@@ -206,6 +233,7 @@ $active_prizes = $conn->query("SELECT * FROM prizes WHERE quantity > 0 ORDER BY 
 
 <script>
 let currentWinner = null;
+let nameCheckTimeout = null;
 
 document.getElementById('draw_btn').addEventListener('click', function() {
     const prizeId = document.getElementById('prize_select').value;
@@ -221,7 +249,6 @@ document.getElementById('draw_btn').addEventListener('click', function() {
         return;
     }
 
-    // Send AJAX request
     const formData = new FormData();
     formData.append('draw_winner', '1');
     formData.append('prize_id', prizeId);
@@ -256,7 +283,6 @@ function showWinnerModal(winner) {
 
     document.getElementById('winnerModal').style.display = 'block';
 
-    // Start confetti
     if (typeof startConfetti === 'function') {
         startConfetti();
     }
@@ -304,9 +330,9 @@ document.querySelectorAll('.close, .close-modal').forEach(element => {
             stopConfetti();
         }
         currentWinner = null;
-        // Reset fields
         document.getElementById('drawn_number').value = '';
         document.getElementById('prize_select').selectedIndex = 0;
+        document.getElementById('participant_name_hint').textContent = '';
     });
 });
 
@@ -318,14 +344,15 @@ window.onclick = function(event) {
             stopConfetti();
         }
         currentWinner = null;
-        // Reset fields
         document.getElementById('drawn_number').value = '';
         document.getElementById('prize_select').selectedIndex = 0;
+        document.getElementById('participant_name_hint').textContent = '';
     }
 }
+
 document.getElementById('drawn_number').addEventListener('keydown', function(e) {
     if (e.key === 'Enter') {
-        e.preventDefault(); // stop form submission if inside a form
+        e.preventDefault();
         document.getElementById('draw_btn').click();
     }
 });
@@ -342,12 +369,12 @@ drawnInput.addEventListener('beforeinput', function(e) {
     if (e.inputType === 'deleteContentBackward' || e.inputType === 'deleteContentForward') {
         currentDigits = currentDigits.slice(0, -1) || '0';
         this.value = currentDigits.padStart(5, '0');
+        checkParticipantName(this.value);
         return;
     }
 
     // Handle number input
     if (e.data && /^\d$/.test(e.data)) {
-        // Remove leading zeros, add new digit
         if (currentDigits === '0') {
             currentDigits = e.data;
         } else {
@@ -360,6 +387,7 @@ drawnInput.addEventListener('beforeinput', function(e) {
         }
 
         this.value = currentDigits.padStart(5, '0');
+        checkParticipantName(this.value);
     }
 });
 
@@ -373,6 +401,90 @@ drawnInput.value = '00000';
 
 document.getElementById('reset_drawn_number').addEventListener('click', function() {
     document.getElementById('drawn_number').value = '00000';
+    document.getElementById('participant_name_hint').textContent = '';
     document.getElementById('drawn_number').focus();
 });
+
+// Function to check participant name with debouncing
+function checkParticipantName(number) {
+    const hintDiv = document.getElementById('participant_name_hint');
+
+    // Clear previous timeout
+    if (nameCheckTimeout) {
+        clearTimeout(nameCheckTimeout);
+    }
+
+    number = number.trim();
+
+    // Clear hint if number is 00000 or empty
+    if (!number || number === '00000') {
+        hintDiv.textContent = '';
+        return;
+    }
+
+    // Show loading indicator
+    hintDiv.textContent = '...';
+
+    // Debounce the API call
+    nameCheckTimeout = setTimeout(() => {
+        fetch('draw.php', {
+                method: 'POST',
+                body: new URLSearchParams({
+                    get_participant_name: '1',
+                    number: number
+                })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    hintDiv.textContent = data.name;
+                } else {
+                    hintDiv.textContent = '';
+                }
+            })
+            .catch(() => {
+                hintDiv.textContent = '';
+            });
+    }, 300); // 300ms debounce delay
+}
+
+function updatePossibleWinners(number) {
+    number = number.trim();
+
+    if (!number || number === '00000') {
+        document.getElementById('spinning_winners').innerHTML = '';
+        return;
+    }
+
+    fetch('draw.php', {
+            method: 'POST',
+            body: new URLSearchParams({
+                get_possible_winners: '1',
+                number: number
+            })
+        })
+        .then(res => res.json())
+        .then(data => {
+            const container = document.getElementById('spinning_winners');
+            container.innerHTML = '';
+
+            if (data.success && data.participants.length > 0) {
+                const participant = data.participants[0]; // first match only
+
+                const card = document.createElement('div');
+                card.className = 'winner-card slot-display';
+                card.innerHTML = `
+                <div class="number">${participant.number}</div>
+                <div class="name">${participant.name}</div>
+            `;
+
+                container.appendChild(card);
+            } else {
+                container.innerHTML = '<p style="color: #999; text-align: center;">No participant found</p>';
+            }
+        })
+        .catch(() => {
+            document.getElementById('spinning_winners').innerHTML = '';
+        });
+}
 </script>

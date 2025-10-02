@@ -1,7 +1,8 @@
 /** @format */
 @font-face {
   font-family: "NumberFont";
-  src: url("../fonts/digital-7.ttf") format("truetype"); /* adjust path */
+  src: url("../fonts/digital-7.ttf") format("truetype");
+  /* adjust path */
 }
 
 * {
@@ -19,6 +20,7 @@ body {
   background-attachment: fixed;
   min-height: 100vh;
 }
+
 .container {
   max-width: 1200px;
   margin: 0 auto;
@@ -71,6 +73,7 @@ body {
 .prize-center option {
   padding: 10px;
 }
+
 
 /* Header with Logo */
 .header {
@@ -328,10 +331,12 @@ tr:hover {
 
 .modal-content {
   background: white;
-  margin: 5% auto;
+  margin: 3% auto;
   padding: 0;
-  border-radius: 15px;
-  max-width: 600px;
+  border-radius: 20px;
+  max-width: 1000px;
+  width: 100%;
+  max-height: 90vh;
   box-shadow: 0 10px 50px rgba(0, 0, 0, 0.3);
   position: relative;
   animation: slideDown 0.4s ease;
@@ -402,10 +407,18 @@ tr:hover {
 
 .winner-number {
   font-size: 100px;
-  font-weight: bold;
+  font-weight: bolder;
   color: #dc143c;
-  margin: 20px 0;
+  /* margin: 20px 0; */
   text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.winner-prize {
+  font-size: 50px;
+  font-weight: bolder;
+  color: #fcc101;
+  background: #FFFFFF;
+  text-shadow: 2px 2px 0px #FFFFFF, 5px 4px 0px rgba(0, 0, 0, 0.15);
 }
 
 .modal-footer {
@@ -430,16 +443,66 @@ tr:hover {
 }
 
 .draw-section {
-  gap: 20px;
-  align-items: center;
-  max-width: 800px;
-  margin: 0;
+  display: flex;
+  flex-direction: column;
+  max-width: 900px;
+  margin: 0 auto;
   position: absolute;
-  top: 50%;
-  left: 0; /* align to the left side */
-  transform: translateY(-50%); /* center vertically */
-  width: 50%; /* occupy left half of the page */
+  top: 70%;
+  left: 30%;
+  transform: translate(-50%, -50%);
+  width: 90%;
+  background: #fff;
+  padding: 30px;
+  border-radius: 30px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  gap: 20px;
 }
+
+.top-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+}
+
+.top-row .form-column {
+  flex: 2;
+}
+
+.top-row .button-column {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: stretch;
+}
+
+.top-row select {
+  width: 100%;
+  padding: 14px;
+  font-size: 1.2rem;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+}
+
+.center-row {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
+}
+
+.center-row input {
+  width: 100%;
+  max-width: 1000px;
+  padding: 14px;
+  font-size: 1.4rem;
+  text-align: center;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+}
+
 
 .number-draw {
   font-family: "NumberFont", monospace;

@@ -94,36 +94,38 @@ if (isset($_POST['draw_winner'])) {
     exit;
 }
 
-if (isset($_POST['get_participant_name'])) {
-    header('Content-Type: application/json');
+if (isset($_POST['search_participant_prefix'])) {
+    $prefix = ltrim($_POST['number_prefix'], '0'); // remove leading zeros
+    if ($prefix === '') $prefix = '0';
 
-    $number = trim($_POST['number']);
-    
-    // Remove leading zeros for lookup
-    $number = ltrim($number, '0');
-    if ($number === '') {
-        $number = '0';
-    }
-    $number = (int)$number;
-
-    if ($number === 0) {
-        echo json_encode(['success' => false]);
-        exit;
-    }
-
-    $stmt = $conn->prepare("SELECT name FROM participants WHERE number = ?");
-    $stmt->bind_param("i", $number);
+    // We'll fetch all possible numbers, then filter by numeric prefix
+    $stmt = $conn->prepare("SELECT number, name FROM participants");
     $stmt->execute();
     $result = $stmt->get_result();
 
-    if ($row = $result->fetch_assoc()) {
-        echo json_encode(['success' => true, 'name' => $row['name']]);
-    } else {
-        echo json_encode(['success' => false]);
+    $participants = [];
+    while ($row = $result->fetch_assoc()) {
+        // Remove leading zeros for comparison
+        $numValue = ltrim($row['number'], '0');
+        if ($numValue === '') $numValue = '0';
+
+        // Check if the number starts with the prefix
+        if (strpos($numValue, $prefix) === 0) {
+            $participants[] = [
+                'number' => $row['number'],
+                'name' => $row['name']
+            ];
+        }
+
+        // Stop after 10 matches
+        if (count($participants) >= 10) break;
     }
 
+    echo json_encode(['success' => true, 'results' => $participants]);
     exit;
 }
+
+
 
 
 // Handle Confirm Winner
@@ -176,35 +178,49 @@ $active_prizes = $conn->query("SELECT * FROM prizes WHERE quantity > 0 ORDER BY 
 <?php else: ?>
 <div class="container1">
     <div class="draw-section">
-        <div class="top-row">
-            <div class="form-column">
-                <select id="prize_select" class="form-control prize-center" required>
-                    <option value="">Select a prize...</option>
-                    <?php while ($prize = $active_prizes->fetch_assoc()): ?>
-                    <option value="<?php echo $prize['id']; ?>" data-type="<?php echo $prize['type']; ?>">
-                        <?php echo htmlspecialchars($prize['prize_name']); ?>
-                        (<?php echo $prize['type']; ?> - <?php echo $prize['quantity']; ?> left)
-                    </option>
-                    <?php endwhile; ?>
-                </select>
+        <div class="draw-left">
+            <div class="top-row">
+                <div class="form-column">
+                    <select id="prize_select" class="form-control prize-center" required>
+                        <option value="">Select a prize...</option>
+                        <?php while ($prize = $active_prizes->fetch_assoc()): ?>
+                        <option value="<?php echo $prize['id']; ?>" data-type="<?php echo $prize['type']; ?>">
+                            <?php echo htmlspecialchars($prize['prize_name']); ?>
+                            (<?php echo $prize['type']; ?> - <?php echo $prize['quantity']; ?> left)
+                        </option>
+                        <?php endwhile; ?>
+                    </select>
+                </div>
+
+                <div class="button-column">
+                    <button type="button" id="draw_btn" class="btn btn-primary">🔍 Check Winner</button>
+                    <button type="button" id="reset_drawn_number" class="btn btn-secondary">Reset</button>
+                </div>
             </div>
 
-            <div class="button-column">
-                <button type="button" id="draw_btn" class="btn btn-primary">🔍 Check Winner</button>
-                <button type="button" id="reset_drawn_number" class="btn btn-secondary">Reset</button>
+            <div class="center-row">
+                <input type="text" id="drawn_number" class="number-draw form-control text-center" placeholder="00000"
+                    maxlength="5" required />
+
             </div>
+
         </div>
+    </div>
 
-        <div class="center-row">
-            <input type="text" id="drawn_number" class="number-draw form-control text-center" placeholder="00000"
-                maxlength="5" required>
-
-            <div id="participant_name_hint"
-                style="text-align:center; color:#fcc301; font-weight:bold; margin-top:-60px">
+    <div class="winner-section" id="participant_name_hint">
+        <h4 class="winner-title">🎯 Possible Winners</h4>
+        <div class="slot-machine">
+            <div class="scrolling-names">
+                <ul class="winner-list rolling" id="scrolling_names"></ul>
             </div>
         </div>
     </div>
+
+
+
 </div>
+
+
 <?php endif; ?>
 
 <!-- Winner Modal -->
@@ -405,7 +421,6 @@ document.getElementById('reset_drawn_number').addEventListener('click', function
     document.getElementById('drawn_number').focus();
 });
 
-// Function to check participant name with debouncing
 function checkParticipantName(number) {
     const hintDiv = document.getElementById('participant_name_hint');
 
@@ -423,68 +438,86 @@ function checkParticipantName(number) {
     }
 
     // Show loading indicator
-    hintDiv.textContent = '...';
+    hintDiv.innerHTML = '<span style="color: #999;">Loading...</span>';
 
     // Debounce the API call
     nameCheckTimeout = setTimeout(() => {
         fetch('draw.php', {
                 method: 'POST',
                 body: new URLSearchParams({
-                    get_participant_name: '1',
-                    number: number
+                    search_participant_prefix: '1',
+                    number_prefix: number
                 })
             })
             .then(res => res.json())
             .then(data => {
-                if (data.success) {
-                    hintDiv.textContent = data.name;
+                const hintDiv = document.getElementById('participant_name_hint');
+                hintDiv.innerHTML = ''; // clear previous content
+
+                if (data.success && Array.isArray(data.results) && data.results.length > 0) {
+                    // If exactly ONE winner
+                    if (data.results.length === 1) {
+                        const title = document.createElement('h4');
+                        title.textContent = '🎯 Possible Winner';
+                        title.className = 'winner-title';
+                        hintDiv.appendChild(title);
+
+                        // Create slot machine container
+                        const slotMachine = document.createElement('div');
+                        slotMachine.className = 'slot-machine winner-mode';
+
+                        const ul = document.createElement('ul');
+                        ul.className = 'winner-list rolling';
+
+                        // Add the "And the Winner is..." text inside the reel
+                        const textLi = document.createElement('li');
+                        textLi.textContent = '🎉 And the Winner is...';
+                        textLi.classList.add('announce');
+                        ul.appendChild(textLi);
+
+                        slotMachine.appendChild(ul);
+                        hintDiv.appendChild(slotMachine);
+                    }
+
+                    // If MULTIPLE possible winners
+                    else {
+                        const title = document.createElement('h4');
+                        title.textContent = '🎯 Possible Winners';
+                        title.className = 'winner-title';
+                        hintDiv.appendChild(title);
+
+                        const slotMachine = document.createElement('div');
+                        slotMachine.className = 'slot-machine';
+
+                        const ul = document.createElement('ul');
+                        ul.className = 'winner-list rolling';
+
+                        const names = data.results.slice(0, 10);
+
+                        names.forEach(item => {
+                            const li = document.createElement('li');
+                            li.textContent = `Raffle No. ${item.number} - ${item.name}`;
+                            ul.appendChild(li);
+                        });
+
+                        // duplicate for continuous roll
+                        names.forEach(item => {
+                            const li = document.createElement('li');
+                            li.textContent = `Raffle No. ${item.number} - ${item.name}`;
+                            ul.appendChild(li);
+                        });
+
+                        slotMachine.appendChild(ul);
+                        hintDiv.appendChild(slotMachine);
+                    }
                 } else {
-                    hintDiv.textContent = '';
+                    hintDiv.innerHTML = '<span style="color:#999;">No matches found</span>';
                 }
             })
+
             .catch(() => {
                 hintDiv.textContent = '';
             });
-    }, 300); // 300ms debounce delay
-}
-
-function updatePossibleWinners(number) {
-    number = number.trim();
-
-    if (!number || number === '00000') {
-        document.getElementById('spinning_winners').innerHTML = '';
-        return;
-    }
-
-    fetch('draw.php', {
-            method: 'POST',
-            body: new URLSearchParams({
-                get_possible_winners: '1',
-                number: number
-            })
-        })
-        .then(res => res.json())
-        .then(data => {
-            const container = document.getElementById('spinning_winners');
-            container.innerHTML = '';
-
-            if (data.success && data.participants.length > 0) {
-                const participant = data.participants[0]; // first match only
-
-                const card = document.createElement('div');
-                card.className = 'winner-card slot-display';
-                card.innerHTML = `
-                <div class="number">${participant.number}</div>
-                <div class="name">${participant.name}</div>
-            `;
-
-                container.appendChild(card);
-            } else {
-                container.innerHTML = '<p style="color: #999; text-align: center;">No participant found</p>';
-            }
-        })
-        .catch(() => {
-            document.getElementById('spinning_winners').innerHTML = '';
-        });
+    }, 300);
 }
 </script>

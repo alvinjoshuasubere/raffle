@@ -492,24 +492,29 @@ function checkParticipantName(number) {
                         const ul = document.createElement('ul');
                         ul.className = 'winner-list rolling';
 
-                        const names = data.results.slice(0, 10);
+                        // Shuffle results and pick up to 10 random unique entries
+                        const shuffled = [...data.results]
+                            .sort(() => 0.5 - Math.random())
+                            .slice(0, 10);
 
-                        names.forEach(item => {
+                        shuffled.forEach(item => {
                             const li = document.createElement('li');
-                            li.textContent = `Raffle No. ${item.number} - ${item.name}`;
-                            ul.appendChild(li);
-                        });
-
-                        // duplicate for continuous roll
-                        names.forEach(item => {
-                            const li = document.createElement('li');
-                            li.textContent = `Raffle No. ${item.number} - ${item.name}`;
+                            li.textContent = `🎟️ Ticket No. ${item.number} - ${item.name}`;
                             ul.appendChild(li);
                         });
 
                         slotMachine.appendChild(ul);
                         hintDiv.appendChild(slotMachine);
+
+                        // Optional: Add rolling animation
+                        ul.classList.add('slot-rolling');
+
+                        // Stop animation after a few seconds (simulate slot stop)
+                        setTimeout(() => {
+                            ul.classList.remove('slot-rolling');
+                        }, 4000);
                     }
+
                 } else {
                     hintDiv.innerHTML = '<span style="color:#999;">No matches found</span>';
                 }

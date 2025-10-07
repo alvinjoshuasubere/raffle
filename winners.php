@@ -14,6 +14,9 @@ $winners = $conn->query("SELECT * FROM winners ORDER BY won_at DESC");
         <p style="color: #666;">Total Winners: <strong
                 style="color: #DC143C;"><?php echo $winners->num_rows; ?></strong></p>
     </div>
+    <div>
+        <button onclick="exportWinnersPDF()" class="btn btn-success">Export to PDF</button>
+    </div>
 </div>
 
 <table>
@@ -77,3 +80,88 @@ $winners = $conn->query("SELECT * FROM winners ORDER BY won_at DESC");
 </div>
 
 <?php endif; ?>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script>
+function exportWinnersPDF() {
+    const {
+        jsPDF
+    } = window.jspdf;
+    const doc = new jsPDF();
+
+    // Load logo image (must be base64 or a public URL)
+    const logoUrl = 'Logo.png'; // Change to your logo path
+
+    // Helper to convert image to base64 and then generate PDF
+    function generatePDF(logoDataUrl) {
+        // Add logo to upper left (x=10, y=8, width=22, height=22)
+        if (logoDataUrl) {
+            doc.addImage(logoDataUrl, 'PNG', 10, 8, 22, 22);
+        }
+
+        // Custom header
+        doc.setFontSize(14);
+        doc.text("City Government of Koronadal", 105, 15, {
+            align: "center"
+        });
+        doc.setFontSize(12);
+        doc.text("Charter Anniversary", 105, 23, {
+            align: "center"
+        });
+        doc.setFontSize(12);
+        doc.text("Raffle Winner List 2025", 105, 31, {
+            align: "center"
+        });
+
+        // Get table data
+        const rows = [];
+        document.querySelectorAll("table tbody tr").forEach(tr => {
+            const row = [];
+            tr.querySelectorAll("td").forEach(td => {
+                row.push(td.innerText);
+            });
+            rows.push(row);
+        });
+
+        // Get headers
+        const headers = [];
+        document.querySelectorAll("table thead th").forEach(th => {
+            headers.push(th.innerText);
+        });
+
+        doc.autoTable({
+            head: [headers],
+            body: rows,
+            startY: 38,
+            styles: {
+                fontSize: 9
+            },
+            headStyles: {
+                fillColor: [0, 0, 0], // Black background
+                textColor: [255, 255, 255], // White text
+                fontStyle: 'bold'
+            }
+        });
+
+        doc.save("list of winners raffle.pdf");
+    }
+
+    // Convert logo to base64 and then generate PDF
+    const img = new window.Image();
+    img.crossOrigin = "Anonymous";
+    img.onload = function() {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+        const dataURL = canvas.toDataURL('image/png');
+        generatePDF(dataURL);
+    };
+    img.onerror = function() {
+        // If logo fails to load, just generate PDF without logo
+        generatePDF(null);
+    };
+    img.src = logoUrl;
+}
+</script>

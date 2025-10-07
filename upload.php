@@ -236,12 +236,10 @@ if (isset($_SESSION['upload_errors'])) {
         <button type="submit" name="upload_csv" class="btn btn-primary">Upload CSV</button>
     </form>
 
-    <?php if ($participant_count > 0): ?>
-    <form method="POST" style="margin-top: 20px;"
-        onsubmit="return confirm('Are you sure you want to delete all participants? This action cannot be undone.');">
-        <button type="submit" name="delete_all" class="btn btn-secondary">Delete All Participants</button>
+    <form id="deleteAllForm" method="POST" style="margin-top: 20px;">
+        <button type="button" id="showDeleteModalBtn" class="btn btn-secondary">Delete All Participants</button>
+        <input type="hidden" name="delete_all" value="1">
     </form>
-    <?php endif; ?>
 </div>
 
 
@@ -257,3 +255,35 @@ if (isset($_SESSION['upload_errors'])) {
     <p style="margin-top: 15px; color: #666;"><em>Note: First row should contain headers. Uploading new CSV will replace
             all existing participants.</em></p>
 </div>
+
+<!-- Modal for delete confirmation -->
+<div id="deleteModal"
+    style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.35);">
+    <div
+        style="background:#fff; max-width:350px; margin:120px auto; padding:30px 20px 20px 20px; border-radius:10px; box-shadow:0 4px 24px #0002; text-align:center; position:relative;">
+        <h3 style="color:#DC143C; margin-bottom:18px;">Are you sure you want to delete all participants?</h3>
+        <p style="color:#666; margin-bottom:24px;">This action cannot be undone.</p>
+        <button id="confirmDeleteBtn" class="btn btn-danger" style="margin-right:10px;">YES, Delete All</button>
+        <br>
+        <br>
+        <button id="cancelDeleteBtn" class="btn btn-secondary">NO, Cancel</button>
+    </div>
+</div>
+
+<script>
+document.getElementById('showDeleteModalBtn').onclick = function() {
+    document.getElementById('deleteModal').style.display = 'block';
+};
+document.getElementById('cancelDeleteBtn').onclick = function() {
+    document.getElementById('deleteModal').style.display = 'none';
+};
+document.getElementById('confirmDeleteBtn').onclick = function() {
+    document.getElementById('deleteAllForm').submit();
+};
+window.onclick = function(event) {
+    var modal = document.getElementById('deleteModal');
+    if (event.target === modal) {
+        modal.style.display = "none";
+    }
+};
+</script>

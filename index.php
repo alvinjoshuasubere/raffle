@@ -18,7 +18,7 @@ $page = isset($_GET['page']) ? $_GET['page'] : 'upload';
 
     <!-- Header with Logo + Navigation -->
     <div class="header">
-        <img src="Logo.png" alt="Logo" class="logo"><span class="systemName" style="margin-left:5px">Charter Anniversary
+        <img src="Logo.png" alt="Logo" class="logo"><span class="systemName" style="margin-left:5px">
             Raffle
             System</span>
 

@@ -34,10 +34,14 @@ body {
   width: 100vw;
   height: calc(100vh - 57px);
   display: flex;
-  justify-content: center; /* center horizontally */
-  align-items: center; /* center vertically */
-  gap: 40px; /* space between sections */
-  overflow: auto; /* allows scroll if content grows too big */
+  justify-content: center;
+  /* center horizontally */
+  align-items: center;
+  /* center vertically */
+  gap: 40px;
+  /* space between sections */
+  overflow: auto;
+  /* allows scroll if content grows too big */
 
   background: url("bg.png") no-repeat center center;
   background-size: cover;
@@ -330,6 +334,7 @@ tr:hover {
   height: 100%;
   background: rgba(0, 0, 0, 0.7);
   overflow: auto;
+
 }
 
 .modal-content {
@@ -337,9 +342,12 @@ tr:hover {
   margin: 3% auto;
   padding: 0;
   border-radius: 20px;
-  max-width: 1000px;
-  width: 100%;
-  max-height: 90vh;
+  max-width: 1400px;
+  /* Increased from 1000px */
+  width: 95%;
+  /* Increased width */
+  max-height: 95vh;
+  /* Slightly taller */
   box-shadow: 0 10px 50px rgba(0, 0, 0, 0.3);
   position: relative;
   animation: slideDown 0.4s ease;
@@ -379,49 +387,57 @@ tr:hover {
 .winner-info {
   margin: 25px 0;
   text-align: center;
+  background: radial-gradient(circle at center, #1b1b1b 40%, #000000 100%);
+  padding: 25px;
+  border-radius: 16px;
+  box-shadow: 0 0 40px rgba(0, 0, 0, 0.7);
 }
 
-.winner-info p {
-  font-size: 20px;
-  margin: 12px 0;
-  color: #333;
-}
-
-.winner-info strong {
-  color: #dc143c;
-  font-size: 22px;
-  font-weight: 700;
-}
-
+/* 🟢 Simple and readable Barangay name with black background */
 .winner_barangay {
   font-size: 50px;
-  font-weight: 600;
-  margin: 8px 0 18px;
-  margin-top: -40px;
-  color: #444;
+  font-weight: 700;
+  margin-top: -50px;
+  color: #f1f1f1;
+  border-radius: 12px;
+  display: inline-block;
+  text-shadow:
+    1px 1px 6px rgba(0, 0, 0, 0.8),
+    0 0 10px rgba(255, 255, 255, 0.2);
 }
 
-.winner_prize {
-  font-size: 30px;
-  font-weight: 600;
-  margin: 8px 0 18px;
-  color: #dc143c;
+/* ✨ Highlighted Ticket (Name or Code) – Golden glow */
+.winner_ticket {
+  font-size: 55px;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: #ff2b2b;
 }
 
+/* 🏆 Gold Prize text – already great */
+.winner-prize {
+  font-size: 55px;
+  font-weight: 900;
+  text-transform: uppercase;
+  color: #ff2b2b;
+}
+
+/* 🔥 Highlighted Winner Number with black background */
 .winner-number {
   font-size: 100px;
-  font-weight: bolder;
-  color: #dc143c;
-  /* margin: 20px 0; */
-  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
-}
-
-.winner-prize {
-  font-size: 50px;
-  font-weight: bolder;
-  color: #fcc101;
-  background: #ffffff;
-  text-shadow: 2px 2px 0px #ffffff, 5px 4px 0px rgba(0, 0, 0, 0.15);
+  font-weight: 900;
+  padding: 20px 40px;
+  border-radius: 20px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-align: center;
+  letter-spacing: 3px;
+  margin: 20px auto;
+  display: inline-block;
+  color: #ffcc00;
+  text-shadow:
+    0 0 10px rgba(255, 220, 100, 0.8),
+    3px 3px 6px rgba(0, 0, 0, 0.7);
 }
 
 .modal-footer {
@@ -450,7 +466,7 @@ tr:hover {
   width: 40%;
   max-width: 600px;
   top: 50%;
-  left: 40%;
+  left: 38%;
   transform: translate(-50%, -50%);
   background: #fff;
   padding: 30px;
@@ -461,14 +477,15 @@ tr:hover {
   gap: 20px;
   z-index: 999;
 }
+
 .winner-section {
-  position: absolute; /* Use absolute for true centering */
+  position: absolute;
   top: 50%;
-  left: 55%;
+  left: 53%;
   transform: translate(-50%, -50%);
 
-  width: 40%;
-  max-width: 500px;
+  width: 45%;
+  max-width: 600px;
   padding: 30px;
   border-radius: 30px;
 
@@ -485,7 +502,8 @@ tr:hover {
   justify-content: center;
   gap: 20px;
 
-  overflow: auto; /* Allow scroll inside if it grows */
+  overflow: auto;
+  /* Allow scroll inside if it grows */
   animation: fadeInGlass 1s ease forwards;
   z-index: 2;
 }
@@ -516,21 +534,21 @@ tr:hover {
   animation: glowTitle 1.5s ease-in-out infinite alternate;
 }
 
-/* Slot Machine */
+/* 🎰 Slot Machine Container */
 .slot-machine {
-  width: 500px;
+  width: 600px;
   max-width: 100%;
   height: auto;
   overflow: hidden;
-  background: radial-gradient(circle at center, #2b0000 0%, #4b0000 80%);
-  border: 5px solid #d4af37;
+  background: #000000;
+  border: 5px solid #ffcc00;
   border-radius: 15px;
-  box-shadow: 0 0 20px rgba(212, 175, 55, 0.7),
-    inset 0 0 10px rgba(255, 255, 255, 0.2);
+  box-shadow: 0 0 20px rgba(255, 204, 0, 0.5),
+    inset 0 0 8px rgba(255, 255, 255, 0.1);
   position: relative;
 }
 
-/* Winner List */
+/* 🧾 Winner List Container */
 .winner-list {
   display: flex;
   flex-direction: column;
@@ -538,28 +556,27 @@ tr:hover {
   justify-content: center;
   list-style: none;
   margin: 0 auto;
-  padding: 0;
+  padding: 15px 0;
 }
 
+/* 🏆 Winner Entries – simple, clear, readable */
 .winner-list li {
-  width: 100%;
+  width: 90%;
   text-align: left;
   font-size: 1.2rem;
-  font-weight: bold;
-  color: #fff6d9;
-  text-shadow: 0 0 6px #d4af37, 0 0 12px #b8860b, 0 0 24px #ffcc00;
-  margin-bottom: 12px;
+  /* larger for readability */
+  font-weight: 800;
+  color: #ffffff;
+  background: #1a1a1a;
+  border-left: 6px solid #ffcc00;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.6);
+  margin-bottom: 14px;
   letter-spacing: 1px;
-  background: rgba(255, 255, 255, 0.05);
-  padding: 8px 10px;
-  border-radius: 8px;
-  transition: transform 0.3s ease, text-shadow 0.3s ease;
+  padding: 12px 15px;
+  border-radius: 10px;
+  transition: transform 0.2s ease, background 0.2s ease;
 }
 
-.winner-list li:hover {
-  transform: scale(1.05);
-  text-shadow: 0 0 10px #ffd700, 0 0 20px #ffcc00;
-}
 
 /* Suspense reveal animation */
 .suspense-winner {

@@ -231,14 +231,16 @@ $active_prizes = $conn->query("SELECT * FROM prizes WHERE quantity > 0 ORDER BY 
             <h2>We have a winner!</h2>
         </div>
         <div class="modal-body">
-            <div class="winner-number" id="winner_number" style="display:none;"></div>
-            <div class="winner-number" id="winner_name"></div>
+            <h6 class="winner_ticket"><small>Ticket #</small>&nbsp;<span id="winner_number"></span></h6>
+
             <div class="winner-info">
+                <div class="winner-number" id="winner_name"></div>
                 <h4 class="winner_barangay">Barangay&nbsp;<span id="winner_barangay"></span></h4>
                 <p style="display:none;"><strong>Contact:</strong> <span id="winner_contact"></span></p>
-                <h6 class="winner-prize">Prize:&nbsp;<span id="winner_prize"></span></h6>
+
                 <p style="display:none;"><strong>Type:</strong> <span id="winner_type"></span></p>
             </div>
+            <h6 class="winner-prize">Prize:&nbsp;<span id="winner_prize"></span></h6>
         </div>
         <div class="modal-footer">
             <button type="button" id="confirm_btn" class="btn btn-success">Confirm Winner</button>
@@ -325,9 +327,35 @@ document.getElementById('confirm_btn').addEventListener('click', function() {
         .then(data => {
             if (data.success) {
                 alert('Winner confirmed successfully!');
+                document.getElementById('winnerModal').style.display = 'none';
+                if (typeof stopConfetti === 'function') {
+                    stopConfetti();
+                }
+                currentWinner = null;
                 document.getElementById('drawn_number').value = '';
-                document.getElementById('prize_select').selectedIndex = 0;
-                window.location.reload();
+                document.getElementById('participant_name_hint').innerHTML = '';
+
+                // Update the prize dropdown
+                const prizeSelect = document.getElementById('prize_select');
+                const selectedOption = prizeSelect.querySelector(
+                    `option[value="${formData.get('prize_id')}"]`);
+                if (selectedOption) {
+                    // Extract quantity from option text, e.g. "Prize Name (Major - 2 left)"
+                    const match = selectedOption.textContent.match(/\(([^-]+)-\s*(\d+)\s*left\)/);
+                    if (match) {
+                        let qty = parseInt(match[2], 10) - 1;
+                        if (qty <= 0) {
+                            // Remove the option if no quantity left
+                            selectedOption.remove();
+                            // Optionally, select the next available prize
+                            prizeSelect.selectedIndex = 0;
+                        } else {
+                            // Update the quantity in the option text
+                            selectedOption.textContent = selectedOption.textContent.replace(
+                                /\(\s*([^-]+)-\s*\d+\s*left\)/, `(${match[1]}- ${qty} left)`);
+                        }
+                    }
+                }
             } else {
                 alert(data.message);
             }
@@ -347,7 +375,7 @@ document.querySelectorAll('.close, .close-modal').forEach(element => {
         }
         currentWinner = null;
         document.getElementById('drawn_number').value = '';
-        document.getElementById('prize_select').selectedIndex = 0;
+        // document.getElementById('prize_select').selectedIndex = 0; // Do not reset prize
         document.getElementById('participant_name_hint').textContent = '';
     });
 });
@@ -361,7 +389,7 @@ window.onclick = function(event) {
         }
         currentWinner = null;
         document.getElementById('drawn_number').value = '';
-        document.getElementById('prize_select').selectedIndex = 0;
+        // document.getElementById('prize_select').selectedIndex = 0; // Do not reset prize
         document.getElementById('participant_name_hint').textContent = '';
     }
 }
@@ -502,7 +530,7 @@ function checkParticipantName(number) {
 
                         shuffled.forEach(item => {
                             const li = document.createElement('li');
-                            li.textContent = `🎟️ Ticket No. ${item.number} - ${item.name}`;
+                            li.textContent = `Ticket # ${item.number} - ${item.name}`;
                             ul.appendChild(li);
                         });
 

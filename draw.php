@@ -29,7 +29,7 @@ if (isset($_POST['draw_winner'])) {
     $prize_query = $stmt->get_result();
 
     if ($prize_query->num_rows == 0) {
-        echo json_encode(['success' => false, 'message' => 'Prize not found.']);
+        echo json_encode(['success ' => false, 'message' => 'Prize not found.']);
         exit;
     }
 
@@ -193,15 +193,14 @@ $active_prizes = $conn->query("SELECT * FROM prizes WHERE quantity > 0 ORDER BY 
                 </div>
 
                 <div class="button-column">
-                    <button type="button" id="draw_btn" class="btn btn-primary">🔍 Check Winner</button>
+                    <button type="button" id="draw_btn" class="btn btn-primary">🔍 Check </button>
                     <button type="button" id="reset_drawn_number" class="btn btn-secondary">Reset</button>
                 </div>
             </div>
 
             <div class="center-row">
-                <input type="text" id="drawn_number" class="number-draw form-control text-center" placeholder="00000"
+                <input type="text" autofocus id="drawn_number" class="number-draw form-control text-center" 
                     maxlength="5" required />
-
             </div>
 
         </div>
@@ -379,19 +378,21 @@ const drawnInput = document.getElementById('drawn_number');
 drawnInput.addEventListener('beforeinput', function(e) {
     e.preventDefault();
 
-    let currentDigits = this.value.replace(/\D/g, '').replace(/^0+/, '') || '0';
+    let currentDigits = this.value.replace(/\D/g, '').replace(/^0+/, '');
 
     // Handle backspace/delete
     if (e.inputType === 'deleteContentBackward' || e.inputType === 'deleteContentForward') {
-        currentDigits = currentDigits.slice(0, -1) || '0';
-        this.value = currentDigits.padStart(5, '0');
+        currentDigits = currentDigits.slice(0, -1);
+        // Display the number without leading zeros, or empty if nothing left
+        this.value = currentDigits || '';
         checkParticipantName(this.value);
         return;
     }
 
     // Handle number input
     if (e.data && /^\d$/.test(e.data)) {
-        if (currentDigits === '0') {
+        // Start fresh if currently empty
+        if (!currentDigits) {
             currentDigits = e.data;
         } else {
             currentDigits = currentDigits + e.data;
@@ -402,7 +403,8 @@ drawnInput.addEventListener('beforeinput', function(e) {
             currentDigits = currentDigits.slice(-5);
         }
 
-        this.value = currentDigits.padStart(5, '0');
+        // Display without leading zeros
+        this.value = currentDigits;
         checkParticipantName(this.value);
     }
 });
@@ -412,12 +414,12 @@ drawnInput.addEventListener('paste', function(e) {
     e.preventDefault();
 });
 
-// Initialize
-drawnInput.value = '00000';
+// Initialize with empty value
+drawnInput.value = '';
 
 document.getElementById('reset_drawn_number').addEventListener('click', function() {
-    document.getElementById('drawn_number').value = '00000';
-    document.getElementById('participant_name_hint').textContent = '';
+    document.getElementById('drawn_number').value = '';
+    document.getElementById('participant_name_hint').innerHTML = '';
     document.getElementById('drawn_number').focus();
 });
 
@@ -431,9 +433,9 @@ function checkParticipantName(number) {
 
     number = number.trim();
 
-    // Clear hint if number is 00000 or empty
-    if (!number || number === '00000') {
-        hintDiv.textContent = '';
+    // Clear hint if number is empty
+    if (!number) {
+        hintDiv.innerHTML = '';
         return;
     }
 
@@ -521,7 +523,7 @@ function checkParticipantName(number) {
             })
 
             .catch(() => {
-                hintDiv.textContent = '';
+                hintDiv.innerHTML = '';
             });
     }, 300);
 }

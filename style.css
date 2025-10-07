@@ -669,8 +669,7 @@ tr:hover {
   color: rgb(255, 0, 0) !important;
   font-family: monospace;
   text-align: center;
-  border: none !important;
-  outline: none;
+  border: 2px solid rgb(255, 0, 0);
   background: none;
   width: 250px;
   letter-spacing: 8px;

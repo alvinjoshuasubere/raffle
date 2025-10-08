@@ -1,8 +1,7 @@
 /** @format */
 @font-face {
   font-family: "NumberFont";
-  src: url("../fonts/digital-7.ttf") format("truetype");
-  /* adjust path */
+  src: url("fonts/BebasNeue-Regular.ttf") format("truetype");
 }
 
 * {
@@ -465,19 +464,25 @@ tr:hover {
 
 .draw-section {
   position: absolute;
-  width: 40%;
-  max-width: 600px;
+  width: 50%;
+  max-width: 100%;
   top: 50%;
-  left: 38%;
+  left: 50%;
   transform: translate(-50%, -50%);
-  background: #fff;
+  background: linear-gradient(to right,
+      #8B0000,
+      #FFD700,
+      #8B0000);
   padding: 30px;
   border-radius: 30px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: rgba(0, 0, 0, 0.3) 0px 4px 10px;
   display: flex;
   flex-direction: column;
   gap: 20px;
   z-index: 999;
+  color: #fff;
+  /* for readability */
+  text-align: center;
 }
 
 .winner-section {
@@ -684,25 +689,26 @@ tr:hover {
   font-family: "NumberFont", monospace;
   font-size: 10rem !important;
   font-weight: bold;
-  color: rgb(255, 0, 0) !important;
-  font-family: monospace;
+  color: white !important;
+  text-shadow: 2px 2px 0 black, 4px 4px 0 black;
   text-align: center;
-  border: 2px solid rgb(255, 0, 0);
+  border: 5px solid white !important;
   background: none;
   width: 250px;
   letter-spacing: 8px;
 }
 
 .number-draw::placeholder {
-  color: red !important;
+  color: white !important;
   opacity: 1;
 }
 
 .prize-center {
   display: block;
-  margin: 0 auto;
-  width: 250px;
-  /* adjust width as needed */
+  margin: 0;
+  align-self: flex-start;
+  width: 100%;
+  text-align: left;
 }
 
 /* Upload Section */

@@ -165,7 +165,6 @@ if (isset($_POST['confirm_winner'])) {
 $active_prizes = $conn->query("SELECT * FROM prizes WHERE quantity > 0 ORDER BY type, prize_name");
 ?>
 
-
 <?php display_message(); ?>
 
 <?php if ($active_prizes->num_rows == 0): ?>
@@ -181,7 +180,7 @@ $active_prizes = $conn->query("SELECT * FROM prizes WHERE quantity > 0 ORDER BY 
         <div class="draw-left">
             <div class="top-row">
                 <div class="form-column">
-                    <label style="color:red" for="">Prize*</label>
+                    <label style="color:white;text-align:left" for="">Prize*</label>
                     <select id="prize_select" class="form-control prize-center" required>
                         <option value="">Select a prize...</option>
                         <?php while ($prize = $active_prizes->fetch_assoc()): ?>
@@ -194,27 +193,29 @@ $active_prizes = $conn->query("SELECT * FROM prizes WHERE quantity > 0 ORDER BY 
                 </div>
 
                 <div class="button-column">
-                    <button type="button" id="draw_btn" class="btn btn-primary">🔍 VERIFY </button>
-                    <button type="button" id="reset_drawn_number" class="btn btn-secondary">Reset</button>
+                    <button type="button" id="reset_drawn_number" class="btn"
+                        style="background:black; color:white">Reset</button>
+                    <button type="button" id="draw_btn" class="btn btn-primary">🔍 VERIFY PARTICIPANT </button>
+
                 </div>
             </div>
 
             <div class="center-row">
-                <input type="text" autofocus id="drawn_number" class="number-draw form-control text-center"
-                    maxlength="5" required />
+                <input type="text" autofocus id="drawn_number" class="number-draw  text-center" maxlength="5"
+                    required />
             </div>
 
         </div>
     </div>
 
-    <div class="winner-section" id="participant_name_hint">
+    <!-- <div class="winner-section" id="participant_name_hint">
         <h4 class="winner-title">🎯 Possible Winners</h4>
         <div class="slot-machine">
             <div class="scrolling-names">
                 <ul class="winner-list rolling" id="scrolling_names"></ul>
             </div>
         </div>
-    </div>
+    </div> -->
 
 
 

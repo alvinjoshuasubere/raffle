@@ -163,6 +163,12 @@ if (isset($_POST['confirm_winner'])) {
 
 // Get active prizes
 $active_prizes = $conn->query("SELECT * FROM prizes WHERE quantity > 0 ORDER BY type, prize_name");
+
+// Get past winners (most recent first)
+$past_winners = $conn->query("SELECT w.number, w.name, w.barangay, w.prize_name, w.prize_type, w.won_at 
+                              FROM winners w 
+                              ORDER BY w.won_at DESC 
+                              LIMIT 10");
 ?>
 
 
@@ -206,14 +212,14 @@ $active_prizes = $conn->query("SELECT * FROM prizes WHERE quantity > 0 ORDER BY 
         </div>
     </div>
 
-    <div class="winner-section" id="participant_name_hint">
+    <!-- <div class="winner-section" id="participant_name_hint">
         <h4 class="winner-title">🎯 Possible Winners</h4>
         <div class="slot-machine">
             <div class="scrolling-names">
                 <ul class="winner-list rolling" id="scrolling_names"></ul>
             </div>
         </div>
-    </div>
+    </div> -->
 
 
 
@@ -230,6 +236,9 @@ $active_prizes = $conn->query("SELECT * FROM prizes WHERE quantity > 0 ORDER BY 
             <h2>We have a winner!</h2>
         </div>
         <div class="modal-body">
+            <div class="prize-image-container">
+                <div id="prize_image_display"></div>
+            </div>
             <div class="winner-number" id="winner_number" style="display:none;"></div>
             <div class="winner-number" id="winner_name"></div>
             <div class="winner-info">
@@ -347,7 +356,7 @@ document.querySelectorAll('.close, .close-modal').forEach(element => {
         currentWinner = null;
         document.getElementById('drawn_number').value = '';
         document.getElementById('prize_select').selectedIndex = 0;
-        document.getElementById('participant_name_hint').textContent = '';
+        // document.getElementById('participant_name_hint').textContent = '';
     });
 });
 
@@ -361,7 +370,7 @@ window.onclick = function(event) {
         currentWinner = null;
         document.getElementById('drawn_number').value = '';
         document.getElementById('prize_select').selectedIndex = 0;
-        document.getElementById('participant_name_hint').textContent = '';
+        // document.getElementById('participant_name_hint').textContent = '';
     }
 }
 
@@ -385,7 +394,7 @@ drawnInput.addEventListener('beforeinput', function(e) {
         currentDigits = currentDigits.slice(0, -1);
         // Display the number without leading zeros, or empty if nothing left
         this.value = currentDigits || '';
-        checkParticipantName(this.value);
+        // checkParticipantName(this.value);
         return;
     }
 
@@ -405,7 +414,7 @@ drawnInput.addEventListener('beforeinput', function(e) {
 
         // Display without leading zeros
         this.value = currentDigits;
-        checkParticipantName(this.value);
+        // checkParticipantName(this.value);
     }
 });
 
@@ -419,7 +428,7 @@ drawnInput.value = '';
 
 document.getElementById('reset_drawn_number').addEventListener('click', function() {
     document.getElementById('drawn_number').value = '';
-    document.getElementById('participant_name_hint').innerHTML = '';
+    // document.getElementById('participant_name_hint').innerHTML = '';
     document.getElementById('drawn_number').focus();
 });
 

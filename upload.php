@@ -1,71 +1,82 @@
 <?php
 // Handle CSV Upload
 if (isset($_POST['upload_csv'])) {
+    // Ensure DB connection is UTF-8
+    $conn->set_charset('utf8mb4');
+    mysqli_query($conn, "SET NAMES 'utf8mb4'");
+    mysqli_query($conn, "SET CHARACTER SET utf8mb4");
+    mysqli_query($conn, "SET SESSION collation_connection = 'utf8mb4_general_ci'");
+
     if (isset($_FILES['csv_file']) && $_FILES['csv_file']['error'] === UPLOAD_ERR_OK) {
         $file = $_FILES['csv_file'];
         $file_ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-        
-        // Check if file is CSV
+
         if ($file_ext !== 'csv') {
             set_message('error', 'Error: Please upload a CSV file only.');
         } else {
-            // Open and read CSV file
-            if (($handle = fopen($file['tmp_name'], 'r')) !== FALSE) {
+            // Detect file encoding
+            $csv_content = file_get_contents($file['tmp_name']);
+            $encoding = mb_detect_encoding($csv_content, ['UTF-8', 'ISO-8859-1', 'Windows-1252', 'ASCII'], true);
+            
+            // Convert file content to UTF-8
+            $utf8_content = mb_convert_encoding($csv_content, 'UTF-8', $encoding);
+            
+            // Write the UTF-8 version to a temporary file
+            $temp_file = tmpfile();
+            $meta = stream_get_meta_data($temp_file);
+            fwrite($temp_file, $utf8_content);
+            rewind($temp_file);
+
+            if (($handle = $temp_file) !== FALSE) {
                 // Delete all existing participants first
                 $conn->query("DELETE FROM participants");
-                
+
                 $row_count = 0;
                 $success_count = 0;
                 $errors = [];
-                
+
                 // Skip header row
                 $header = fgetcsv($handle, 1000, ',');
-                
-                // Prepare statement for better performance
+
                 $stmt = $conn->prepare("INSERT INTO participants (number, name, barangay, contact_number) VALUES (?, ?, ?, ?)");
-                
+
                 while (($data = fgetcsv($handle, 1000, ',')) !== FALSE) {
                     $row_count++;
-                    
+
                     // Skip empty rows
-                    if (empty(array_filter($data))) {
-                        continue;
-                    }
-                    
-                    // Validate data
+                    if (empty(array_filter($data))) continue;
+
                     if (count($data) < 4) {
                         $errors[] = "Row {$row_count}: Incomplete data";
                         continue;
                     }
-                    
+
                     $number = trim($data[0]);
                     $name = trim($data[1]);
                     $barangay = trim($data[2]);
                     $contact = trim($data[3]);
-                    
-                    // Validate required fields (Contact Number can be empty)
+
                     if (empty($number) || empty($name) || empty($barangay)) {
                         $errors[] = "Row {$row_count}: Missing required fields";
                         continue;
                     }
-                    
-                    // Insert into database
+
                     $stmt->bind_param("ssss", $number, $name, $barangay, $contact);
-                    
+
                     if ($stmt->execute()) {
                         $success_count++;
                     } else {
                         if ($conn->errno == 1062) {
                             $errors[] = "Row {$row_count}: Duplicate number '{$number}'";
                         } else {
-                            $errors[] = "Row {$row_count}: Database error";
+                            $errors[] = "Row {$row_count}: Database error ({$conn->error})";
                         }
                     }
                 }
-                
+
                 $stmt->close();
                 fclose($handle);
-                
+
                 // Display results
                 if ($success_count > 0) {
                     $message = "Successfully uploaded {$success_count} participant(s).";
@@ -76,8 +87,7 @@ if (isset($_POST['upload_csv'])) {
                 } else {
                     set_message('error', 'No participants were uploaded. Please check your CSV file.');
                 }
-                
-                // Store errors in session for display
+
                 if (!empty($errors)) {
                     $_SESSION['upload_errors'] = $errors;
                 }
@@ -88,7 +98,7 @@ if (isset($_POST['upload_csv'])) {
     } else {
         set_message('error', 'Error: Please select a file to upload.');
     }
-    
+
     header('Location: index.php?page=upload');
     exit;
 }
@@ -236,12 +246,10 @@ if (isset($_SESSION['upload_errors'])) {
         <button type="submit" name="upload_csv" class="btn btn-primary">Upload CSV</button>
     </form>
 
-    <?php if ($participant_count > 0): ?>
-    <form method="POST" style="margin-top: 20px;"
-        onsubmit="return confirm('Are you sure you want to delete all participants? This action cannot be undone.');">
-        <button type="submit" name="delete_all" class="btn btn-secondary">Delete All Participants</button>
+    <form id="deleteAllForm" method="POST" style="margin-top: 20px;">
+        <button type="button" id="showDeleteModalBtn" class="btn btn-secondary">Delete All Participants</button>
+        <input type="hidden" name="delete_all" value="1">
     </form>
-    <?php endif; ?>
 </div>
 
 
@@ -257,3 +265,35 @@ if (isset($_SESSION['upload_errors'])) {
     <p style="margin-top: 15px; color: #666;"><em>Note: First row should contain headers. Uploading new CSV will replace
             all existing participants.</em></p>
 </div>
+
+<!-- Modal for delete confirmation -->
+<div id="deleteModal"
+    style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.35);">
+    <div
+        style="background:#fff; max-width:350px; margin:120px auto; padding:30px 20px 20px 20px; border-radius:10px; box-shadow:0 4px 24px #0002; text-align:center; position:relative;">
+        <h3 style="color:#DC143C; margin-bottom:18px;">Are you sure you want to delete all participants?</h3>
+        <p style="color:#666; margin-bottom:24px;">This action cannot be undone.</p>
+        <button id="confirmDeleteBtn" class="btn btn-danger" style="margin-right:10px;">YES, Delete All</button>
+        <br>
+        <br>
+        <button id="cancelDeleteBtn" class="btn btn-secondary">NO, Cancel</button>
+    </div>
+</div>
+
+<script>
+document.getElementById('showDeleteModalBtn').onclick = function() {
+    document.getElementById('deleteModal').style.display = 'block';
+};
+document.getElementById('cancelDeleteBtn').onclick = function() {
+    document.getElementById('deleteModal').style.display = 'none';
+};
+document.getElementById('confirmDeleteBtn').onclick = function() {
+    document.getElementById('deleteAllForm').submit();
+};
+window.onclick = function(event) {
+    var modal = document.getElementById('deleteModal');
+    if (event.target === modal) {
+        modal.style.display = "none";
+    }
+};
+</script>

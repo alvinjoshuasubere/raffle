@@ -1,8 +1,7 @@
 /** @format */
 @font-face {
   font-family: "NumberFont";
-  src: url("../fonts/digital-7.ttf") format("truetype");
-  /* adjust path */
+  src: url("fonts/BebasNeue-Regular.ttf") format("truetype");
 }
 
 * {
@@ -34,10 +33,14 @@ body {
   width: 100vw;
   height: calc(100vh - 57px);
   display: flex;
-  justify-content: center; /* center horizontally */
-  align-items: center; /* center vertically */
-  gap: 40px; /* space between sections */
-  overflow: auto; /* allows scroll if content grows too big */
+  justify-content: center;
+  /* center horizontally */
+  align-items: center;
+  /* center vertically */
+  gap: 40px;
+  /* space between sections */
+  overflow: auto;
+  /* allows scroll if content grows too big */
 
   background: url("bg.png") no-repeat center center;
   background-size: cover;
@@ -344,17 +347,29 @@ tr:hover {
   height: 100%;
   background: rgba(0, 0, 0, 0.7);
   overflow: auto;
+
 }
 
 .modal-content {
   background: linear-gradient(145deg, #ffffff, #f0f8ff);
   margin: 3% auto;
   padding: 0;
+<<<<<<< HEAD
   border-radius: 25px;
   max-width: 900px;
   width: 95%;
   max-height: 90vh;
   box-shadow: 0 20px 60px rgba(255, 105, 180, 0.4), 0 0 0 1px rgba(255, 182, 193, 0.3);
+=======
+  border-radius: 20px;
+  max-width: 1400px;
+  /* Increased from 1000px */
+  width: 95%;
+  /* Increased width */
+  max-height: 95vh;
+  /* Slightly taller */
+  box-shadow: 0 10px 50px rgba(0, 0, 0, 0.3);
+>>>>>>> bdcd577f670c085d41f0e0c41da79cd9434c8b33
   position: relative;
   animation: slideDown 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
   overflow: hidden;
@@ -459,85 +474,59 @@ tr:hover {
 .winner-info {
   margin: 25px 0;
   text-align: center;
+  background: radial-gradient(circle at center, #1b1b1b 40%, #000000 100%);
+  padding: 25px;
+  border-radius: 16px;
+  box-shadow: 0 0 40px rgba(0, 0, 0, 0.7);
 }
 
-.winner-info p {
-  font-size: 20px;
-  margin: 12px 0;
-  color: #9370db;
-  font-weight: 500;
-  word-wrap: break-word;
-  overflow-wrap: break-word;
-}
-
-.winner-info strong {
-  color: #ff69b4;
-  font-size: 22px;
-  font-weight: 700;
-}
-
+/* 🟢 Simple and readable Barangay name with black background */
 .winner_barangay {
   font-size: 50px;
-  font-weight: 600;
-  margin: 8px 0 18px;
-  margin-top: -40px;
-  color: #9370db;
-  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
-  word-wrap: break-word;
-  overflow-wrap: break-word;
-}
-
-.winner_prize {
-  font-size: 30px;
-  font-weight: 600;
-  margin: 8px 0 18px;
-  color: #dc143c;
-}
-
-.winner-number {
-  font-size: 120px;
-  font-weight: 900;
-  color: #ff69b4;
-  text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.2), 0 0 30px rgba(255, 105, 180, 0.6);
-  margin: 20px 0;
-  background: linear-gradient(45deg, #ff69b4, #ffb6c1, #dda0dd);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  animation: pulse 2s ease-in-out infinite;
-  word-wrap: break-word;
-  overflow-wrap: break-word;
-}
-
-@keyframes pulse {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.05); }
-}
-
-.winner-prize {
-  font-size: 36px;
-  font-weight: 800;
-  margin: 20px 0;
-  background: linear-gradient(45deg, #dda0dd, #b19cd9);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  text-shadow: 2px 2px 0px rgba(221, 160, 221, 0.3);
-  position: relative;
+  font-weight: 700;
+  margin-top: -50px;
+  color: #f1f1f1;
+  border-radius: 12px;
   display: inline-block;
-  word-wrap: break-word;
-  overflow-wrap: break-word;
+  text-shadow:
+    1px 1px 6px rgba(0, 0, 0, 0.8),
+    0 0 10px rgba(255, 255, 255, 0.2);
 }
 
-.winner-prize::after {
-  content: '';
-  position: absolute;
-  bottom: -5px;
-  left: 10%;
-  right: 10%;
-  height: 3px;
-  background: linear-gradient(90deg, transparent, #ffd700, transparent);
-  border-radius: 2px;
+/* ✨ Highlighted Ticket (Name or Code) – Golden glow */
+.winner_ticket {
+  font-size: 55px;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: #ff2b2b;
+}
+
+/* 🏆 Gold Prize text – already great */
+.winner-prize {
+  font-size: 55px;
+  font-weight: 900;
+  text-transform: uppercase;
+  color: #ff2b2b;
+}
+
+/* 🔥 Highlighted Winner Number with black background */
+.winner-number {
+  display: inline-block;
+  box-sizing: border-box;
+  font-weight: 900;
+  padding: 20px 40px;
+  border-radius: 20px;
+  white-space: nowrap;
+  text-align: center;
+  letter-spacing: 3px;
+  margin: 20px auto;
+  max-width: 100%;
+  line-height: 1;
+  color: #ffcc00;
+  text-shadow: 0 0 10px rgba(255, 220, 100, 0.8), 3px 3px 6px rgba(0, 0, 0, 0.7);
+
+  font-size: clamp(40px, 5vw, 70px);
+  transition: font-size .12s ease;
 }
 
 .modal-footer {
@@ -565,6 +554,7 @@ tr:hover {
 
 .draw-section {
   position: absolute;
+<<<<<<< HEAD
   width: 40%;
   max-width: 800px;
   top: 50%;
@@ -574,10 +564,25 @@ tr:hover {
   padding: 30px;
   border-radius: 30px;
   box-shadow: 0 8px 32px rgba(255, 105, 180, 0.2), inset 0 0 20px rgba(255, 255, 255, 0.1);
+=======
+  width: 50%;
+  max-width: 100%;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: linear-gradient(to right,
+      #8B0000,
+      #FFD700,
+      #8B0000);
+  padding: 30px;
+  border-radius: 30px;
+  box-shadow: rgba(0, 0, 0, 0.3) 0px 4px 10px;
+>>>>>>> bdcd577f670c085d41f0e0c41da79cd9434c8b33
   display: flex;
   flex-direction: column;
   gap: 20px;
   z-index: 999;
+<<<<<<< HEAD
   border: 2px solid white;
   backdrop-filter: blur(15px) saturate(120%);
   -webkit-backdrop-filter: blur(15px) saturate(120%);
@@ -587,15 +592,21 @@ tr:hover {
 @keyframes shimmer {
   0%, 100% { box-shadow: 0 8px 32px rgba(255, 105, 180, 0.2), inset 0 0 20px rgba(255, 255, 255, 0.1); }
   50% { box-shadow: 0 8px 40px rgba(255, 105, 180, 0.3), inset 0 0 25px rgba(255, 255, 255, 0.2); }
+=======
+  color: #fff;
+  /* for readability */
+  text-align: center;
+>>>>>>> bdcd577f670c085d41f0e0c41da79cd9434c8b33
 }
+
 .winner-section {
-  position: absolute; /* Use absolute for true centering */
+  position: absolute;
   top: 50%;
-  left: 55%;
+  left: 53%;
   transform: translate(-50%, -50%);
 
-  width: 40%;
-  max-width: 500px;
+  width: 45%;
+  max-width: 600px;
   padding: 30px;
   border-radius: 30px;
 
@@ -612,7 +623,8 @@ tr:hover {
   justify-content: center;
   gap: 20px;
 
-  overflow: auto; /* Allow scroll inside if it grows */
+  overflow: auto;
+  /* Allow scroll inside if it grows */
   animation: fadeInGlass 1s ease forwards;
   z-index: 2;
 }
@@ -643,21 +655,21 @@ tr:hover {
   animation: glowTitle 1.5s ease-in-out infinite alternate;
 }
 
-/* Slot Machine */
+/* 🎰 Slot Machine Container */
 .slot-machine {
-  width: 500px;
+  width: 600px;
   max-width: 100%;
   height: auto;
   overflow: hidden;
-  background: radial-gradient(circle at center, #2b0000 0%, #4b0000 80%);
-  border: 5px solid #d4af37;
+  background: #000000;
+  border: 5px solid #ffcc00;
   border-radius: 15px;
-  box-shadow: 0 0 20px rgba(212, 175, 55, 0.7),
-    inset 0 0 10px rgba(255, 255, 255, 0.2);
+  box-shadow: 0 0 20px rgba(255, 204, 0, 0.5),
+    inset 0 0 8px rgba(255, 255, 255, 0.1);
   position: relative;
 }
 
-/* Winner List */
+/* 🧾 Winner List Container */
 .winner-list {
   display: flex;
   flex-direction: column;
@@ -665,13 +677,15 @@ tr:hover {
   justify-content: center;
   list-style: none;
   margin: 0 auto;
-  padding: 0;
+  padding: 15px 0;
 }
 
+/* 🏆 Winner Entries – simple, clear, readable */
 .winner-list li {
-  width: 100%;
+  width: 90%;
   text-align: left;
   font-size: 1.2rem;
+<<<<<<< HEAD
   font-weight: bold;
   color: #ffffff;
   text-shadow: 0 0 6px rgba(52, 152, 219, 0.8), 0 0 12px rgba(41, 128, 185, 0.6);
@@ -688,6 +702,19 @@ tr:hover {
   transform: scale(1.05);
   text-shadow: 0 0 10px rgba(52, 152, 219, 0.9), 0 0 20px rgba(41, 128, 185, 0.7);
   background: rgba(255, 255, 255, 0.15);
+=======
+  font-weight: 800;
+  color: #000000;
+  /* dark text for contrast on light background */
+  background: linear-gradient(to right, #fff7a3, #ffd700, #b8860b);
+  text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.3),
+    2px 2px 6px rgba(0, 0, 0, 0.4);
+  margin-bottom: 14px;
+  letter-spacing: 1px;
+  padding: 12px 15px;
+  border-radius: 10px;
+  transition: transform 0.2s ease, background 0.2s ease;
+>>>>>>> bdcd577f670c085d41f0e0c41da79cd9434c8b33
 }
 
 /* Suspense reveal animation */
@@ -802,24 +829,29 @@ tr:hover {
   font-size: 10rem !important;
   font-weight: bold;
   color: white !important;
+<<<<<<< HEAD
   font-family: monospace;
+=======
+  text-shadow: 2px 2px 0 black, 4px 4px 0 black;
+>>>>>>> bdcd577f670c085d41f0e0c41da79cd9434c8b33
   text-align: center;
-  border: 2px solid rgb(255, 0, 0);
+  border: 5px solid white !important;
   background: none;
   width: 250px;
   letter-spacing: 8px;
 }
 
 .number-draw::placeholder {
-  color: red !important;
+  color: white !important;
   opacity: 1;
 }
 
 .prize-center {
   display: block;
-  margin: 0 auto;
-  width: 250px;
-  /* adjust width as needed */
+  margin: 0;
+  align-self: flex-start;
+  width: 100%;
+  text-align: left;
 }
 
 /* Upload Section */

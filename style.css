@@ -347,11 +347,9 @@ tr:hover {
   height: 100%;
   background: rgba(0, 0, 0, 0.7);
   overflow: auto;
-
 }
 
 .modal-content {
-<<<<<<< HEAD
   background: linear-gradient(145deg, #ffeef8, #f0e6ff, #e6f3ff);
   margin: 2% auto;
   padding: 0;
@@ -364,30 +362,6 @@ tr:hover {
   animation: slideDown 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
   overflow: hidden;
   border: 3px solid rgba(255, 255, 255, 0.5);
-=======
-  background: linear-gradient(145deg, #ffffff, #f0f8ff);
-  margin: 3% auto;
-  padding: 0;
-<<<<<<< HEAD
-  border-radius: 25px;
-  max-width: 900px;
-  width: 95%;
-  max-height: 90vh;
-  box-shadow: 0 20px 60px rgba(255, 105, 180, 0.4), 0 0 0 1px rgba(255, 182, 193, 0.3);
-=======
-  border-radius: 20px;
-  max-width: 1400px;
-  /* Increased from 1000px */
-  width: 95%;
-  /* Increased width */
-  max-height: 95vh;
-  /* Slightly taller */
-  box-shadow: 0 10px 50px rgba(0, 0, 0, 0.3);
->>>>>>> bdcd577f670c085d41f0e0c41da79cd9434c8b33
-  position: relative;
-  animation: slideDown 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
-  overflow: hidden;
->>>>>>> 287c4f8075d3d3799ef7744c69c0e6bc4c7d4fd1
 }
 
 @keyframes slideDown {
@@ -403,7 +377,6 @@ tr:hover {
 }
 
 .modal-header {
-<<<<<<< HEAD
   background: linear-gradient(135deg, #ff69b4 0%, #da70d6 20%, #9370db 40%, #87ceeb 60%, #98fb98 80%, #ffd700 100%);
   color: #ffffff;
   padding: 60px;
@@ -412,16 +385,6 @@ tr:hover {
   position: relative;
   overflow: hidden;
   box-shadow: 0 8px 25px rgba(255, 105, 180, 0.4), inset 0 0 30px rgba(255, 255, 255, 0.2);
-=======
-  background: linear-gradient(135deg, #ffb6c1 0%, #dda0dd 25%, #b19cd9 50%, #87ceeb 75%, #98fb98 100%);
-  color: #ffffff;
-  padding: 40px;
-  border-radius: 25px 25px 0 0;
-  text-align: center;
-  position: relative;
-  overflow: hidden;
-  box-shadow: 0 4px 15px rgba(255, 105, 180, 0.3);
->>>>>>> 287c4f8075d3d3799ef7744c69c0e6bc4c7d4fd1
 }
 
 .modal-header::before {
@@ -456,23 +419,12 @@ tr:hover {
 }
 
 .modal-body {
-<<<<<<< HEAD
-  padding: 30px;
+  padding: 50px;
   text-align: center;
   background: linear-gradient(145deg, #ffeef8, #f0e6ff, #e6f3ff, #fffaf0);
   position: relative;
   overflow-wrap: break-word;
   word-wrap: break-word;
-  border-radius: 0 0 25px 25px;
-  margin-bottom: 0;
-=======
-  padding: 50px;
-  text-align: center;
-  background: linear-gradient(145deg, #ffffff, #faf5ff);
-  position: relative;
-  overflow-wrap: break-word;
-  word-wrap: break-word;
->>>>>>> 287c4f8075d3d3799ef7744c69c0e6bc4c7d4fd1
 }
 
 .prize-image-container {
@@ -510,45 +462,24 @@ tr:hover {
 
 .winner-info {
   text-align: center;
-<<<<<<< HEAD
   /* background: radial-gradient(circle at center, #1b1b1b 40%, #000000 100%); */
   padding: 25px;
   border-radius: 16px;
 }
 
 .winner_barangay {
-  font-size: 40px;
-  font-weight: 700;
-  margin-top: -50px;
-  color: white;
-=======
-  background: radial-gradient(circle at center, #1b1b1b 40%, #000000 100%);
-  padding: 25px;
-  border-radius: 16px;
-  box-shadow: 0 0 40px rgba(0, 0, 0, 0.7);
-}
-
-/* 🟢 Simple and readable Barangay name with black background */
-.winner_barangay {
   font-size: 50px;
   font-weight: 700;
   margin-top: -50px;
-  color: #f1f1f1;
->>>>>>> 287c4f8075d3d3799ef7744c69c0e6bc4c7d4fd1
+  color: white;
   border-radius: 12px;
   display: inline-block;
   text-shadow:
     1px 1px 6px rgba(0, 0, 0, 0.8),
-<<<<<<< HEAD
-    0 0 10px rgba(147, 112, 219, 0.4);
-}
-
-=======
     0 0 10px rgba(255, 255, 255, 0.2);
 }
 
 /* ✨ Highlighted Ticket (Name or Code) – Golden glow */
->>>>>>> 287c4f8075d3d3799ef7744c69c0e6bc4c7d4fd1
 .winner_ticket {
   font-size: 55px;
   font-weight: 800;
@@ -564,16 +495,11 @@ tr:hover {
   color: #ff2b2b;
 }
 
-<<<<<<< HEAD
 /* Highlighted Winner Number with black background */
-=======
-/* 🔥 Highlighted Winner Number with black background */
->>>>>>> 287c4f8075d3d3799ef7744c69c0e6bc4c7d4fd1
 .winner-number {
   display: inline-block;
   box-sizing: border-box;
   font-weight: 900;
-<<<<<<< HEAD
   padding: 25px 40px;
   border-radius: 30px;
   white-space: normal;
@@ -606,54 +532,12 @@ tr:hover {
 }
 
 .modal-footer {
-  padding: 45px 65px;
+  padding: 40px 60px;
   text-align: center;
-  border-top: 4px solid rgba(255, 215, 0, 0.4);
+  border-top: 3px solid rgba(255, 215, 0, 0.3);
   background: linear-gradient(145deg, #ffeef8, #f0e6ff, #e6f3ff);
   border-radius: 0 0 30px 30px;
-  box-shadow: inset 0 5px 15px rgba(255, 105, 180, 0.15), 0 -5px 20px rgba(147, 112, 219, 0.2);
-  position: relative;
-  overflow: hidden;
-  margin-top: 0;
-}
-
-.modal-footer::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
-  background: linear-gradient(90deg, #ff69b4, #da70d6, #9370db, #87ceeb, #98fb98, #ffd700);
-  animation: shimmerFooter 3s ease-in-out infinite;
-}
-
-@keyframes shimmerFooter {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(100%); }
-=======
-  padding: 20px 40px;
-  border-radius: 20px;
-  white-space: nowrap;
-  text-align: center;
-  letter-spacing: 3px;
-  margin: 20px auto;
-  max-width: 100%;
-  line-height: 1;
-  color: #ffcc00;
-  text-shadow: 0 0 10px rgba(255, 220, 100, 0.8), 3px 3px 6px rgba(0, 0, 0, 0.7);
-
-  font-size: clamp(40px, 5vw, 70px);
-  transition: font-size .12s ease;
-}
-
-.modal-footer {
-  padding: 30px 50px;
-  text-align: center;
-  border-top: 2px solid rgba(255, 215, 0, 0.2);
-  background: linear-gradient(145deg, #f8f9fa, #ffffff);
-  border-radius: 0 0 25px 25px;
->>>>>>> 287c4f8075d3d3799ef7744c69c0e6bc4c7d4fd1
+  box-shadow: inset 0 3px 10px rgba(255, 105, 180, 0.1);
 }
 
 .close {
@@ -673,7 +557,6 @@ tr:hover {
 
 .draw-section {
   position: absolute;
-<<<<<<< HEAD
   width: 40%;
   max-width: 800px;
   top: 50%;
@@ -683,31 +566,10 @@ tr:hover {
   padding: 30px;
   border-radius: 30px;
   box-shadow: 0 8px 32px rgba(255, 105, 180, 0.2), inset 0 0 20px rgba(255, 255, 255, 0.1);
-<<<<<<< HEAD
-=======
-=======
-  width: 50%;
-  max-width: 100%;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  background: linear-gradient(to right,
-      #8B0000,
-      #FFD700,
-      #8B0000);
-  padding: 30px;
-  border-radius: 30px;
-  box-shadow: rgba(0, 0, 0, 0.3) 0px 4px 10px;
->>>>>>> bdcd577f670c085d41f0e0c41da79cd9434c8b33
->>>>>>> 287c4f8075d3d3799ef7744c69c0e6bc4c7d4fd1
   display: flex;
   flex-direction: column;
   gap: 20px;
   z-index: 999;
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
->>>>>>> 287c4f8075d3d3799ef7744c69c0e6bc4c7d4fd1
   border: 2px solid white;
   backdrop-filter: blur(15px) saturate(120%);
   -webkit-backdrop-filter: blur(15px) saturate(120%);
@@ -717,14 +579,6 @@ tr:hover {
 @keyframes shimmer {
   0%, 100% { box-shadow: 0 8px 32px rgba(255, 105, 180, 0.2), inset 0 0 20px rgba(255, 255, 255, 0.1); }
   50% { box-shadow: 0 8px 40px rgba(255, 105, 180, 0.3), inset 0 0 25px rgba(255, 255, 255, 0.2); }
-<<<<<<< HEAD
-=======
-=======
-  color: #fff;
-  /* for readability */
-  text-align: center;
->>>>>>> bdcd577f670c085d41f0e0c41da79cd9434c8b33
->>>>>>> 287c4f8075d3d3799ef7744c69c0e6bc4c7d4fd1
 }
 
 .winner-section {
@@ -813,7 +667,6 @@ tr:hover {
   width: 90%;
   text-align: left;
   font-size: 1.2rem;
-<<<<<<< HEAD
   font-weight: bold;
   color: #ffffff;
   text-shadow: 0 0 6px rgba(52, 152, 219, 0.8), 0 0 12px rgba(41, 128, 185, 0.6);
@@ -830,22 +683,6 @@ tr:hover {
   transform: scale(1.05);
   text-shadow: 0 0 10px rgba(52, 152, 219, 0.9), 0 0 20px rgba(41, 128, 185, 0.7);
   background: rgba(255, 255, 255, 0.15);
-<<<<<<< HEAD
-=======
-=======
-  font-weight: 800;
-  color: #000000;
-  /* dark text for contrast on light background */
-  background: linear-gradient(to right, #fff7a3, #ffd700, #b8860b);
-  text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.3),
-    2px 2px 6px rgba(0, 0, 0, 0.4);
-  margin-bottom: 14px;
-  letter-spacing: 1px;
-  padding: 12px 15px;
-  border-radius: 10px;
-  transition: transform 0.2s ease, background 0.2s ease;
->>>>>>> bdcd577f670c085d41f0e0c41da79cd9434c8b33
->>>>>>> 287c4f8075d3d3799ef7744c69c0e6bc4c7d4fd1
 }
 
 /* Suspense reveal animation */
@@ -960,14 +797,6 @@ tr:hover {
   font-size: 10rem !important;
   font-weight: bold;
   color: white !important;
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
-  font-family: monospace;
-=======
-  text-shadow: 2px 2px 0 black, 4px 4px 0 black;
->>>>>>> bdcd577f670c085d41f0e0c41da79cd9434c8b33
->>>>>>> 287c4f8075d3d3799ef7744c69c0e6bc4c7d4fd1
   text-align: center;
   border: 5px solid white !important;
   background: none;

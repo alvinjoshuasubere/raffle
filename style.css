@@ -1,8 +1,7 @@
 /** @format */
 @font-face {
   font-family: "NumberFont";
-  src: url("../fonts/digital-7.ttf") format("truetype");
-  /* adjust path */
+  src: url("fonts/BebasNeue-Regular.ttf") format("truetype");
 }
 
 * {
@@ -34,10 +33,14 @@ body {
   width: 100vw;
   height: calc(100vh - 57px);
   display: flex;
-  justify-content: center; /* center horizontally */
-  align-items: center; /* center vertically */
-  gap: 40px; /* space between sections */
-  overflow: auto; /* allows scroll if content grows too big */
+  justify-content: center;
+  /* center horizontally */
+  align-items: center;
+  /* center vertically */
+  gap: 40px;
+  /* space between sections */
+  overflow: auto;
+  /* allows scroll if content grows too big */
 
   background: url("bg.png") no-repeat center center;
   background-size: cover;
@@ -95,7 +98,10 @@ body {
 
 .systemName {
   font-weight: 700;
-  color: white;
+  color: #ffffff;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+  font-size: 18px;
+  letter-spacing: 0.5px;
 }
 
 /* Navigation */
@@ -214,23 +220,30 @@ select:focus {
 }
 
 .btn-primary {
-  background: #dc143c;
+  background: linear-gradient(135deg, #ff69b4, #ff1493);
   color: white;
+  border: none;
+  box-shadow: 0 4px 15px rgba(255, 105, 180, 0.4);
+  transition: all 0.3s ease;
 }
 
 .btn-primary:hover {
-  background: #b01040;
+  background: linear-gradient(135deg, #ff1493, #c71585);
   transform: translateY(-2px);
-  box-shadow: 0 4px 10px rgba(220, 20, 60, 0.3);
+  box-shadow: 0 6px 20px rgba(255, 105, 180, 0.5);
 }
 
 .btn-success {
-  background: #28a745;
+  background: linear-gradient(135deg, #27ae60, #229954);
   color: white;
+  box-shadow: 0 4px 15px rgba(39, 174, 96, 0.3);
+  transition: all 0.3s ease;
 }
 
 .btn-success:hover {
-  background: #218838;
+  background: linear-gradient(135deg, #229954, #1e8449);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(39, 174, 96, 0.4);
 }
 
 .btn-warning {
@@ -252,12 +265,16 @@ select:focus {
 }
 
 .btn-secondary {
-  background: #6c757d;
+  background: linear-gradient(135deg, #7f8c8d, #707b7c);
   color: white;
+  box-shadow: 0 4px 15px rgba(127, 140, 141, 0.3);
+  transition: all 0.3s ease;
 }
 
 .btn-secondary:hover {
-  background: #5a6268;
+  background: linear-gradient(135deg, #707b7c, #5d6d7e);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(127, 140, 141, 0.4);
 }
 
 /* Tables */
@@ -330,19 +347,21 @@ tr:hover {
   height: 100%;
   background: rgba(0, 0, 0, 0.7);
   overflow: auto;
+
 }
 
 .modal-content {
-  background: white;
+  background: linear-gradient(145deg, #ffffff, #f0f8ff);
   margin: 3% auto;
   padding: 0;
-  border-radius: 20px;
-  max-width: 1000px;
-  width: 100%;
+  border-radius: 25px;
+  max-width: 900px;
+  width: 95%;
   max-height: 90vh;
-  box-shadow: 0 10px 50px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 20px 60px rgba(255, 105, 180, 0.4), 0 0 0 1px rgba(255, 182, 193, 0.3);
   position: relative;
-  animation: slideDown 0.4s ease;
+  animation: slideDown 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+  overflow: hidden;
 }
 
 @keyframes slideDown {
@@ -358,76 +377,153 @@ tr:hover {
 }
 
 .modal-header {
-  background: linear-gradient(135deg, #dc143c, #ffd700);
-  color: white;
-  padding: 30px;
-  border-radius: 15px 15px 0 0;
+  background: linear-gradient(135deg, #ffb6c1 0%, #dda0dd 25%, #b19cd9 50%, #87ceeb 75%, #98fb98 100%);
+  color: #ffffff;
+  padding: 40px;
+  border-radius: 25px 25px 0 0;
   text-align: center;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 4px 15px rgba(255, 105, 180, 0.3);
+}
+
+.modal-header::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: url('bg.png') center/cover;
+  opacity: 0.1;
+  z-index: 0;
 }
 
 .modal-header h2 {
-  font-size: 28px;
+  font-size: 32px;
   margin: 0;
   text-transform: uppercase;
+  position: relative;
+  z-index: 1;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+  animation: glow 2s ease-in-out infinite alternate;
+  color: #ffffff;
+  font-weight: 800;
+  word-wrap: break-word;
+  hyphens: auto;
+}
+
+@keyframes glow {
+  from { text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3), 0 0 20px rgba(255, 105, 180, 0.6); }
+  to { text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3), 0 0 30px rgba(255, 182, 193, 0.8); }
 }
 
 .modal-body {
-  padding: 40px;
+  padding: 50px;
   text-align: center;
+  background: linear-gradient(145deg, #ffffff, #faf5ff);
+  position: relative;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+}
+
+.prize-image-container {
+  margin-bottom: 30px;
+  text-align: center;
+}
+
+.prize-image {
+  max-width: 250px;
+  max-height: 250px;
+  border-radius: 15px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  border: 4px solid #ffd700;
+  animation: prizeGlow 3s ease-in-out infinite;
+}
+
+@keyframes prizeGlow {
+  0%, 100% { box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2), 0 0 20px rgba(255, 215, 0, 0.3); }
+  50% { box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2), 0 0 30px rgba(255, 215, 0, 0.5); }
+}
+
+.no-prize-image {
+  max-width: 250px;
+  max-height: 250px;
+  border-radius: 15px;
+  background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 60px;
+  color: #dc143c;
+  border: 4px solid #dc143c;
+  margin: 0 auto;
 }
 
 .winner-info {
   margin: 25px 0;
   text-align: center;
+  background: radial-gradient(circle at center, #1b1b1b 40%, #000000 100%);
+  padding: 25px;
+  border-radius: 16px;
+  box-shadow: 0 0 40px rgba(0, 0, 0, 0.7);
 }
 
-.winner-info p {
-  font-size: 20px;
-  margin: 12px 0;
-  color: #333;
-}
-
-.winner-info strong {
-  color: #dc143c;
-  font-size: 22px;
-  font-weight: 700;
-}
-
+/* 🟢 Simple and readable Barangay name with black background */
 .winner_barangay {
   font-size: 50px;
-  font-weight: 600;
-  margin: 8px 0 18px;
-  margin-top: -40px;
-  color: #444;
+  font-weight: 700;
+  margin-top: -50px;
+  color: #f1f1f1;
+  border-radius: 12px;
+  display: inline-block;
+  text-shadow:
+    1px 1px 6px rgba(0, 0, 0, 0.8),
+    0 0 10px rgba(255, 255, 255, 0.2);
 }
 
-.winner_prize {
-  font-size: 30px;
-  font-weight: 600;
-  margin: 8px 0 18px;
-  color: #dc143c;
+/* ✨ Highlighted Ticket (Name or Code) – Golden glow */
+.winner_ticket {
+  font-size: 55px;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: #ff2b2b;
 }
 
-.winner-number {
-  font-size: 100px;
-  font-weight: bolder;
-  color: #dc143c;
-  /* margin: 20px 0; */
-  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
-}
-
+/* 🏆 Gold Prize text – already great */
 .winner-prize {
-  font-size: 50px;
-  font-weight: bolder;
-  color: #fcc101;
-  background: #ffffff;
-  text-shadow: 2px 2px 0px #ffffff, 5px 4px 0px rgba(0, 0, 0, 0.15);
+  font-size: 55px;
+  font-weight: 900;
+  text-transform: uppercase;
+  color: #ff2b2b;
+}
+
+/* 🔥 Highlighted Winner Number with black background */
+.winner-number {
+  display: inline-block;
+  box-sizing: border-box;
+  font-weight: 900;
+  padding: 20px 40px;
+  border-radius: 20px;
+  white-space: nowrap;
+  text-align: center;
+  letter-spacing: 3px;
+  margin: 20px auto;
+  max-width: 100%;
+  line-height: 1;
+  color: #ffcc00;
+  text-shadow: 0 0 10px rgba(255, 220, 100, 0.8), 3px 3px 6px rgba(0, 0, 0, 0.7);
+
+  font-size: clamp(40px, 5vw, 70px);
+  transition: font-size .12s ease;
 }
 
 .modal-footer {
-  padding: 20px 40px;
+  padding: 30px 50px;
   text-align: center;
-  border-top: 1px solid #ddd;
+  border-top: 2px solid rgba(255, 215, 0, 0.2);
+  background: linear-gradient(145deg, #f8f9fa, #ffffff);
+  border-radius: 0 0 25px 25px;
 }
 
 .close {
@@ -448,36 +544,46 @@ tr:hover {
 .draw-section {
   position: absolute;
   width: 40%;
-  max-width: 600px;
+  max-width: 800px;
   top: 50%;
-  left: 40%;
+  right: 0%;
   transform: translate(-50%, -50%);
-  background: #fff;
+  background: linear-gradient(135deg, rgba(255, 182, 193, 0.3), rgba(221, 160, 221, 0.3), rgba(176, 224, 230, 0.3));
   padding: 30px;
   border-radius: 30px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 8px 32px rgba(255, 105, 180, 0.2), inset 0 0 20px rgba(255, 255, 255, 0.1);
   display: flex;
   flex-direction: column;
   gap: 20px;
   z-index: 999;
+  border: 2px solid white;
+  backdrop-filter: blur(15px) saturate(120%);
+  -webkit-backdrop-filter: blur(15px) saturate(120%);
+  animation: shimmer 3s ease-in-out infinite;
 }
+
+@keyframes shimmer {
+  0%, 100% { box-shadow: 0 8px 32px rgba(255, 105, 180, 0.2), inset 0 0 20px rgba(255, 255, 255, 0.1); }
+  50% { box-shadow: 0 8px 40px rgba(255, 105, 180, 0.3), inset 0 0 25px rgba(255, 255, 255, 0.2); }
+}
+
 .winner-section {
-  position: absolute; /* Use absolute for true centering */
+  position: absolute;
   top: 50%;
-  left: 55%;
+  left: 53%;
   transform: translate(-50%, -50%);
 
-  width: 40%;
-  max-width: 500px;
+  width: 45%;
+  max-width: 600px;
   padding: 30px;
   border-radius: 30px;
 
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.25);
   backdrop-filter: blur(12px) saturate(180%);
   -webkit-backdrop-filter: blur(12px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
-  color: #fff;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  color: #ffffff;
 
   display: flex;
   flex-direction: column;
@@ -485,7 +591,8 @@ tr:hover {
   justify-content: center;
   gap: 20px;
 
-  overflow: auto; /* Allow scroll inside if it grows */
+  overflow: auto;
+  /* Allow scroll inside if it grows */
   animation: fadeInGlass 1s ease forwards;
   z-index: 2;
 }
@@ -507,30 +614,30 @@ tr:hover {
   margin: 0 0 10px;
   font-size: 1.2rem;
   font-weight: bold;
-  color: #fff;
+  color: #ffffff;
   text-align: center;
   letter-spacing: 1px;
-  text-shadow: 0 0 15px rgba(252, 195, 1, 0.8);
-  border-bottom: 2px solid rgba(252, 195, 1, 0.5);
+  text-shadow: 0 0 15px rgba(52, 152, 219, 0.8);
+  border-bottom: 2px solid rgba(52, 152, 219, 0.6);
   padding-bottom: 6px;
   animation: glowTitle 1.5s ease-in-out infinite alternate;
 }
 
-/* Slot Machine */
+/* 🎰 Slot Machine Container */
 .slot-machine {
-  width: 500px;
+  width: 600px;
   max-width: 100%;
   height: auto;
   overflow: hidden;
-  background: radial-gradient(circle at center, #2b0000 0%, #4b0000 80%);
-  border: 5px solid #d4af37;
+  background: #000000;
+  border: 5px solid #ffcc00;
   border-radius: 15px;
-  box-shadow: 0 0 20px rgba(212, 175, 55, 0.7),
-    inset 0 0 10px rgba(255, 255, 255, 0.2);
+  box-shadow: 0 0 20px rgba(255, 204, 0, 0.5),
+    inset 0 0 8px rgba(255, 255, 255, 0.1);
   position: relative;
 }
 
-/* Winner List */
+/* 🧾 Winner List Container */
 .winner-list {
   display: flex;
   flex-direction: column;
@@ -538,27 +645,30 @@ tr:hover {
   justify-content: center;
   list-style: none;
   margin: 0 auto;
-  padding: 0;
+  padding: 15px 0;
 }
 
+/* 🏆 Winner Entries – simple, clear, readable */
 .winner-list li {
-  width: 100%;
+  width: 90%;
   text-align: left;
   font-size: 1.2rem;
   font-weight: bold;
-  color: #fff6d9;
-  text-shadow: 0 0 6px #d4af37, 0 0 12px #b8860b, 0 0 24px #ffcc00;
+  color: #ffffff;
+  text-shadow: 0 0 6px rgba(52, 152, 219, 0.8), 0 0 12px rgba(41, 128, 185, 0.6);
   margin-bottom: 12px;
   letter-spacing: 1px;
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.1);
   padding: 8px 10px;
   border-radius: 8px;
   transition: transform 0.3s ease, text-shadow 0.3s ease;
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .winner-list li:hover {
   transform: scale(1.05);
-  text-shadow: 0 0 10px #ffd700, 0 0 20px #ffcc00;
+  text-shadow: 0 0 10px rgba(52, 152, 219, 0.9), 0 0 20px rgba(41, 128, 185, 0.7);
+  background: rgba(255, 255, 255, 0.15);
 }
 
 /* Suspense reveal animation */
@@ -566,15 +676,16 @@ tr:hover {
   text-align: center;
   font-size: 2rem;
   font-weight: bold;
-  color: #fcc301;
-  background: rgba(255, 255, 255, 0.1);
+  color: #3498db;
+  background: rgba(255, 255, 255, 0.15);
   border-radius: 15px;
   padding: 15px;
   margin-top: 10px;
-  text-shadow: 0 0 15px rgba(252, 195, 1, 0.6);
+  text-shadow: 0 0 15px rgba(52, 152, 219, 0.8);
   animation: suspenseReveal 1.8s ease forwards;
   opacity: 0;
   transform: scale(0.7) rotateX(60deg);
+  border: 1px solid rgba(52, 152, 219, 0.3);
 }
 
 @keyframes suspenseReveal {
@@ -597,8 +708,8 @@ tr:hover {
 }
 
 .winner-title.suspense {
-  color: #ffea00;
-  text-shadow: 0 0 20px rgba(255, 234, 0, 0.8);
+  color: #3498db;
+  text-shadow: 0 0 20px rgba(52, 152, 219, 0.9);
   animation: flicker 1.5s infinite alternate;
 }
 
@@ -621,8 +732,8 @@ tr:hover {
 .top-row {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  gap: 20px;
+  align-items: stretch;
+  gap: 10px;
 }
 
 .top-row .form-column {
@@ -633,16 +744,21 @@ tr:hover {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 5px;
   align-items: stretch;
 }
 
 .top-row select {
   width: 100%;
-  padding: 14px;
-  font-size: 1.2rem;
-  border-radius: 8px;
-  border: 1px solid #ccc;
+  height: 48px;
+  padding: 12px 15px;
+  font-size: 1rem;
+  border-radius: 5px;
+  border: 2px solid #ff69b4;
+  background: rgba(255, 255, 255, 0.8);
+  color: #333;
+  box-shadow: 0 4px 15px rgba(255, 105, 180, 0.3);
+  transition: all 0.3s ease;
 }
 
 .center-row {
@@ -666,26 +782,26 @@ tr:hover {
   font-family: "NumberFont", monospace;
   font-size: 10rem !important;
   font-weight: bold;
-  color: rgb(255, 0, 0) !important;
+  color: white !important;
   font-family: monospace;
   text-align: center;
-  border: none !important;
-  outline: none;
+  border: 5px solid white !important;
   background: none;
   width: 250px;
   letter-spacing: 8px;
 }
 
 .number-draw::placeholder {
-  color: red !important;
+  color: white !important;
   opacity: 1;
 }
 
 .prize-center {
   display: block;
-  margin: 0 auto;
-  width: 250px;
-  /* adjust width as needed */
+  margin: 0;
+  align-self: flex-start;
+  width: 100%;
+  text-align: left;
 }
 
 /* Upload Section */

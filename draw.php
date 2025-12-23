@@ -29,7 +29,7 @@ if (isset($_POST['draw_winner'])) {
     $prize_query = $stmt->get_result();
 
     if ($prize_query->num_rows == 0) {
-        echo json_encode(['success' => false, 'message' => 'Prize not found.']);
+        echo json_encode(['success ' => false, 'message' => 'Prize not found.']);
         exit;
     }
 
@@ -163,8 +163,13 @@ if (isset($_POST['confirm_winner'])) {
 
 // Get active prizes
 $active_prizes = $conn->query("SELECT * FROM prizes WHERE quantity > 0 ORDER BY type, prize_name");
-?>
 
+// Get past winners (most recent first)
+$past_winners = $conn->query("SELECT w.number, w.name, w.barangay, w.prize_name, w.prize_type, w.won_at 
+                              FROM winners w 
+                              ORDER BY w.won_at DESC 
+                              LIMIT 10");
+?>
 
 <?php display_message(); ?>
 
@@ -181,6 +186,7 @@ $active_prizes = $conn->query("SELECT * FROM prizes WHERE quantity > 0 ORDER BY 
         <div class="draw-left">
             <div class="top-row">
                 <div class="form-column">
+                    <label style="color:white;text-align:left" for="">Prize*</label>
                     <select id="prize_select" class="form-control prize-center" required>
                         <option value="">Select a prize...</option>
                         <?php while ($prize = $active_prizes->fetch_assoc()): ?>
@@ -193,28 +199,29 @@ $active_prizes = $conn->query("SELECT * FROM prizes WHERE quantity > 0 ORDER BY 
                 </div>
 
                 <div class="button-column">
-                    <button type="button" id="draw_btn" class="btn btn-primary">🔍 Check Winner</button>
-                    <button type="button" id="reset_drawn_number" class="btn btn-secondary">Reset</button>
+                    <button type="button" id="reset_drawn_number" class="btn"
+                        style="background:black; color:white">Reset</button>
+                    <button type="button" id="draw_btn" class="btn btn-primary">🔍 VERIFY PARTICIPANT </button>
+
                 </div>
             </div>
 
             <div class="center-row">
-                <input type="text" id="drawn_number" class="number-draw form-control text-center" placeholder="00000"
-                    maxlength="5" required />
-
+                <input type="text" autofocus id="drawn_number" class="number-draw  text-center" maxlength="5"
+                    required />
             </div>
 
         </div>
     </div>
 
-    <div class="winner-section" id="participant_name_hint">
+    <!-- <div class="winner-section" id="participant_name_hint">
         <h4 class="winner-title">🎯 Possible Winners</h4>
         <div class="slot-machine">
             <div class="scrolling-names">
                 <ul class="winner-list rolling" id="scrolling_names"></ul>
             </div>
         </div>
-    </div>
+    </div> -->
 
 
 
@@ -231,14 +238,16 @@ $active_prizes = $conn->query("SELECT * FROM prizes WHERE quantity > 0 ORDER BY 
             <h2>We have a winner!</h2>
         </div>
         <div class="modal-body">
-            <div class="winner-number" id="winner_number" style="display:none;"></div>
-            <div class="winner-number" id="winner_name"></div>
+            <h6 class="winner_ticket"><small>Ticket #</small>&nbsp;<span id="winner_number"></span></h6>
+
             <div class="winner-info">
+                <div class="winner-number" id="winner_name"></div>
                 <h4 class="winner_barangay">Barangay&nbsp;<span id="winner_barangay"></span></h4>
                 <p style="display:none;"><strong>Contact:</strong> <span id="winner_contact"></span></p>
-                <h6 class="winner-prize">Prize:&nbsp;<span id="winner_prize"></span></h6>
+
                 <p style="display:none;"><strong>Type:</strong> <span id="winner_type"></span></p>
             </div>
+            <h6 class="winner-prize">Prize:&nbsp;<span id="winner_prize"></span></h6>
         </div>
         <div class="modal-footer">
             <button type="button" id="confirm_btn" class="btn btn-success">Confirm Winner</button>
@@ -325,9 +334,35 @@ document.getElementById('confirm_btn').addEventListener('click', function() {
         .then(data => {
             if (data.success) {
                 alert('Winner confirmed successfully!');
+                document.getElementById('winnerModal').style.display = 'none';
+                if (typeof stopConfetti === 'function') {
+                    stopConfetti();
+                }
+                currentWinner = null;
                 document.getElementById('drawn_number').value = '';
-                document.getElementById('prize_select').selectedIndex = 0;
-                window.location.reload();
+                document.getElementById('participant_name_hint').innerHTML = '';
+
+                // Update the prize dropdown
+                const prizeSelect = document.getElementById('prize_select');
+                const selectedOption = prizeSelect.querySelector(
+                    `option[value="${formData.get('prize_id')}"]`);
+                if (selectedOption) {
+                    // Extract quantity from option text, e.g. "Prize Name (Major - 2 left)"
+                    const match = selectedOption.textContent.match(/\(([^-]+)-\s*(\d+)\s*left\)/);
+                    if (match) {
+                        let qty = parseInt(match[2], 10) - 1;
+                        if (qty <= 0) {
+                            // Remove the option if no quantity left
+                            selectedOption.remove();
+                            // Optionally, select the next available prize
+                            prizeSelect.selectedIndex = 0;
+                        } else {
+                            // Update the quantity in the option text
+                            selectedOption.textContent = selectedOption.textContent.replace(
+                                /\(\s*([^-]+)-\s*\d+\s*left\)/, `(${match[1]}- ${qty} left)`);
+                        }
+                    }
+                }
             } else {
                 alert(data.message);
             }
@@ -347,8 +382,13 @@ document.querySelectorAll('.close, .close-modal').forEach(element => {
         }
         currentWinner = null;
         document.getElementById('drawn_number').value = '';
+<<<<<<< HEAD
         document.getElementById('prize_select').selectedIndex = 0;
+        // document.getElementById('participant_name_hint').textContent = '';
+=======
+        // document.getElementById('prize_select').selectedIndex = 0; // Do not reset prize
         document.getElementById('participant_name_hint').textContent = '';
+>>>>>>> bdcd577f670c085d41f0e0c41da79cd9434c8b33
     });
 });
 
@@ -361,8 +401,13 @@ window.onclick = function(event) {
         }
         currentWinner = null;
         document.getElementById('drawn_number').value = '';
+<<<<<<< HEAD
         document.getElementById('prize_select').selectedIndex = 0;
+        // document.getElementById('participant_name_hint').textContent = '';
+=======
+        // document.getElementById('prize_select').selectedIndex = 0; // Do not reset prize
         document.getElementById('participant_name_hint').textContent = '';
+>>>>>>> bdcd577f670c085d41f0e0c41da79cd9434c8b33
     }
 }
 
@@ -379,19 +424,21 @@ const drawnInput = document.getElementById('drawn_number');
 drawnInput.addEventListener('beforeinput', function(e) {
     e.preventDefault();
 
-    let currentDigits = this.value.replace(/\D/g, '').replace(/^0+/, '') || '0';
+    let currentDigits = this.value.replace(/\D/g, '').replace(/^0+/, '');
 
     // Handle backspace/delete
     if (e.inputType === 'deleteContentBackward' || e.inputType === 'deleteContentForward') {
-        currentDigits = currentDigits.slice(0, -1) || '0';
-        this.value = currentDigits.padStart(5, '0');
-        checkParticipantName(this.value);
+        currentDigits = currentDigits.slice(0, -1);
+        // Display the number without leading zeros, or empty if nothing left
+        this.value = currentDigits || '';
+        // checkParticipantName(this.value);
         return;
     }
 
     // Handle number input
     if (e.data && /^\d$/.test(e.data)) {
-        if (currentDigits === '0') {
+        // Start fresh if currently empty
+        if (!currentDigits) {
             currentDigits = e.data;
         } else {
             currentDigits = currentDigits + e.data;
@@ -402,8 +449,9 @@ drawnInput.addEventListener('beforeinput', function(e) {
             currentDigits = currentDigits.slice(-5);
         }
 
-        this.value = currentDigits.padStart(5, '0');
-        checkParticipantName(this.value);
+        // Display without leading zeros
+        this.value = currentDigits;
+        // checkParticipantName(this.value);
     }
 });
 
@@ -412,12 +460,12 @@ drawnInput.addEventListener('paste', function(e) {
     e.preventDefault();
 });
 
-// Initialize
-drawnInput.value = '00000';
+// Initialize with empty value
+drawnInput.value = '';
 
 document.getElementById('reset_drawn_number').addEventListener('click', function() {
-    document.getElementById('drawn_number').value = '00000';
-    document.getElementById('participant_name_hint').textContent = '';
+    document.getElementById('drawn_number').value = '';
+    // document.getElementById('participant_name_hint').innerHTML = '';
     document.getElementById('drawn_number').focus();
 });
 
@@ -431,9 +479,9 @@ function checkParticipantName(number) {
 
     number = number.trim();
 
-    // Clear hint if number is 00000 or empty
-    if (!number || number === '00000') {
-        hintDiv.textContent = '';
+    // Clear hint if number is empty
+    if (!number) {
+        hintDiv.innerHTML = '';
         return;
     }
 
@@ -499,7 +547,7 @@ function checkParticipantName(number) {
 
                         shuffled.forEach(item => {
                             const li = document.createElement('li');
-                            li.textContent = `🎟️ Ticket No. ${item.number} - ${item.name}`;
+                            li.textContent = `Ticket # ${item.number} - ${item.name}`;
                             ul.appendChild(li);
                         });
 
@@ -521,7 +569,7 @@ function checkParticipantName(number) {
             })
 
             .catch(() => {
-                hintDiv.textContent = '';
+                hintDiv.innerHTML = '';
             });
     }, 300);
 }

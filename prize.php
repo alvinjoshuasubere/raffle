@@ -83,13 +83,27 @@ if (isset($_GET['delete_prize'])) {
 // Handle Edit Quantity
 if (isset($_POST['edit_quantity'])) {
     $prize_id = intval($_POST['prize_id']);
-    $new_quantity = intval($_POST['new_quantity']);
-    if ($new_quantity < 1) {
-        set_message('error', 'Error: Quantity must be at least 1.');
+    $new_original_quantity = intval($_POST['new_quantity']);
+
+    // Get the current original and available quantity from the database
+    $result = $conn->query("SELECT status, original_quantity, quantity FROM prizes WHERE id = $prize_id");
+    $row = $result->fetch_assoc();
+    $old_original_quantity = $row['original_quantity'];
+    $old_quantity = $row['quantity'];
+    $claimed = $old_original_quantity - $old_quantity;
+
+    if ($new_original_quantity < $claimed) {
+        set_message('error', 'Error: You cannot set the total quantity lower than the number already claimed ('.$claimed.').');
     } else {
-        // Update both quantity and original_quantity if needed
-        $conn->query("UPDATE prizes SET quantity = $new_quantity, original_quantity = $new_quantity WHERE id = $prize_id");
-        set_message('success', 'Prize quantity updated!');
+        $new_available = $new_original_quantity - $claimed;
+        // If currently disabled and new available > 0, set to Active
+        if ($row && $row['status'] == 'Disabled' && $new_available > 0) {
+            $conn->query("UPDATE prizes SET quantity = $new_available, original_quantity = $new_original_quantity, status = 'Active' WHERE id = $prize_id");
+            set_message('success', 'Prize quantity updated and status set to Active!');
+        } else {
+            $conn->query("UPDATE prizes SET quantity = $new_available, original_quantity = $new_original_quantity WHERE id = $prize_id");
+            set_message('success', 'Prize quantity updated!');
+        }
     }
     header('Location: index.php?page=prize');
     exit;
@@ -246,6 +260,7 @@ $prizes = $conn->query("SELECT * FROM prizes ORDER BY type, id DESC");
                     style="color:#fff; background:#0D77CB; padding:5px 12px; border-radius:4px; text-decoration:none; font-size:13px;margin-left: 3px"
                     class="edit-qty-btn" data-id="<?php echo $prize['id']; ?>"
                     data-qty="<?php echo $prize['quantity']; ?>"
+                    data-original-qty="<?php echo $prize['original_quantity']; ?>"
                     style="margin-left:8px; padding:2px 8px; font-size:12px;">Edit</a>
                 <a href="?page=prize&delete_prize=<?php echo $prize['id']; ?>"
                     style="color:#fff; background:black; padding:5px 12px; border-radius:4px; text-decoration:none; font-size:13px;"
@@ -265,6 +280,9 @@ $prizes = $conn->query("SELECT * FROM prizes ORDER BY type, id DESC");
         style="background:#fff; padding:30px 25px; border-radius:10px; min-width:280px; max-width:90vw; margin:auto; position:relative;">
         <h3 style="margin-bottom:18px;">Edit Quantity</h3>
         <input type="hidden" name="prize_id" id="editQtyPrizeId">
+        <div style="margin-bottom:10px;">
+            <span style="color:#555;">Old Quantity: <span id="oldQtyDisplay" style="font-weight:bold;"></span></span>
+        </div>
         <div style="margin-bottom:15px;">
             <label for="editQtyInput">New Quantity:</label>
             <input type="number" name="new_quantity" id="editQtyInput" min="1" required
@@ -282,6 +300,8 @@ document.querySelectorAll('.edit-qty-btn').forEach(btn => {
     btn.addEventListener('click', function() {
         document.getElementById('editQtyPrizeId').value = this.getAttribute('data-id');
         document.getElementById('editQtyInput').value = this.getAttribute('data-qty');
+        document.getElementById('oldQtyDisplay').textContent = this.getAttribute('data-original-qty');
+        document.getElementById('editQtyInput').min = this.getAttribute('data-original-qty');
         document.getElementById('editQtyModal').style.display = 'flex';
     });
 });

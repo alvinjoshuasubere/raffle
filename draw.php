@@ -238,8 +238,7 @@ $past_winners = $conn->query("SELECT w.number, w.name, w.barangay, w.prize_name,
             <h2>We have a winner!</h2>
         </div>
         <div class="modal-body">
-            <h6 class="winner_ticket"><small>Ticket #</small>&nbsp;<span id="winner_number"></span></h6>
-
+           
             <div class="winner-info">
                 <div class="winner-number" id="winner_name"></div>
                 <h4 class="winner_barangay">Barangay&nbsp;<span id="winner_barangay"></span></h4>
@@ -247,6 +246,7 @@ $past_winners = $conn->query("SELECT w.number, w.name, w.barangay, w.prize_name,
 
                 <p style="display:none;"><strong>Type:</strong> <span id="winner_type"></span></p>
             </div>
+             <h6 class="winner_ticket"><small>Ticket #</small>&nbsp;<span id="winner_number"></span></h6>
             <h6 class="winner-prize">Prize:&nbsp;<span id="winner_prize"></span></h6>
         </div>
         <div class="modal-footer">
@@ -260,42 +260,71 @@ $past_winners = $conn->query("SELECT w.number, w.name, w.barangay, w.prize_name,
 let currentWinner = null;
 let nameCheckTimeout = null;
 
-document.getElementById('draw_btn').addEventListener('click', function() {
-    const prizeId = document.getElementById('prize_select').value;
-    const drawnNumber = document.getElementById('drawn_number').value.trim();
+// Wait for DOM to be fully loaded
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM loaded, setting up event listeners');
+    
+    const drawBtn = document.getElementById('draw_btn');
+    const resetBtn = document.getElementById('reset_drawn_number');
+    
+    if (drawBtn) {
+        console.log('draw_btn found, adding event listener');
+        drawBtn.addEventListener('click', function() {
+            console.log('draw_btn clicked');
+            const prizeId = document.getElementById('prize_select').value;
+            const drawnNumber = document.getElementById('drawn_number').value.trim();
 
-    if (!prizeId) {
-        alert('Please select a prize.');
-        return;
-    }
+            console.log('prizeId:', prizeId, 'drawnNumber:', drawnNumber);
 
-    if (!drawnNumber) {
-        alert('Please enter a number.');
-        return;
-    }
-
-    const formData = new FormData();
-    formData.append('draw_winner', '1');
-    formData.append('prize_id', prizeId);
-    formData.append('drawn_number', drawnNumber);
-
-    fetch('draw.php', {
-            method: 'POST',
-            body: formData
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                currentWinner = data.winner;
-                showWinnerModal(data.winner);
-            } else {
-                alert(data.message);
+            if (!prizeId) {
+                alert('Please select a prize.');
+                return;
             }
-        })
-        .catch(error => {
-            alert('An error occurred. Please try again.');
-            console.error(error);
+
+            if (!drawnNumber) {
+                alert('Please enter a number.');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('draw_winner', '1');
+            formData.append('prize_id', prizeId);
+            formData.append('drawn_number', drawnNumber);
+
+            console.log('Sending request to server...');
+            fetch('draw.php', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Server response:', data);
+                    if (data.success) {
+                        currentWinner = data.winner;
+                        showWinnerModal(data.winner);
+                    } else {
+                        alert(data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Fetch error:', error);
+                    alert('An error occurred. Please try again.');
+                });
         });
+    } else {
+        console.error('draw_btn not found!');
+    }
+    
+    if (resetBtn) {
+        console.log('reset_drawn_number found, adding event listener');
+        resetBtn.addEventListener('click', function() {
+            console.log('reset button clicked');
+            document.getElementById('drawn_number').value = '';
+            document.getElementById('drawn_number').focus();
+        });
+    } else {
+        console.error('reset_drawn_number not found!');
+    }
 });
 
 function showWinnerModal(winner) {
@@ -382,13 +411,8 @@ document.querySelectorAll('.close, .close-modal').forEach(element => {
         }
         currentWinner = null;
         document.getElementById('drawn_number').value = '';
-<<<<<<< HEAD
-        document.getElementById('prize_select').selectedIndex = 0;
-        // document.getElementById('participant_name_hint').textContent = '';
-=======
         // document.getElementById('prize_select').selectedIndex = 0; // Do not reset prize
         document.getElementById('participant_name_hint').textContent = '';
->>>>>>> bdcd577f670c085d41f0e0c41da79cd9434c8b33
     });
 });
 
@@ -401,13 +425,8 @@ window.onclick = function(event) {
         }
         currentWinner = null;
         document.getElementById('drawn_number').value = '';
-<<<<<<< HEAD
-        document.getElementById('prize_select').selectedIndex = 0;
-        // document.getElementById('participant_name_hint').textContent = '';
-=======
         // document.getElementById('prize_select').selectedIndex = 0; // Do not reset prize
         document.getElementById('participant_name_hint').textContent = '';
->>>>>>> bdcd577f670c085d41f0e0c41da79cd9434c8b33
     }
 }
 

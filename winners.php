@@ -11,8 +11,8 @@ $winners = $conn->query("SELECT * FROM winners ORDER BY won_at DESC");
 
 <div style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
     <div>
-        <p style="color: #666;">Total Winners: <strong
-                style="color: #DC143C;"><?php echo $winners->num_rows; ?></strong></p>
+        <p style="color: #6b7280;">Total Winners: <strong
+                style="color: #ec4899;"><?php echo $winners->num_rows; ?></strong></p>
     </div>
     <div>
         <button onclick="exportWinnersPDF()" class="btn btn-success">Export to PDF</button>
@@ -33,7 +33,7 @@ $winners = $conn->query("SELECT * FROM winners ORDER BY won_at DESC");
     <tbody>
         <?php while ($winner = $winners->fetch_assoc()): ?>
         <tr>
-            <td><strong style="color: #DC143C;"><?php echo htmlspecialchars($winner['number']); ?></strong></td>
+            <td><strong style="color: #f472b6;"><?php echo htmlspecialchars($winner['number']); ?></strong></td>
             <td><?php echo htmlspecialchars($winner['name']); ?></td>
             <td><?php echo htmlspecialchars($winner['barangay']); ?></td>
             <td><strong><?php echo htmlspecialchars($winner['prize_name']); ?></strong></td>
@@ -48,8 +48,8 @@ $winners = $conn->query("SELECT * FROM winners ORDER BY won_at DESC");
     </tbody>
 </table>
 
-<div style="margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 10px;">
-    <h3 style="color: #DC143C; margin-bottom: 15px;">Winners Summary</h3>
+<div style="margin-top: 30px; padding: 20px; background: #faf5f7; border-radius: 12px; border: 1px solid rgba(0,0,0,0.04);">
+    <h3 style="color: #ec4899; margin-bottom: 15px;">Winners Summary</h3>
     <?php
     // Get summary statistics
     $major_count = $conn->query("SELECT COUNT(*) as total FROM winners WHERE prize_type = 'Major'")->fetch_assoc()['total'];
@@ -57,25 +57,25 @@ $winners = $conn->query("SELECT * FROM winners ORDER BY won_at DESC");
     $unique_winners = $conn->query("SELECT COUNT(DISTINCT number) as total FROM winners")->fetch_assoc()['total'];
     ?>
     <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;">
-        <div style="background: white; padding: 20px; border-radius: 5px; text-align: center;">
-            <div style="font-size: 32px; font-weight: bold; color: #FFD700;"><?php echo $major_count; ?></div>
-            <div style="color: #666; margin-top: 5px;">Major Prizes</div>
+        <div style="background: #ffffff; padding: 20px; border-radius: 12px; text-align: center; border: 1px solid rgba(0,0,0,0.04);">
+            <div style="font-size: 32px; font-weight: bold; color: #ec4899;"><?php echo $major_count; ?></div>
+            <div style="color: #6b7280; margin-top: 5px;">Major Prizes</div>
         </div>
-        <div style="background: white; padding: 20px; border-radius: 5px; text-align: center;">
-            <div style="font-size: 32px; font-weight: bold; color: #DC143C;"><?php echo $minor_count; ?></div>
-            <div style="color: #666; margin-top: 5px;">Minor Prizes</div>
+        <div style="background: #ffffff; padding: 20px; border-radius: 12px; text-align: center; border: 1px solid rgba(0,0,0,0.04);">
+            <div style="font-size: 32px; font-weight: bold; color: #ec4899;"><?php echo $minor_count; ?></div>
+            <div style="color: #6b7280; margin-top: 5px;">Minor Prizes</div>
         </div>
-        <div style="background: white; padding: 20px; border-radius: 5px; text-align: center;">
-            <div style="font-size: 32px; font-weight: bold; color: #28a745;"><?php echo $unique_winners; ?></div>
-            <div style="color: #666; margin-top: 5px;">Unique Winners</div>
+        <div style="background: #ffffff; padding: 20px; border-radius: 12px; text-align: center; border: 1px solid rgba(0,0,0,0.04);">
+            <div style="font-size: 32px; font-weight: bold; color: #ec4899;"><?php echo $unique_winners; ?></div>
+            <div style="color: #6b7280; margin-top: 5px;">Unique Winners</div>
         </div>
     </div>
 </div>
 
 <?php else: ?>
-<div style="text-align: center; padding: 60px; background: #f8f9fa; border-radius: 10px;">
-    <h2 style="color: #999; margin-bottom: 15px;">No Winners Yet</h2>
-    <p style="color: #666; margin-bottom: 40px;">Start drawing winners from the Draw section!</p>
+<div style="text-align: center; padding: 60px; background: #faf5f7; border-radius: 16px; border: 1px solid rgba(0,0,0,0.04);">
+    <h2 style="color: #4a4a6a; margin-bottom: 15px;">No Winners Yet</h2>
+    <p style="color: #6b7280; margin-bottom: 40px;">Start drawing winners from the Draw section!</p>
     <a href="index.php?page=draw" class="btn btn-primary" style="display:inline-block; margin-top:20px;">Go to Draw</a>
 </div>
 
@@ -144,6 +144,7 @@ function exportWinnersPDF() {
         });
 
         doc.save("list of winners raffle.pdf");
+        setTimeout(function(){ showToast('PDF exported successfully!', 'success'); }, 500);
     }
 
     // Convert logo to base64 and then generate PDF

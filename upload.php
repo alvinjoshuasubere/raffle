@@ -111,6 +111,49 @@ if (isset($_POST['delete_all'])) {
     exit;
 }
 
+// Handle Background Upload
+if (isset($_POST['upload_background'])) {
+    if (isset($_FILES['bg_image']) && $_FILES['bg_image']['error'] === UPLOAD_ERR_OK) {
+        $allowed = ['jpg', 'jpeg', 'png', 'gif'];
+        $file = $_FILES['bg_image'];
+        $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+
+        if (!in_array($ext, $allowed)) {
+            set_message('error', 'Only JPG, PNG, and GIF files are allowed.');
+        } elseif ($file['size'] > 5 * 1024 * 1024) {
+            set_message('error', 'File size exceeds 5MB limit.');
+        } else {
+            $bg_dir = 'uploads/bg';
+            if (!file_exists($bg_dir)) {
+                mkdir($bg_dir, 0777, true);
+            }
+            $dest = $bg_dir . '/custom_bg.jpg';
+            if (move_uploaded_file($file['tmp_name'], $dest)) {
+                set_message('success', 'Background image updated successfully.');
+            } else {
+                set_message('error', 'Failed to save background image.');
+            }
+        }
+    } else {
+        set_message('error', 'Please select an image file to upload.');
+    }
+    header('Location: index.php?page=upload');
+    exit;
+}
+
+if (isset($_POST['remove_background'])) {
+    $bg_file = 'uploads/bg/custom_bg.jpg';
+    if (file_exists($bg_file)) {
+        unlink($bg_file);
+        set_message('success', 'Background has been reset to default.');
+    } else {
+        set_message('error', 'No custom background found.');
+    }
+    header('Location: index.php?page=upload');
+    exit;
+}
+
+
 $count_query = $conn->query("SELECT COUNT(*) as total FROM participants");
 $participant_count = $count_query->fetch_assoc()['total'];
 
@@ -133,7 +176,6 @@ $participants = $conn->query("
 <h1>Upload Participants</h1>
 
 <?php display_message(); ?>
-
 <?php
 // Display upload errors if any
 if (isset($_SESSION['upload_errors'])) {
@@ -152,11 +194,11 @@ if (isset($_SESSION['upload_errors'])) {
 
 <?php if ($participant_count > 0): ?>
 <div style="margin-top: 30px;">
-    <h3 style="color: #DC143C; margin-bottom: 15px;">All Participants</h3>
+    <h3 style="color: #ec4899; margin-bottom: 15px;">All Participants</h3>
     <?php if ($participants->num_rows > 0): ?>
     <table style="width:100%; border-collapse:collapse;">
         <thead>
-            <tr style="background:#DC143C;">
+            <tr style="background:#ec4899;">
                 <th style="padding:8px; border:1px solid #ddd;">Number</th>
                 <th style="padding:8px; border:1px solid #ddd;">Name</th>
                 <th style="padding:8px; border:1px solid #ddd;">Barangay</th>
@@ -193,7 +235,7 @@ if (isset($_SESSION['upload_errors'])) {
 
                 <?php for ($i = 1; $i <= $total_pages; $i++): ?>
                 <?php if ($i == $page): ?>
-                <span style="padding:6px 12px; border-radius:20px; background:#DC143C; color:#fff; font-weight:bold;">
+                <span style="padding:6px 12px; border-radius:20px; background:#ec4899; color:#fff; font-weight:bold;">
                     <?php echo $i; ?>
                 </span>
                 <?php else: ?>
@@ -236,25 +278,28 @@ if (isset($_SESSION['upload_errors'])) {
 
 <?php endif; ?>
 <div class="upload-box">
-    <h2 style="color: #DC143C; margin-bottom: 15px;">Upload CSV File</h2>
+    <h2 style="color: #f472b6; margin-bottom: 15px;">Upload CSV File</h2>
     <p>Current Participants: <strong><?php echo $participant_count; ?></strong></p>
 
-    <form method="POST" enctype="multipart/form-data" style="margin-top: 20px;">
-        <div class="form-group">
-            <input type="file" name="csv_file" accept=".csv" required>
+    <form method="POST" enctype="multipart/form-data" style="margin-top:20px; text-align:center;">
+        <div style="display:flex; flex-direction:column; align-items:center; gap:16px;">
+            <div class="form-group">
+                <input type="file" name="csv_file" accept=".csv" required>
+            </div>
+            <div style="display:flex; gap:12px; justify-content:center;">
+                <button type="submit" name="upload_csv" class="btn btn-primary">Upload CSV</button>
+                <button type="button" id="showDeleteModalBtn" class="btn btn-secondary">Delete All Participants</button>
+            </div>
         </div>
-        <button type="submit" name="upload_csv" class="btn btn-primary">Upload CSV</button>
     </form>
-
-    <form id="deleteAllForm" method="POST" style="margin-top: 20px;">
-        <button type="button" id="showDeleteModalBtn" class="btn btn-secondary">Delete All Participants</button>
+    <form id="deleteAllForm" method="POST" style="display:none;">
         <input type="hidden" name="delete_all" value="1">
     </form>
 </div>
 
 
 <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin-top: 30px;">
-    <h3 style="color: #DC143C; margin-bottom: 15px;">CSV File Format</h3>
+    <h3 style="color: #f472b6; margin-bottom: 15px;">CSV File Format</h3>
     <p style="margin-bottom: 10px;"><strong>Required Columns (in order):</strong></p>
     <ol style="padding-left: 25px; line-height: 1.8;">
         <li><strong>Number</strong> - Participant's unique number</li>
@@ -270,9 +315,9 @@ if (isset($_SESSION['upload_errors'])) {
 <div id="deleteModal"
     style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.35);">
     <div
-        style="background:#fff; max-width:350px; margin:120px auto; padding:30px 20px 20px 20px; border-radius:10px; box-shadow:0 4px 24px #0002; text-align:center; position:relative;">
-        <h3 style="color:#DC143C; margin-bottom:18px;">Are you sure you want to delete all participants?</h3>
-        <p style="color:#666; margin-bottom:24px;">This action cannot be undone.</p>
+        style="background:#ffffff; max-width:350px; margin:120px auto; padding:30px 20px 20px 20px; border-radius:16px; box-shadow:0 8px 40px rgba(0,0,0,0.08); text-align:center; position:relative; border:1px solid rgba(0,0,0,0.04);">
+        <h3 style="color:#ec4899; margin-bottom:18px;">Are you sure you want to delete all participants?</h3>
+        <p style="color:#6b7280; margin-bottom:24px;">This action cannot be undone.</p>
         <button id="confirmDeleteBtn" class="btn btn-danger" style="margin-right:10px;">YES, Delete All</button>
         <br>
         <br>
@@ -297,3 +342,32 @@ window.onclick = function(event) {
     }
 };
 </script>
+
+<!-- Background Management -->
+<div style="background: #ffffff; border: 1px solid rgba(0,0,0,0.04); border-radius: 16px; padding: 30px; margin-bottom: 30px;">
+    <h2 style="color: #ec4899; margin-bottom: 20px;">Background Image</h2>
+    <p style="color: #6b7280; margin-bottom: 15px;">This background will only show on the Draw page.</p>
+
+    <?php $bg_path = 'uploads/bg/custom_bg.jpg'; ?>
+    <?php if (file_exists($bg_path)): ?>
+    <div style="margin-bottom: 20px;">
+        <p style="color: #6b7280; margin-bottom: 10px;">Current Background:</p>
+        <img src="<?php echo $bg_path . '?v=' . filemtime($bg_path); ?>"
+             style="max-width: 100%; max-height: 200px; border-radius: 8px; border: 2px solid rgba(0,0,0,0.06);">
+    </div>
+    <?php endif; ?>
+
+    <form method="POST" enctype="multipart/form-data" style="margin-bottom: 15px;">
+        <div class="form-group">
+            <label for="bg_image">Upload New Background (JPG, PNG, GIF — max 5MB)</label>
+            <input type="file" name="bg_image" id="bg_image" accept=".jpg,.jpeg,.png,.gif">
+        </div>
+        <button type="submit" name="upload_background" class="btn btn-primary">Upload Background</button>
+    </form>
+
+    <?php if (file_exists($bg_path)): ?>
+    <form method="POST" style="margin-top: 10px;">
+        <button type="submit" name="remove_background" class="btn btn-secondary">Remove Background</button>
+    </form>
+    <?php endif; ?>
+</div>

@@ -42,6 +42,7 @@ function display_message() {
         $message = $_SESSION['message'];
         $class = $type === 'success' ? 'success' : 'error';
         echo "<div class='alert alert-{$class}'>{$message}</div>";
+        echo "<script>setTimeout(function(){ showToast(".json_encode($message).", ".json_encode($type)."); }, 100);</script>";
         unset($_SESSION['message']);
         unset($_SESSION['message_type']);
     }

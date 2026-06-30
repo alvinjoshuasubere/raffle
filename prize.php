@@ -177,7 +177,7 @@ $prizes = $conn->query("SELECT * FROM prizes ORDER BY type, id DESC");
 
 <!-- Prize Form -->
 <div class="prize-form">
-    <h2 style="color: #DC143C; margin-bottom: 20px;">Add New Prizes</h2>
+    <h2 style="color: #f472b6; margin-bottom: 20px;">Add New Prizes</h2>
     <form method="POST" enctype="multipart/form-data" id="multiPrizeForm">
         <div id="prizeInputs">
             <div class="prize-input-row" style="border-bottom:1px solid #eee; margin-bottom:10px; padding-bottom:10px;">
@@ -236,38 +236,29 @@ $prizes = $conn->query("SELECT * FROM prizes ORDER BY type, id DESC");
         <tr>
             <td>
                 <?php if ($prize['image_path'] && file_exists($prize['image_path'])): ?>
-                <img src="<?php echo htmlspecialchars($prize['image_path']); ?>" alt="Prize"
-                    style="width:50px; height:50px; object-fit:cover; border-radius:6px;">
+                <img src="<?php echo htmlspecialchars($prize['image_path']); ?>" alt="Prize" class="prize-img">
                 <?php else: ?>
-                <span style="color: #999;">No Image</span>
+                <span style="color:#999;">—</span>
                 <?php endif; ?>
             </td>
             <td><?php echo htmlspecialchars($prize['prize_name']); ?></td>
-            <td>
-                <?php echo $prize['quantity']; ?> / <?php echo $prize['original_quantity']; ?>
-
-            </td>
-            <td><?php echo $prize['type']; ?></td>
+            <td><?php echo $prize['quantity']; ?> / <?php echo $prize['original_quantity']; ?></td>
+            <td><span class="badge badge-<?php echo strtolower($prize['type']); ?>"><?php echo $prize['type']; ?></span></td>
             <td>
                 <?php if ($prize['status'] == 'Disabled' || $prize['quantity'] == 0): ?>
-                <span style="color:#dc3545;">Disabled</span>
+                <span class="badge badge-disabled">Disabled</span>
                 <?php else: ?>
-                <span style="color:#28a745;">Active</span>
+                <span class="badge badge-active">Active</span>
                 <?php endif; ?>
             </td>
-            <td>
-                <a type="button"
-                    style="color:#fff; background:#0D77CB; padding:5px 12px; border-radius:4px; text-decoration:none; font-size:13px;margin-left: 3px"
-                    class="edit-qty-btn" data-id="<?php echo $prize['id']; ?>"
+            <td style="white-space:nowrap;">
+                <a class="edit-qty-btn" data-id="<?php echo $prize['id']; ?>"
                     data-qty="<?php echo $prize['quantity']; ?>"
                     data-original-qty="<?php echo $prize['original_quantity']; ?>"
-                    style="margin-left:8px; padding:2px 8px; font-size:12px;">Edit</a>
+                    style="color:#ec4899; text-decoration:none; font-weight:600; font-size:13px; margin-right:10px; cursor:pointer;">Edit</a>
                 <a href="?page=prize&delete_prize=<?php echo $prize['id']; ?>"
-                    style="color:#fff; background:black; padding:5px 12px; border-radius:4px; text-decoration:none; font-size:13px;"
-                    onclick="return confirm('Are you sure you want to delete this prize?');">
-                    Delete
-                </a>
-
+                    style="color:#999; text-decoration:none; font-size:13px;"
+                    onclick="return confirm('Are you sure you want to delete this prize?');">Delete</a>
             </td>
         </tr>
         <?php endwhile; ?>
@@ -277,11 +268,11 @@ $prizes = $conn->query("SELECT * FROM prizes ORDER BY type, id DESC");
 <div id="editQtyModal"
     style="display:none; position:fixed; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.4); align-items:center; justify-content:center; z-index:9999;">
     <form method="POST"
-        style="background:#fff; padding:30px 25px; border-radius:10px; min-width:280px; max-width:90vw; margin:auto; position:relative;">
-        <h3 style="margin-bottom:18px;">Edit Quantity</h3>
+        style="background:#ffffff; padding:30px 25px; border-radius:16px; min-width:280px; max-width:90vw; margin:auto; position:relative; border:1px solid rgba(0,0,0,0.04); box-shadow:0 8px 40px rgba(0,0,0,0.08);">
+        <h3 style="margin-bottom:18px; color:#ec4899;">Edit Quantity</h3>
         <input type="hidden" name="prize_id" id="editQtyPrizeId">
         <div style="margin-bottom:10px;">
-            <span style="color:#555;">Old Quantity: <span id="oldQtyDisplay" style="font-weight:bold;"></span></span>
+            <span style="color:#6b7280;">Old Quantity: <span id="oldQtyDisplay" style="font-weight:bold; color:#ec4899;"></span></span>
         </div>
         <div style="margin-bottom:15px;">
             <label for="editQtyInput">New Quantity:</label>
@@ -316,5 +307,5 @@ window.onclick = function(event) {
 };
 </script>
 <?php else: ?>
-<p style="text-align: center; padding: 40px; color: #999;">No prizes added yet. Add your first prize above!</p>
+        <p style="text-align: center; padding: 40px; color: #6b7280;">No prizes added yet. Add your first prize above!</p>
 <?php endif; ?>

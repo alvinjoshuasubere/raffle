@@ -174,66 +174,69 @@ $past_winners = $conn->query("SELECT w.number, w.name, w.barangay, w.prize_name,
 <?php display_message(); ?>
 
 <?php if ($active_prizes->num_rows == 0): ?>
-<div style="text-align: center; padding: 60px; background: #f8f9fa; border-radius: 10px;">
-    <h2 style="color: #999; margin-bottom: 15px;">No Active Prize</h2>
-    <p style="color: #666; margin-bottom: 40px;">Please add prizes in the Prize section before drawing winners.</p>
-    <a href="index.php?page=prize" class="btn btn-primary" style="display:inline-block; margin-top:20px;">Go to
-        Prizes</a>
+<div style="text-align: center; padding: 80px 40px;">
+  <div style="font-size: 64px; margin-bottom: 24px; opacity: 0.5;">🎯</div>
+  <h2 style="color: #4a4a6a; margin-bottom: 15px; font-size: 28px;">No Active Prize</h2>
+  <p style="color: #6b7280; margin-bottom: 40px; font-size: 16px;">Please add prizes in the Prize section before drawing winners.</p>
+  <a href="index.php?page=prize" class="btn btn-primary" style="display:inline-block; margin-top:20px;">Go to Prizes</a>
 </div>
 <?php else: ?>
 <div class="container1">
-    <div class="draw-section">
-        <div class="draw-left">
-            <div class="top-row">
-                <div class="form-column">
-                    <label style="color:white;text-align:left" for="">Prize*</label>
-                    <select id="prize_select" class="form-control prize-center" required>
-                        <option value="">Select a prize...</option>
-                        <?php while ($prize = $active_prizes->fetch_assoc()): ?>
-                        <option value="<?php echo $prize['id']; ?>" data-type="<?php echo $prize['type']; ?>">
-                            <?php echo htmlspecialchars($prize['prize_name']); ?>
-                            (<?php echo $prize['type']; ?> - <?php echo $prize['quantity']; ?> left)
-                        </option>
-                        <?php endwhile; ?>
-                    </select>
-                </div>
-
-                <div class="button-column">
-                    <button type="button" id="reset_drawn_number" class="btn"
-                        style="background:black; color:white">Reset</button>
-                    <button type="button" id="draw_btn" class="btn btn-primary">🔍 VERIFY PARTICIPANT </button>
-
-                </div>
-            </div>
-
-            <div class="center-row">
-                <input type="text" autofocus id="drawn_number" class="number-draw  text-center" maxlength="5"
-                    required />
-            </div>
-
+  <div class="draw-panel">
+    <div class="draw-panel-inner">
+      <div class="draw-header-area">
+        <div class="draw-header-icon">🎯</div>
+        <div>
+          <h2 class="draw-heading">Draw Entry</h2>
+          <p class="draw-subtitle">Select a prize &amp; enter ticket number</p>
         </div>
+      </div>
+
+      <div class="draw-prize-select">
+        <label class="draw-label">Select Prize</label>
+        <select id="prize_select" class="prize-select" required>
+          <option value="">Choose a prize...</option>
+          <?php while ($prize = $active_prizes->fetch_assoc()): ?>
+          <option value="<?php echo $prize['id']; ?>" data-type="<?php echo $prize['type']; ?>">
+            <?php echo htmlspecialchars($prize['prize_name']); ?>
+            (<?php echo $prize['type']; ?> - <?php echo $prize['quantity']; ?> left)
+          </option>
+          <?php endwhile; ?>
+        </select>
+      </div>
+
+      <div class="draw-number-section">
+        <label class="draw-label">Enter Ticket Number</label>
+        <div class="number-display-bg">
+          <div class="number-display-inner">
+            <input type="text" autofocus id="drawn_number" class="draw-number-input" maxlength="5" placeholder="—" />
+          </div>
+        </div>
+        <div id="participant_name_hint" class="participant-hint"></div>
+      </div>
+
+      <div class="draw-actions">
+        <button type="button" id="draw_btn" class="btn-draw-find">
+          <span class="btn-icon">🔍</span>
+          <span class="btn-text">Find Winner</span>
+        </button>
+        <button type="button" id="reset_drawn_number" class="btn-draw-clear">
+          <span class="btn-icon">↺</span>
+        </button>
+      </div>
+
+      <div class="draw-help-wrap">
+        <span class="draw-help">Press <kbd>Enter</kbd> to search</span>
+      </div>
     </div>
-
-    <!-- <div class="winner-section" id="participant_name_hint">
-        <h4 class="winner-title">🎯 Possible Winners</h4>
-        <div class="slot-machine">
-            <div class="scrolling-names">
-                <ul class="winner-list rolling" id="scrolling_names"></ul>
-            </div>
-        </div>
-    </div> -->
-
-
-
+  </div>
 </div>
-
-
 <?php endif; ?>
 
 <!-- Winner Modal -->
 <div id="winnerModal" class="modal">
     <div class="modal-content">
-        <div class="modal-header">
+        <div class="modal-header" style="<?php if (file_exists('uploads/bg/custom_bg.jpg')): ?>background:linear-gradient(135deg, rgba(236,73,153,0.85), rgba(244,114,182,0.7)), url('uploads/bg/custom_bg.jpg?v=<?php echo filemtime('uploads/bg/custom_bg.jpg'); ?>') center/cover;<?php endif; ?>">
             <span class="close">&times;</span>
             <h2>We have a winner!</h2>
         </div>
@@ -260,29 +263,22 @@ $past_winners = $conn->query("SELECT w.number, w.name, w.barangay, w.prize_name,
 let currentWinner = null;
 let nameCheckTimeout = null;
 
-// Wait for DOM to be fully loaded
+// Draw button click
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('DOM loaded, setting up event listeners');
-    
     const drawBtn = document.getElementById('draw_btn');
     const resetBtn = document.getElementById('reset_drawn_number');
-    
+
     if (drawBtn) {
-        console.log('draw_btn found, adding event listener');
         drawBtn.addEventListener('click', function() {
-            console.log('draw_btn clicked');
             const prizeId = document.getElementById('prize_select').value;
             const drawnNumber = document.getElementById('drawn_number').value.trim();
 
-            console.log('prizeId:', prizeId, 'drawnNumber:', drawnNumber);
-
             if (!prizeId) {
-                alert('Please select a prize.');
+                showToast('Please select a prize.', 'error');
                 return;
             }
-
             if (!drawnNumber) {
-                alert('Please enter a number.');
+                showToast('Please enter a number.', 'error');
                 return;
             }
 
@@ -291,39 +287,27 @@ document.addEventListener('DOMContentLoaded', function() {
             formData.append('prize_id', prizeId);
             formData.append('drawn_number', drawnNumber);
 
-            console.log('Sending request to server...');
-            fetch('draw.php', {
-                    method: 'POST',
-                    body: formData
-                })
+            fetch('draw.php', { method: 'POST', body: formData })
                 .then(response => response.json())
                 .then(data => {
-                    console.log('Server response:', data);
                     if (data.success) {
                         currentWinner = data.winner;
                         showWinnerModal(data.winner);
                     } else {
-                        alert(data.message);
+                        showToast(data.message, 'error');
                     }
                 })
                 .catch(error => {
-                    console.error('Fetch error:', error);
-                    alert('An error occurred. Please try again.');
+                    showToast('An error occurred. Please try again.', 'error');
                 });
         });
-    } else {
-        console.error('draw_btn not found!');
     }
-    
+
     if (resetBtn) {
-        console.log('reset_drawn_number found, adding event listener');
         resetBtn.addEventListener('click', function() {
-            console.log('reset button clicked');
             document.getElementById('drawn_number').value = '';
             document.getElementById('drawn_number').focus();
         });
-    } else {
-        console.error('reset_drawn_number not found!');
     }
 });
 
@@ -334,84 +318,70 @@ function showWinnerModal(winner) {
     document.getElementById('winner_contact').textContent = winner.contact;
     document.getElementById('winner_prize').textContent = winner.prize_name;
     document.getElementById('winner_type').textContent = winner.prize_type;
-
     document.getElementById('winnerModal').style.display = 'block';
+    if (typeof startConfetti === 'function') startConfetti();
+}
 
-    if (typeof startConfetti === 'function') {
-        startConfetti();
+function confirmWinner(winner) {
+    const formData = new FormData();
+    formData.append('confirm_winner', '1');
+    formData.append('prize_id', winner.prize_id);
+    formData.append('participant_id', winner.participant_id);
+    formData.append('number', winner.number);
+    formData.append('name', winner.name);
+    formData.append('barangay', winner.barangay);
+    formData.append('prize_name', winner.prize_name);
+    formData.append('prize_type', winner.prize_type);
+
+    fetch('draw.php', { method: 'POST', body: formData })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showToast('Winner confirmed successfully!', 'success');
+                document.getElementById('winnerModal').style.display = 'none';
+                if (typeof stopConfetti === 'function') stopConfetti();
+                currentWinner = null;
+                document.getElementById('drawn_number').value = '';
+                document.getElementById('participant_name_hint').innerHTML = '';
+                updatePrizeDropdown(winner.prize_id);
+            } else {
+                showToast(data.message, 'error');
+            }
+        })
+        .catch(error => {
+            showToast('An error occurred. Please try again.', 'error');
+        });
+}
+
+function updatePrizeDropdown(prizeId) {
+    const prizeSelect = document.getElementById('prize_select');
+    const selectedOption = prizeSelect.querySelector(`option[value="${prizeId}"]`);
+    if (selectedOption) {
+        const match = selectedOption.textContent.match(/\(([^-]+)-\s*(\d+)\s*left\)/);
+        if (match) {
+            let qty = parseInt(match[2], 10) - 1;
+            if (qty <= 0) {
+                selectedOption.remove();
+                prizeSelect.selectedIndex = 0;
+            } else {
+                selectedOption.textContent = selectedOption.textContent.replace(
+                    /\(\s*([^-]+)-\s*\d+\s*left\)/, `(${match[1]}- ${qty} left)`);
+            }
+        }
     }
 }
 
 document.getElementById('confirm_btn').addEventListener('click', function() {
     if (!currentWinner) return;
-
-    const formData = new FormData();
-    formData.append('confirm_winner', '1');
-    formData.append('prize_id', currentWinner.prize_id);
-    formData.append('participant_id', currentWinner.participant_id);
-    formData.append('number', currentWinner.number);
-    formData.append('name', currentWinner.name);
-    formData.append('barangay', currentWinner.barangay);
-    formData.append('prize_name', currentWinner.prize_name);
-    formData.append('prize_type', currentWinner.prize_type);
-
-    fetch('draw.php', {
-            method: 'POST',
-            body: formData
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                alert('Winner confirmed successfully!');
-                document.getElementById('winnerModal').style.display = 'none';
-                if (typeof stopConfetti === 'function') {
-                    stopConfetti();
-                }
-                currentWinner = null;
-                document.getElementById('drawn_number').value = '';
-                document.getElementById('participant_name_hint').innerHTML = '';
-
-                // Update the prize dropdown
-                const prizeSelect = document.getElementById('prize_select');
-                const selectedOption = prizeSelect.querySelector(
-                    `option[value="${formData.get('prize_id')}"]`);
-                if (selectedOption) {
-                    // Extract quantity from option text, e.g. "Prize Name (Major - 2 left)"
-                    const match = selectedOption.textContent.match(/\(([^-]+)-\s*(\d+)\s*left\)/);
-                    if (match) {
-                        let qty = parseInt(match[2], 10) - 1;
-                        if (qty <= 0) {
-                            // Remove the option if no quantity left
-                            selectedOption.remove();
-                            // Optionally, select the next available prize
-                            prizeSelect.selectedIndex = 0;
-                        } else {
-                            // Update the quantity in the option text
-                            selectedOption.textContent = selectedOption.textContent.replace(
-                                /\(\s*([^-]+)-\s*\d+\s*left\)/, `(${match[1]}- ${qty} left)`);
-                        }
-                    }
-                }
-            } else {
-                alert(data.message);
-            }
-        })
-        .catch(error => {
-            alert('An error occurred. Please try again.');
-            console.error(error);
-        });
+    confirmWinner(currentWinner);
 });
 
-// Close modal
 document.querySelectorAll('.close, .close-modal').forEach(element => {
     element.addEventListener('click', function() {
         document.getElementById('winnerModal').style.display = 'none';
-        if (typeof stopConfetti === 'function') {
-            stopConfetti();
-        }
+        if (typeof stopConfetti === 'function') stopConfetti();
         currentWinner = null;
         document.getElementById('drawn_number').value = '';
-        // document.getElementById('prize_select').selectedIndex = 0; // Do not reset prize
         document.getElementById('participant_name_hint').textContent = '';
     });
 });
@@ -420,12 +390,9 @@ window.onclick = function(event) {
     const modal = document.getElementById('winnerModal');
     if (event.target == modal) {
         modal.style.display = 'none';
-        if (typeof stopConfetti === 'function') {
-            stopConfetti();
-        }
+        if (typeof stopConfetti === 'function') stopConfetti();
         currentWinner = null;
         document.getElementById('drawn_number').value = '';
-        // document.getElementById('prize_select').selectedIndex = 0; // Do not reset prize
         document.getElementById('participant_name_hint').textContent = '';
     }
 }
@@ -437,159 +404,95 @@ document.getElementById('drawn_number').addEventListener('keydown', function(e) 
     }
 });
 
-// Karaoke-style number input - build from right
 const drawnInput = document.getElementById('drawn_number');
 
 drawnInput.addEventListener('beforeinput', function(e) {
     e.preventDefault();
-
     let currentDigits = this.value.replace(/\D/g, '').replace(/^0+/, '');
 
-    // Handle backspace/delete
     if (e.inputType === 'deleteContentBackward' || e.inputType === 'deleteContentForward') {
         currentDigits = currentDigits.slice(0, -1);
-        // Display the number without leading zeros, or empty if nothing left
         this.value = currentDigits || '';
-        // checkParticipantName(this.value);
         return;
     }
 
-    // Handle number input
     if (e.data && /^\d$/.test(e.data)) {
-        // Start fresh if currently empty
         if (!currentDigits) {
             currentDigits = e.data;
         } else {
             currentDigits = currentDigits + e.data;
         }
-
-        // Keep only last 5 digits if overflow
         if (currentDigits.length > 5) {
             currentDigits = currentDigits.slice(-5);
         }
-
-        // Display without leading zeros
         this.value = currentDigits;
-        // checkParticipantName(this.value);
     }
 });
 
-// Prevent paste
 drawnInput.addEventListener('paste', function(e) {
     e.preventDefault();
 });
 
-// Initialize with empty value
 drawnInput.value = '';
 
 document.getElementById('reset_drawn_number').addEventListener('click', function() {
     document.getElementById('drawn_number').value = '';
-    // document.getElementById('participant_name_hint').innerHTML = '';
     document.getElementById('drawn_number').focus();
 });
 
 function checkParticipantName(number) {
     const hintDiv = document.getElementById('participant_name_hint');
-
-    // Clear previous timeout
-    if (nameCheckTimeout) {
-        clearTimeout(nameCheckTimeout);
-    }
-
+    if (nameCheckTimeout) clearTimeout(nameCheckTimeout);
     number = number.trim();
-
-    // Clear hint if number is empty
-    if (!number) {
-        hintDiv.innerHTML = '';
-        return;
-    }
-
-    // Show loading indicator
-    hintDiv.innerHTML = '<span style="color: #999;">Loading...</span>';
-
-    // Debounce the API call
+    if (!number) { hintDiv.innerHTML = ''; return; }
+    hintDiv.innerHTML = '<span style="color: #6b7280;">Loading...</span>';
     nameCheckTimeout = setTimeout(() => {
         fetch('draw.php', {
                 method: 'POST',
-                body: new URLSearchParams({
-                    search_participant_prefix: '1',
-                    number_prefix: number
-                })
+                body: new URLSearchParams({ search_participant_prefix: '1', number_prefix: number })
             })
             .then(res => res.json())
             .then(data => {
-                const hintDiv = document.getElementById('participant_name_hint');
-                hintDiv.innerHTML = ''; // clear previous content
-
+                hintDiv.innerHTML = '';
                 if (data.success && Array.isArray(data.results) && data.results.length > 0) {
-                    // If exactly ONE winner
                     if (data.results.length === 1) {
                         const title = document.createElement('h4');
                         title.textContent = '🎯 Possible Winner';
                         title.className = 'winner-title';
                         hintDiv.appendChild(title);
-
-                        // Create slot machine container
                         const slotMachine = document.createElement('div');
-                        slotMachine.className = 'slot-machine winner-mode';
-
+                        slotMachine.className = 'slot-machine';
                         const ul = document.createElement('ul');
-                        ul.className = 'winner-list rolling';
-
-                        // Add the "And the Winner is..." text inside the reel
+                        ul.className = 'winner-list';
                         const textLi = document.createElement('li');
                         textLi.textContent = '🎉 And the Winner is...';
-                        textLi.classList.add('announce');
                         ul.appendChild(textLi);
-
                         slotMachine.appendChild(ul);
                         hintDiv.appendChild(slotMachine);
-                    }
-
-                    // If MULTIPLE possible winners
-                    else {
+                    } else {
                         const title = document.createElement('h4');
                         title.textContent = '🎯 Possible Winners';
                         title.className = 'winner-title';
                         hintDiv.appendChild(title);
-
                         const slotMachine = document.createElement('div');
                         slotMachine.className = 'slot-machine';
-
                         const ul = document.createElement('ul');
-                        ul.className = 'winner-list rolling';
-
-                        // Shuffle results and pick up to 10 random unique entries
-                        const shuffled = [...data.results]
-                            .sort(() => 0.5 - Math.random())
-                            .slice(0, 10);
-
+                        ul.className = 'winner-list';
+                        const shuffled = [...data.results].sort(() => 0.5 - Math.random()).slice(0, 10);
                         shuffled.forEach(item => {
                             const li = document.createElement('li');
                             li.textContent = `Ticket # ${item.number} - ${item.name}`;
                             ul.appendChild(li);
                         });
-
                         slotMachine.appendChild(ul);
                         hintDiv.appendChild(slotMachine);
 
-                        // Optional: Add rolling animation
-                        ul.classList.add('slot-rolling');
-
-                        // Stop animation after a few seconds (simulate slot stop)
-                        setTimeout(() => {
-                            ul.classList.remove('slot-rolling');
-                        }, 4000);
                     }
-
                 } else {
-                    hintDiv.innerHTML = '<span style="color:#999;">No matches found</span>';
+                    hintDiv.innerHTML = '<span style="color:#6b7280;">No matches found</span>';
                 }
             })
-
-            .catch(() => {
-                hintDiv.innerHTML = '';
-            });
+            .catch(() => { hintDiv.innerHTML = ''; });
     }, 300);
 }
 </script>

@@ -42,8 +42,8 @@ if (isset($_POST['add_prize'])) {
         }
         
         // Insert prize
-        $stmt = $conn->prepare("INSERT INTO prizes (prize_name, image_path, quantity, original_quantity, type) VALUES (?, ?, ?, ?, ?)");
-        $stmt->bind_param("ssiis", $prize_name, $image_path, $quantity, $quantity, $type);
+        $stmt = $conn->prepare("INSERT INTO prizes (event_id, prize_name, image_path, quantity, original_quantity, type) VALUES (?, ?, ?, ?, ?, ?)");
+        $stmt->bind_param("issiis", $current_event_id, $prize_name, $image_path, $quantity, $quantity, $type);
         
         if ($stmt->execute()) {
             set_message('success', 'Prize added successfully!');
@@ -62,7 +62,10 @@ if (isset($_GET['delete_prize'])) {
     $prize_id = intval($_GET['delete_prize']);
     
     // Get image path
-    $result = $conn->query("SELECT image_path FROM prizes WHERE id = $prize_id");
+    $stmt = $conn->prepare("SELECT image_path FROM prizes WHERE id = ? AND event_id = ?");
+    $stmt->bind_param("ii", $prize_id, $current_event_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
     if ($result->num_rows > 0) {
         $prize = $result->fetch_assoc();
         
@@ -72,7 +75,10 @@ if (isset($_GET['delete_prize'])) {
         }
         
         // Delete prize
-        $conn->query("DELETE FROM prizes WHERE id = $prize_id");
+        $stmt_del = $conn->prepare("DELETE FROM prizes WHERE id = ? AND event_id = ?");
+        $stmt_del->bind_param("ii", $prize_id, $current_event_id);
+        $stmt_del->execute();
+        $stmt_del->close();
         set_message('success', 'Prize deleted successfully!');
     }
     
@@ -86,7 +92,10 @@ if (isset($_POST['edit_quantity'])) {
     $new_original_quantity = intval($_POST['new_quantity']);
 
     // Get the current original and available quantity from the database
-    $result = $conn->query("SELECT status, original_quantity, quantity FROM prizes WHERE id = $prize_id");
+    $stmt_q = $conn->prepare("SELECT status, original_quantity, quantity FROM prizes WHERE id = ? AND event_id = ?");
+    $stmt_q->bind_param("ii", $prize_id, $current_event_id);
+    $stmt_q->execute();
+    $result = $stmt_q->get_result();
     $row = $result->fetch_assoc();
     $old_original_quantity = $row['original_quantity'];
     $old_quantity = $row['quantity'];
@@ -146,8 +155,8 @@ if (isset($_POST['add_prize_multi'])) {
         }
 
         // Insert prize
-        $stmt = $conn->prepare("INSERT INTO prizes (prize_name, image_path, quantity, original_quantity, type) VALUES (?, ?, ?, ?, ?)");
-        $stmt->bind_param("ssiis", $prize_name, $image_path, $quantity, $quantity, $type);
+        $stmt = $conn->prepare("INSERT INTO prizes (event_id, prize_name, image_path, quantity, original_quantity, type) VALUES (?, ?, ?, ?, ?, ?)");
+        $stmt->bind_param("issiis", $current_event_id, $prize_name, $image_path, $quantity, $quantity, $type);
         if ($stmt->execute()) {
             $success_count++;
         } else {
@@ -168,17 +177,20 @@ if (isset($_POST['add_prize_multi'])) {
 }
 
 // Get all prizes
-$prizes = $conn->query("SELECT * FROM prizes ORDER BY type, id DESC");
+$stmt_pr = $conn->prepare("SELECT * FROM prizes WHERE event_id = ? ORDER BY type, id DESC");
+$stmt_pr->bind_param("i", $current_event_id);
+$stmt_pr->execute();
+$prizes = $stmt_pr->get_result();
 ?>
 
-<h1>Prize Management</h1>
+<h1 style="margin-bottom:10px;">Prize Management</h1>
 
 <?php display_message(); ?>
 
 <!-- Prize Form -->
 <div class="prize-form">
-    <h2 style="color: #f472b6; margin-bottom: 20px;">Add New Prizes</h2>
-    <form method="POST" enctype="multipart/form-data" id="multiPrizeForm">
+    <h2 style="color: #ec4899; margin-bottom: 20px; font-size: 20px; font-weight: 700;">Add New Prizes</h2>
+    <form method="POST" enctype="multipart/form-data" id="multiPrizeForm" style="background:#faf8f9; padding:24px; border-radius:16px; border:1px solid #f0eef0;">
         <div id="prizeInputs">
             <div class="prize-input-row" style="border-bottom:1px solid #eee; margin-bottom:10px; padding-bottom:10px;">
                 <div class="form-row">
@@ -208,8 +220,8 @@ $prizes = $conn->query("SELECT * FROM prizes ORDER BY type, id DESC");
 
             </div>
         </div>
-        <div style="text-align:center; margin-top:15px;">
-            <button type="submit" name="add_prize_multi" class="btn btn-primary" style="display:inline-block;">
+        <div style="text-align:center; margin-top:20px;">
+            <button type="submit" name="add_prize_multi" class="btn btn-primary" style="display:inline-block; padding:12px 40px; border-radius:30px; font-size:15px;">
                 Add Prize
             </button>
         </div>
@@ -255,9 +267,9 @@ $prizes = $conn->query("SELECT * FROM prizes ORDER BY type, id DESC");
                 <a class="edit-qty-btn" data-id="<?php echo $prize['id']; ?>"
                     data-qty="<?php echo $prize['quantity']; ?>"
                     data-original-qty="<?php echo $prize['original_quantity']; ?>"
-                    style="color:#ec4899; text-decoration:none; font-weight:600; font-size:13px; margin-right:10px; cursor:pointer;">Edit</a>
+                    style="display:inline-block; padding:5px 14px; border-radius:20px; background:#fdf2f8; color:#ec4899; font-weight:700; font-size:12px; text-decoration:none; margin-right:6px; cursor:pointer; border:1px solid #fbcfe8;">Edit</a>
                 <a href="?page=prize&delete_prize=<?php echo $prize['id']; ?>"
-                    style="color:#999; text-decoration:none; font-size:13px;"
+                    style="display:inline-block; padding:5px 14px; border-radius:20px; background:#f9fafb; color:#9ca3af; font-weight:600; font-size:12px; text-decoration:none; border:1px solid #e5e7eb;"
                     onclick="return confirm('Are you sure you want to delete this prize?');">Delete</a>
             </td>
         </tr>

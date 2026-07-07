@@ -1,8 +1,9 @@
 <?php
 require_once 'config.php';
+require_once 'auth_check.php';
 
 // Get current page
-$page = isset($_GET['page']) ? $_GET['page'] : 'upload';
+$page = isset($_GET['page']) ? $_GET['page'] : 'events';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -10,7 +11,7 @@ $page = isset($_GET['page']) ? $_GET['page'] : 'upload';
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Raffle System</title>
+    <title>Raffle System - <?php echo htmlspecialchars($current_event_name); ?></title>
     <link rel="stylesheet" href="style.css">
     <style>
         .toast-container { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); z-index:99999; display:flex; flex-direction:column-reverse; gap:10px; pointer-events:none; align-items:center; }
@@ -21,14 +22,52 @@ $page = isset($_GET['page']) ? $_GET['page'] : 'upload';
         @keyframes toastIn { 0%{opacity:0;transform:translateX(100%) scale(.8)} 100%{opacity:1;transform:translateX(0) scale(1)} }
         .toast-out { animation:toastOut .3s ease forwards; }
         @keyframes toastOut { 0%{opacity:1;transform:translateX(0)} 100%{opacity:0;transform:translateX(100%)} }
+        .event-badge {
+            background: #fdf2f8;
+            color: #ec4899;
+            padding: 4px 14px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 700;
+            border: 1px solid #fbcfe8;
+            margin-left: 10px;
+        }
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 0 20px;
+            border-left: 1px solid rgba(0,0,0,0.06);
+        }
+        .user-info span {
+            font-size: 13px;
+            color: #4a4a6a;
+            font-weight: 600;
+        }
+        .user-info a {
+            font-size: 12px;
+            color: #9ca3af;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        .user-info a:hover {
+            color: #ec4899;
+        }
     </style>
     <?php if ($page === 'draw' && file_exists('uploads/bg/custom_bg.jpg')): ?>
     <style>
-        body {
-            background-image: url('uploads/bg/custom_bg.jpg?v=<?php echo filemtime('uploads/bg/custom_bg.jpg'); ?>') !important;
-            background-size: cover !important;
-            background-position: center !important;
-            background-attachment: fixed !important;
+        .container1::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 520px;
+            height: 100%;
+            background-image: url('uploads/bg/custom_bg.jpg?v=<?php echo filemtime('uploads/bg/custom_bg.jpg'); ?>');
+            background-size: contain;
+            background-position: center;
+            background-repeat: no-repeat;
+            z-index: 0;
         }
     </style>
     <?php endif; ?>
@@ -41,13 +80,20 @@ $page = isset($_GET['page']) ? $_GET['page'] : 'upload';
         <img src="Logo.png" alt="Logo" class="logo"><span class="systemName" style="margin-left:5px">
             Raffle
             System</span>
+        <span class="event-badge"><?php echo htmlspecialchars($current_event_name); ?></span>
 
         <nav class="nav">
+            <a href="index.php?page=events" class="<?php echo $page === 'events' ? 'active' : ''; ?>">Events</a>
             <a href="index.php?page=upload" class="<?php echo $page === 'upload' ? 'active' : ''; ?>">Home</a>
             <a href="index.php?page=draw" class="<?php echo $page === 'draw' ? 'active' : ''; ?>">Draw</a>
             <a href="index.php?page=prize" class="<?php echo $page === 'prize' ? 'active' : ''; ?>">Prize</a>
             <a href="index.php?page=winners" class="<?php echo $page === 'winners' ? 'active' : ''; ?>">Winners</a>
         </nav>
+
+        <div class="user-info">
+            <span><?php echo htmlspecialchars($_SESSION['display_name']); ?></span>
+            <a href="logout.php">Logout</a>
+        </div>
     </div>
 
 
@@ -57,6 +103,9 @@ $page = isset($_GET['page']) ? $_GET['page'] : 'upload';
             <?php
             // Include appropriate page
             switch($page) {
+                case 'events':
+                    include 'events.php';
+                    break;
                 case 'upload':
                     include 'upload.php';
                     break;
@@ -70,7 +119,7 @@ $page = isset($_GET['page']) ? $_GET['page'] : 'upload';
                     include 'winners.php';
                     break;
                 default:
-                    include 'upload.php';
+                    include 'events.php';
             }
             ?>
         </div>

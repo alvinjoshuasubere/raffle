@@ -1,5 +1,7 @@
 <?php
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
 // Database configuration
 define('DB_HOST', 'localhost');
@@ -18,6 +20,29 @@ try {
     $conn->set_charset("utf8mb4");
 } catch (Exception $e) {
     die("Database connection error: " . $e->getMessage());
+}
+
+// Function to check if user is logged in
+function is_authenticated() {
+    return isset($_SESSION['user_id']);
+}
+
+// Function to get current event ID from session
+function get_current_event_id() {
+    return isset($_SESSION['event_id']) ? intval($_SESSION['event_id']) : 1;
+}
+
+// Function to get event name
+function get_event_name($conn, $event_id) {
+    $stmt = $conn->prepare("SELECT name FROM events WHERE id = ?");
+    $stmt->bind_param("i", $event_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $stmt->close();
+    if ($result && $result->num_rows > 0) {
+        return $result->fetch_assoc()['name'];
+    }
+    return 'Unknown Event';
 }
 
 // Function to sanitize input

@@ -28,8 +28,11 @@ if (isset($_POST['upload_csv'])) {
             rewind($temp_file);
 
             if (($handle = $temp_file) !== FALSE) {
-                // Delete all existing participants first
-                $conn->query("DELETE FROM participants");
+                // Delete all existing participants for this event
+                $stmt_del = $conn->prepare("DELETE FROM participants WHERE event_id = ?");
+                $stmt_del->bind_param("i", $current_event_id);
+                $stmt_del->execute();
+                $stmt_del->close();
 
                 $row_count = 0;
                 $success_count = 0;
@@ -38,7 +41,7 @@ if (isset($_POST['upload_csv'])) {
                 // Skip header row
                 $header = fgetcsv($handle, 1000, ',');
 
-                $stmt = $conn->prepare("INSERT INTO participants (number, name, barangay, contact_number) VALUES (?, ?, ?, ?)");
+                $stmt = $conn->prepare("INSERT INTO participants (event_id, number, name, barangay, contact_number) VALUES (?, ?, ?, ?, ?)");
 
                 while (($data = fgetcsv($handle, 1000, ',')) !== FALSE) {
                     $row_count++;
@@ -61,7 +64,7 @@ if (isset($_POST['upload_csv'])) {
                         continue;
                     }
 
-                    $stmt->bind_param("ssss", $number, $name, $barangay, $contact);
+                    $stmt->bind_param("issss", $current_event_id, $number, $name, $barangay, $contact);
 
                     if ($stmt->execute()) {
                         $success_count++;
@@ -105,7 +108,10 @@ if (isset($_POST['upload_csv'])) {
 
 // Handle Delete All
 if (isset($_POST['delete_all'])) {
-    $conn->query("DELETE FROM participants");
+    $stmt_del = $conn->prepare("DELETE FROM participants WHERE event_id = ?");
+    $stmt_del->bind_param("i", $current_event_id);
+    $stmt_del->execute();
+    $stmt_del->close();
     set_message('success', 'All participants have been deleted.');
     header('Location: index.php?page=upload');
     exit;
@@ -154,8 +160,10 @@ if (isset($_POST['remove_background'])) {
 }
 
 
-$count_query = $conn->query("SELECT COUNT(*) as total FROM participants");
-$participant_count = $count_query->fetch_assoc()['total'];
+$count_query = $conn->prepare("SELECT COUNT(*) as total FROM participants WHERE event_id = ?");
+$count_query->bind_param("i", $current_event_id);
+$count_query->execute();
+$participant_count = $count_query->get_result()->fetch_assoc()['total'];
 
 // Pagination setup
 $limit = isset($_GET['limit']) && is_numeric($_GET['limit']) ? (int)$_GET['limit'] : 10; // default 10
@@ -167,11 +175,15 @@ $offset = ($page - 1) * $limit;
 $total_pages = ceil($participant_count / $limit);
 
 // Fetch participants for current page
-$participants = $conn->query("
+$participants = $conn->prepare("
     SELECT * FROM participants 
+    WHERE event_id = ?
     ORDER BY id ASC 
     LIMIT $limit OFFSET $offset
-");?>
+");
+$participants->bind_param("i", $current_event_id);
+$participants->execute();
+$participants = $participants->get_result();?>
 
 <h1>Upload Participants</h1>
 

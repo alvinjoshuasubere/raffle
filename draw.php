@@ -23,8 +23,8 @@ if (isset($_POST['draw_winner'])) {
     }
 
     // Check if prize exists and is active
-    $stmt = $conn->prepare("SELECT * FROM prizes WHERE id = ?");
-    $stmt->bind_param("i", $prize_id);
+    $stmt = $conn->prepare("SELECT * FROM prizes WHERE id = ? AND event_id = ?");
+    $stmt->bind_param("ii", $prize_id, $current_event_id);
     $stmt->execute();
     $prize_query = $stmt->get_result();
 
@@ -41,8 +41,8 @@ if (isset($_POST['draw_winner'])) {
     }
 
     // Check if participant exists
-    $stmt = $conn->prepare("SELECT * FROM participants WHERE number = ?");
-    $stmt->bind_param("i", $drawn_number);
+    $stmt = $conn->prepare("SELECT * FROM participants WHERE number = ? AND event_id = ?");
+    $stmt->bind_param("ii", $drawn_number, $current_event_id);
     $stmt->execute();
     $participant_query = $stmt->get_result();
 
@@ -54,8 +54,8 @@ if (isset($_POST['draw_winner'])) {
     $participant = $participant_query->fetch_assoc();
 
    if ($prize['type'] == 'Minor') {
-        $stmt = $conn->prepare("SELECT * FROM winners WHERE number = ? AND prize_type = 'Minor'");
-        $stmt->bind_param("i", $drawn_number);
+        $stmt = $conn->prepare("SELECT * FROM winners WHERE number = ? AND prize_type = 'Minor' AND event_id = ?");
+        $stmt->bind_param("ii", $drawn_number, $current_event_id);
         $stmt->execute();
         $check_winner = $stmt->get_result();
 
@@ -66,8 +66,8 @@ if (isset($_POST['draw_winner'])) {
     }
 
     if ($prize['type'] == 'Major') {
-        $stmt = $conn->prepare("SELECT * FROM winners WHERE number = ? AND prize_type = 'Major'");
-        $stmt->bind_param("i", $drawn_number);
+        $stmt = $conn->prepare("SELECT * FROM winners WHERE number = ? AND prize_type = 'Major' AND event_id = ?");
+        $stmt->bind_param("ii", $drawn_number, $current_event_id);
         $stmt->execute();
         $check_winner = $stmt->get_result();
 
@@ -99,7 +99,8 @@ if (isset($_POST['search_participant_prefix'])) {
     if ($prefix === '') $prefix = '0';
 
     // We'll fetch all possible numbers, then filter by numeric prefix
-    $stmt = $conn->prepare("SELECT number, name FROM participants");
+    $stmt = $conn->prepare("SELECT number, name FROM participants WHERE event_id = ?");
+    $stmt->bind_param("i", $current_event_id);
     $stmt->execute();
     $result = $stmt->get_result();
 
@@ -139,8 +140,8 @@ if (isset($_POST['confirm_winner'])) {
     $prize_type = sanitize_input($_POST['prize_type']);
     
     // Insert into winners table
-    $stmt = $conn->prepare("INSERT INTO winners (participant_id, prize_id, number, name, barangay, prize_name, prize_type) VALUES (?, ?, ?, ?, ?, ?, ?)");
-    $stmt->bind_param("iiissss", $participant_id, $prize_id, $number, $name, $barangay, $prize_name, $prize_type);
+    $stmt = $conn->prepare("INSERT INTO winners (event_id, participant_id, prize_id, number, name, barangay, prize_name, prize_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+    $stmt->bind_param("iiiissss", $current_event_id, $participant_id, $prize_id, $number, $name, $barangay, $prize_name, $prize_type);
     
     if ($stmt->execute()) {
         // Decrease prize quantity
@@ -162,13 +163,20 @@ if (isset($_POST['confirm_winner'])) {
 }
 
 // Get active prizes
-$active_prizes = $conn->query("SELECT * FROM prizes WHERE quantity > 0 ORDER BY type, prize_name");
+$stmt_ap = $conn->prepare("SELECT * FROM prizes WHERE quantity > 0 AND event_id = ? ORDER BY type, prize_name");
+$stmt_ap->bind_param("i", $current_event_id);
+$stmt_ap->execute();
+$active_prizes = $stmt_ap->get_result();
 
 // Get past winners (most recent first)
-$past_winners = $conn->query("SELECT w.number, w.name, w.barangay, w.prize_name, w.prize_type, w.won_at 
-                              FROM winners w 
-                              ORDER BY w.won_at DESC 
-                              LIMIT 10");
+$stmt_pw = $conn->prepare("SELECT w.number, w.name, w.barangay, w.prize_name, w.prize_type, w.won_at 
+                           FROM winners w 
+                           WHERE w.event_id = ?
+                           ORDER BY w.won_at DESC 
+                           LIMIT 10");
+$stmt_pw->bind_param("i", $current_event_id);
+$stmt_pw->execute();
+$past_winners = $stmt_pw->get_result();
 ?>
 
 <?php display_message(); ?>

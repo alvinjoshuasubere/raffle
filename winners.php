@@ -1,6 +1,9 @@
 <?php
 // Get all winners
-$winners = $conn->query("SELECT * FROM winners ORDER BY won_at DESC");
+$stmt_w = $conn->prepare("SELECT * FROM winners WHERE event_id = ? ORDER BY won_at DESC");
+$stmt_w->bind_param("i", $current_event_id);
+$stmt_w->execute();
+$winners = $stmt_w->get_result();
 ?>
 
 <h1>Winners List</h1>
@@ -52,9 +55,18 @@ $winners = $conn->query("SELECT * FROM winners ORDER BY won_at DESC");
     <h3 style="color: #ec4899; margin-bottom: 15px;">Winners Summary</h3>
     <?php
     // Get summary statistics
-    $major_count = $conn->query("SELECT COUNT(*) as total FROM winners WHERE prize_type = 'Major'")->fetch_assoc()['total'];
-    $minor_count = $conn->query("SELECT COUNT(*) as total FROM winners WHERE prize_type = 'Minor'")->fetch_assoc()['total'];
-    $unique_winners = $conn->query("SELECT COUNT(DISTINCT number) as total FROM winners")->fetch_assoc()['total'];
+    $maj = $conn->prepare("SELECT COUNT(*) as total FROM winners WHERE prize_type = 'Major' AND event_id = ?");
+    $maj->bind_param("i", $current_event_id);
+    $maj->execute();
+    $major_count = $maj->get_result()->fetch_assoc()['total'];
+    $min = $conn->prepare("SELECT COUNT(*) as total FROM winners WHERE prize_type = 'Minor' AND event_id = ?");
+    $min->bind_param("i", $current_event_id);
+    $min->execute();
+    $minor_count = $min->get_result()->fetch_assoc()['total'];
+    $uniq = $conn->prepare("SELECT COUNT(DISTINCT number) as total FROM winners WHERE event_id = ?");
+    $uniq->bind_param("i", $current_event_id);
+    $uniq->execute();
+    $unique_winners = $uniq->get_result()->fetch_assoc()['total'];
     ?>
     <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;">
         <div style="background: #ffffff; padding: 20px; border-radius: 12px; text-align: center; border: 1px solid rgba(0,0,0,0.04);">

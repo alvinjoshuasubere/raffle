@@ -1,148 +1,221 @@
 <?php
+session_start();
+if (isset($_SESSION['user_id'])) {
+    header('Location: admin.php');
+    exit;
+}
 require_once 'config.php';
-require_once 'auth_check.php';
 
-// Get current page
-$page = isset($_GET['page']) ? $_GET['page'] : 'events';
+$json_file = __DIR__ . '/participants.json';
+$total = 0;
+if (file_exists($json_file)) {
+    $d = json_decode(file_get_contents($json_file), true);
+    $total = count($d['participants'] ?? []);
+}
+
+$event_name = 'Charter Anniversary 2025';
+$ev = $conn->query("SELECT name FROM events WHERE status='Active' ORDER BY id ASC LIMIT 1");
+if ($ev && $ev->num_rows > 0) {
+    $event_name = $ev->fetch_assoc()['name'];
+}
+// Short event name without year for display
+$short_event = preg_replace('/\s*\d{4}$/', '', $event_name);
+
+$active_event = 0;
+$aec = $conn->query("SELECT COUNT(*) cnt FROM events WHERE status='Active'");
+if ($aec) $active_event = $aec->fetch_assoc()['cnt'];
+
+$winner_count = 0;
+$wc = $conn->query("SELECT COUNT(DISTINCT number) cnt FROM winners");
+if ($wc) $winner_count = $wc->fetch_assoc()['cnt'];
 ?>
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Raffle System - <?php echo htmlspecialchars($current_event_name); ?></title>
-    <link rel="stylesheet" href="style.css">
+    <title><?php echo htmlspecialchars($event_name); ?> Raffle Draw</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
-        .toast-container { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); z-index:99999; display:flex; flex-direction:column-reverse; gap:10px; pointer-events:none; align-items:center; }
-        .toast { pointer-events:auto; padding:14px 22px; border-radius:12px; font-size:14px; font-weight:600; color:#fff; box-shadow:0 8px 30px rgba(0,0,0,0.12); animation:toastIn .4s cubic-bezier(.34,1.56,.64,1); max-width:380px; display:flex; align-items:center; gap:10px; }
-        .toast-success { background:linear-gradient(135deg,#10b981,#059669); }
-        .toast-error { background:linear-gradient(135deg,#ef4444,#dc2626); }
-        .toast-info { background:linear-gradient(135deg,#ec4899,#f472b6); }
-        @keyframes toastIn { 0%{opacity:0;transform:translateX(100%) scale(.8)} 100%{opacity:1;transform:translateX(0) scale(1)} }
-        .toast-out { animation:toastOut .3s ease forwards; }
-        @keyframes toastOut { 0%{opacity:1;transform:translateX(0)} 100%{opacity:0;transform:translateX(100%)} }
-        .event-badge {
-            background: #fdf2f8;
-            color: #ec4899;
-            padding: 4px 14px;
-            border-radius: 20px;
-            font-size: 11px;
-            font-weight: 700;
-            border: 1px solid #fbcfe8;
-            margin-left: 10px;
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            background: #faf5f7;
+            color: #1a1a2e;
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
         }
-        .user-info {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 0 20px;
-            border-left: 1px solid rgba(0,0,0,0.06);
+
+        .ambient { position:fixed; inset:0; z-index:0; overflow:hidden; pointer-events:none; }
+        .ambient .o { position:absolute; border-radius:50%; }
+        .ambient .o:nth-child(1) { width:600px; height:600px; background:radial-gradient(circle at 30% 30%, rgba(236,73,153,.1), transparent 70%); top:-200px; right:-160px; }
+        .ambient .o:nth-child(2) { width:400px; height:400px; background:radial-gradient(circle at 70% 70%, rgba(244,114,182,.08), transparent 70%); bottom:-120px; left:-80px; }
+
+        .top {
+            position:relative; z-index:2;
+            display:flex; align-items:center; justify-content:space-between;
+            padding:0 32px; height:64px;
+            background:rgba(255,255,255,.75); backdrop-filter:blur(16px);
+            border-bottom:1px solid rgba(0,0,0,.04);
         }
-        .user-info span {
-            font-size: 13px;
-            color: #4a4a6a;
-            font-weight: 600;
+        .top .brand { display:flex; align-items:center; gap:10px; }
+        .top .brand img { height:34px; }
+        .top .brand span { font-weight:800; font-size:16px; color:#1a1a2e; letter-spacing:-.3px; }
+        .top .nav-links { display:flex; align-items:center; gap:24px; }
+        .top .nav-links a {
+            font-size:13px; font-weight:600; color:#6b7280;
+            text-decoration:none; transition:color .2s;
         }
-        .user-info a {
-            font-size: 12px;
-            color: #9ca3af;
-            text-decoration: none;
-            font-weight: 600;
+        .top .nav-links a:hover { color:#ec4899; }
+        .top .nav-links .btn-sm {
+            padding:8px 20px; border-radius:100px;
+            background:linear-gradient(135deg,#ec4899,#f472b6);
+            color:#fff; font-weight:700; font-size:12px;
+            box-shadow:0 3px 12px rgba(236,73,153,.25);
         }
-        .user-info a:hover {
-            color: #ec4899;
+        .top .nav-links .btn-sm:hover { transform:translateY(-1px); box-shadow:0 5px 18px rgba(236,73,153,.35); }
+
+        .hero {
+            position:relative; z-index:1;
+            display:flex; flex-direction:column; align-items:center;
+            padding:80px 24px 60px; text-align:center;
+        }
+        .hero .badge {
+            display:inline-block; padding:6px 18px; border-radius:100px;
+            background:#fdf2f8; border:1px solid #fbcfe8;
+            font-size:11px; font-weight:700; color:#ec4899;
+            letter-spacing:.5px; margin-bottom:20px;
+        }
+        .hero h1 {
+            font-size:clamp(36px,7vw,64px); font-weight:900;
+            letter-spacing:-1.5px; color:#1a1a2e; line-height:1.1;
+            margin-bottom:16px;
+        }
+        .hero h1 span { color:#ec4899; }
+        .hero p {
+            font-size:17px; color:#6b7280; max-width:560px;
+            line-height:1.6; margin-bottom:32px;
+        }
+        .hero .buttons { display:flex; gap:14px; flex-wrap:wrap; justify-content:center; }
+        .hero .btn {
+            padding:16px 36px; border-radius:14px;
+            font-size:15px; font-weight:700; font-family:inherit;
+            text-decoration:none; transition:all .25s ease;
+            display:inline-flex; align-items:center; gap:8px;
+        }
+        .hero .btn-primary {
+            background:linear-gradient(135deg,#ec4899,#f472b6);
+            color:#fff; box-shadow:0 4px 20px rgba(236,73,153,.3);
+        }
+        .hero .btn-primary:hover { transform:translateY(-2px); box-shadow:0 8px 28px rgba(236,73,153,.4); }
+        .hero .btn-outline {
+            background:#fff; color:#4a4a6a;
+            border:1.5px solid #e5dce0;
+        }
+        .hero .btn-outline:hover { border-color:#f472b6; color:#ec4899; }
+
+        .stats {
+            position:relative; z-index:1;
+            display:grid; grid-template-columns:repeat(3,1fr); gap:20px;
+            max-width:800px; margin:0 auto 60px; padding:0 24px;
+        }
+        .stat {
+            background:#fff; border-radius:20px; padding:28px 20px;
+            text-align:center; border:1px solid rgba(0,0,0,.04);
+        }
+        .stat .num { font-size:36px; font-weight:900; color:#ec4899; line-height:1; }
+        .stat .label { font-size:13px; color:#6b7280; margin-top:6px; font-weight:500; }
+
+        .info {
+            position:relative; z-index:1;
+            max-width:900px; margin:0 auto 80px; padding:0 24px;
+            display:grid; grid-template-columns:1fr 1fr; gap:24px;
+        }
+        .info-card {
+            background:#fff; border-radius:20px; padding:32px;
+            border:1px solid rgba(0,0,0,.04);
+        }
+        .info-card .icon { font-size:28px; margin-bottom:12px; }
+        .info-card h3 { font-size:17px; font-weight:800; color:#1a1a2e; margin-bottom:8px; }
+        .info-card p { font-size:14px; color:#6b7280; line-height:1.6; }
+
+        .ftr {
+            position:relative; z-index:1;
+            text-align:center; padding:20px 24px 40px;
+            font-size:12px; color:#c4b5c0; letter-spacing:.3px;
+        }
+
+        @media (max-width:640px) {
+            .hero { padding-top:48px; }
+            .stats { grid-template-columns:1fr; max-width:360px; }
+            .info { grid-template-columns:1fr; }
+            .top .nav-links .btn-sm-text { display:none; }
         }
     </style>
-    <?php if ($page === 'draw' && file_exists('uploads/bg/custom_bg.jpg')): ?>
-    <style>
-        .container1::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 520px;
-            height: 100%;
-            background-image: url('uploads/bg/custom_bg.jpg?v=<?php echo filemtime('uploads/bg/custom_bg.jpg'); ?>');
-            background-size: contain;
-            background-position: center;
-            background-repeat: no-repeat;
-            z-index: 0;
-        }
-    </style>
-    <?php endif; ?>
 </head>
-
 <body>
+<div class="ambient"><div class="o"></div><div class="o"></div></div>
 
-    <!-- Header with Logo + Navigation -->
-    <div class="header">
-        <img src="Logo.png" alt="Logo" class="logo"><span class="systemName" style="margin-left:5px">
-            Raffle
-            System</span>
-        <span class="event-badge"><?php echo htmlspecialchars($current_event_name); ?></span>
-
-        <nav class="nav">
-            <a href="index.php?page=events" class="<?php echo $page === 'events' ? 'active' : ''; ?>">Events</a>
-            <a href="index.php?page=upload" class="<?php echo $page === 'upload' ? 'active' : ''; ?>">Home</a>
-            <a href="index.php?page=draw" class="<?php echo $page === 'draw' ? 'active' : ''; ?>">Draw</a>
-            <a href="index.php?page=prize" class="<?php echo $page === 'prize' ? 'active' : ''; ?>">Prize</a>
-            <a href="index.php?page=winners" class="<?php echo $page === 'winners' ? 'active' : ''; ?>">Winners</a>
-        </nav>
-
-        <div class="user-info">
-            <span><?php echo htmlspecialchars($_SESSION['display_name']); ?></span>
-            <a href="logout.php">Logout</a>
-        </div>
+<div class="top">
+    <div class="brand">
+        <img src="Logo.png" alt="">
+        <span>Raffle System</span>
     </div>
-
-
-    <!-- Main Content -->
-    <div class="container">
-        <div class="content <?php echo $page === 'draw' ? 'fullscreen' : ''; ?>">
-            <?php
-            // Include appropriate page
-            switch($page) {
-                case 'events':
-                    include 'events.php';
-                    break;
-                case 'upload':
-                    include 'upload.php';
-                    break;
-                case 'draw':
-                    include 'draw.php';
-                    break;
-                case 'prize':
-                    include 'prize.php';
-                    break;
-                case 'winners':
-                    include 'winners.php';
-                    break;
-                default:
-                    include 'events.php';
-            }
-            ?>
-        </div>
+    <div class="nav-links">
+        <a href="#info">About</a>
+        <a href="register.php" class="btn-sm">Register Now</a>
     </div>
+</div>
 
-    <canvas id="confetti-canvas"></canvas>
-    <script src="confetti.js"></script>
-    <div class="toast-container" id="toastContainer"></div>
-    <script>
-    function showToast(message, type) {
-        type = type || 'info';
-        var container = document.getElementById('toastContainer');
-        var toast = document.createElement('div');
-        toast.className = 'toast toast-' + type;
-        var icons = { success: '✓', error: '✕', info: 'ℹ' };
-        toast.innerHTML = '<span style="font-size:18px;font-weight:900;line-height:1">' + (icons[type] || 'ℹ') + '</span> ' + message;
-        container.appendChild(toast);
-        setTimeout(function() {
-            toast.classList.add('toast-out');
-            setTimeout(function() { toast.remove(); }, 300);
-        }, 4000);
-    }
-    </script>
+<section class="hero">
+    <div class="badge"><?php echo htmlspecialchars($event_name); ?></div>
+    <h1>Koronadal <span>Raffle</span> Draw</h1>
+    <p>Register your ticket for a chance to win exciting prizes at <?php echo htmlspecialchars($short_event); ?>.</p>
+    <div class="buttons">
+        <a href="register.php" class="btn btn-primary">Register Your Ticket</a>
+        <a href="login.php" class="btn btn-outline">Admin Login</a>
+    </div>
+</section>
+
+<div class="stats">
+    <div class="stat">
+        <div class="num"><?php echo $total; ?></div>
+        <div class="label">Total Registrations</div>
+    </div>
+    <div class="stat">
+        <div class="num">1</div>
+        <div class="label">Active Event</div>
+    </div>
+    <div class="stat">
+        <div class="num"><?php echo $winner_count; ?></div>
+        <div class="label">Winners Drawn</div>
+    </div>
+</div>
+
+<div class="info" id="info">
+    <div class="info-card">
+        <div class="icon">🎫</div>
+        <h3>How to Join</h3>
+        <p>Register your details online and receive a unique ticket number. Bring this number to the event for verification.</p>
+    </div>
+    <div class="info-card">
+        <div class="icon">🏆</div>
+        <h3>The Draw</h3>
+        <p>Winners are selected randomly during <?php echo htmlspecialchars($short_event); ?>. Each ticket number has an equal chance to win.</p>
+    </div>
+    <div class="info-card">
+        <div class="icon">📍</div>
+        <h3>Eligibility</h3>
+        <p>Open to all residents of Koronadal City. Must present valid ID and ticket number to claim prizes.</p>
+    </div>
+    <div class="info-card">
+        <div class="icon">📅</div>
+        <h3>Event Date</h3>
+        <p>The raffle draw will take place during <?php echo htmlspecialchars($short_event); ?>.</p>
+    </div>
+</div>
+
+<div class="ftr">City Government of Koronadal &mdash; Raffle Draw System</div>
+
 </body>
-
 </html>

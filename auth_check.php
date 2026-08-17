@@ -25,7 +25,7 @@ if (isset($_GET['set_event'])) {
         $current_event_id = $eid;
     }
     $page_clean = isset($_GET['page']) ? $_GET['page'] : 'upload';
-    header("Location: index.php?page=$page_clean");
+    header("Location: admin.php?page=$page_clean");
     exit;
 }
 

@@ -38,6 +38,14 @@ if (isset($_POST['upload_csv'])) {
                 $success_count = 0;
                 $errors = [];
 
+                // Get the max number for auto-increment
+                $max_q = $conn->prepare("SELECT MAX(CAST(number AS UNSIGNED)) as max_num FROM participants WHERE event_id = ?");
+                $max_q->bind_param("i", $current_event_id);
+                $max_q->execute();
+                $max_result = $max_q->get_result()->fetch_assoc();
+                $next_number = ($max_result['max_num'] ?? 0) + 1;
+                $max_q->close();
+
                 // Skip header row
                 $header = fgetcsv($handle, 1000, ',');
 
@@ -49,31 +57,27 @@ if (isset($_POST['upload_csv'])) {
                     // Skip empty rows
                     if (empty(array_filter($data))) continue;
 
-                    if (count($data) < 4) {
+                    if (count($data) < 3) {
                         $errors[] = "Row {$row_count}: Incomplete data";
                         continue;
                     }
 
-                    $number = trim($data[0]);
-                    $name = trim($data[1]);
-                    $barangay = trim($data[2]);
-                    $contact = trim($data[3]);
+                    $name = strtoupper(trim($data[0]));
+                    $barangay = strtoupper(trim($data[1]));
+                    $contact = strtoupper(trim($data[2] ?? ''));
 
-                    if (empty($number) || empty($name) || empty($barangay)) {
+                    if (empty($name) || empty($barangay)) {
                         $errors[] = "Row {$row_count}: Missing required fields";
                         continue;
                     }
 
+                    $number = (string)$next_number++;
                     $stmt->bind_param("issss", $current_event_id, $number, $name, $barangay, $contact);
 
                     if ($stmt->execute()) {
                         $success_count++;
                     } else {
-                        if ($conn->errno == 1062) {
-                            $errors[] = "Row {$row_count}: Duplicate number '{$number}'";
-                        } else {
-                            $errors[] = "Row {$row_count}: Database error ({$conn->error})";
-                        }
+                        $errors[] = "Row {$row_count}: Database error ({$conn->error})";
                     }
                 }
 
@@ -102,7 +106,7 @@ if (isset($_POST['upload_csv'])) {
         set_message('error', 'Error: Please select a file to upload.');
     }
 
-    header('Location: index.php?page=upload');
+    header('Location: admin.php?page=upload');
     exit;
 }
 
@@ -113,7 +117,7 @@ if (isset($_POST['delete_all'])) {
     $stmt_del->execute();
     $stmt_del->close();
     set_message('success', 'All participants have been deleted.');
-    header('Location: index.php?page=upload');
+    header('Location: admin.php?page=upload');
     exit;
 }
 
@@ -143,7 +147,7 @@ if (isset($_POST['upload_background'])) {
     } else {
         set_message('error', 'Please select an image file to upload.');
     }
-    header('Location: index.php?page=upload');
+    header('Location: admin.php?page=upload');
     exit;
 }
 
@@ -155,7 +159,7 @@ if (isset($_POST['remove_background'])) {
     } else {
         set_message('error', 'No custom background found.');
     }
-    header('Location: index.php?page=upload');
+    header('Location: admin.php?page=upload');
     exit;
 }
 
@@ -239,7 +243,7 @@ if (isset($_SESSION['upload_errors'])) {
             <div style="display:inline-flex; gap:5px;">
 
                 <?php if ($page > 1): ?>
-                <a href="index.php?page=upload&amp;p=<?php echo $page-1; ?>&amp;limit=<?php echo $limit; ?>"
+                <a href="admin.php?page=upload&amp;p=<?php echo $page-1; ?>&amp;limit=<?php echo $limit; ?>"
                     style="padding:6px 12px; border-radius:20px; background:#f1f1f1; text-decoration:none; color:#333;">
                     ‹ Prev
                 </a>
@@ -251,7 +255,7 @@ if (isset($_SESSION['upload_errors'])) {
                     <?php echo $i; ?>
                 </span>
                 <?php else: ?>
-                <a href="index.php?page=upload&amp;p=<?php echo $i; ?>&amp;limit=<?php echo $limit; ?>"
+                <a href="admin.php?page=upload&amp;p=<?php echo $i; ?>&amp;limit=<?php echo $limit; ?>"
                     style="padding:6px 12px; border-radius:20px; background:#f1f1f1; text-decoration:none; color:#333;">
                     <?php echo $i; ?>
                 </a>
@@ -259,7 +263,7 @@ if (isset($_SESSION['upload_errors'])) {
                 <?php endfor; ?>
 
                 <?php if ($page < $total_pages): ?>
-                <a href="index.php?page=upload&amp;p=<?php echo $page+1; ?>&amp;limit=<?php echo $limit; ?>"
+                <a href="admin.php?page=upload&amp;p=<?php echo $page+1; ?>&amp;limit=<?php echo $limit; ?>"
                     style="padding:6px 12px; border-radius:20px; background:#f1f1f1; text-decoration:none; color:#333;">
                     Next ›
                 </a>
@@ -314,13 +318,11 @@ if (isset($_SESSION['upload_errors'])) {
     <h3 style="color: #f472b6; margin-bottom: 15px;">CSV File Format</h3>
     <p style="margin-bottom: 10px;"><strong>Required Columns (in order):</strong></p>
     <ol style="padding-left: 25px; line-height: 1.8;">
-        <li><strong>Number</strong> - Participant's unique number</li>
         <li><strong>Name</strong> - Participant's full name</li>
         <li><strong>Barangay</strong> - Participant's barangay</li>
         <li><strong>Contact Number</strong> - Participant's contact number</li>
     </ol>
-    <p style="margin-top: 15px; color: #666;"><em>Note: First row should contain headers. Uploading new CSV will replace
-            all existing participants.</em></p>
+    <p style="margin-top: 15px; color: #666;"><em>Note: Numbers are auto-generated sequentially. First row should contain headers. Uploading new CSV will replace all existing participants.</em></p>
 </div>
 
 <!-- Modal for delete confirmation -->

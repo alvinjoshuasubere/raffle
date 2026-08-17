@@ -1,0 +1,20 @@
+{
+    "event_name": "Mayors Night",
+    "participants": [
+        {
+            "id": 1,
+            "number": "1",
+            "lastname": "SUBERE",
+            "firstname": "ALVIN JOSHUA",
+            "middlename": "VALEN",
+            "name": "ALVIN JOSHUA VALEN SUBERE",
+            "birthdate": "1998-08-05",
+            "province": "SOUTH COTABATO",
+            "city": "CITY OF KORONADAL",
+            "barangay": "SAN ROQUE",
+            "purok": "TEST",
+            "contact_number": "09662701684",
+            "created_at": "2026-07-10 10:44:16"
+        }
+    ]
+}c

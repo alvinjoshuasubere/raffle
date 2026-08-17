@@ -1,46 +1,21 @@
 <?php
 require_once 'config.php';
-// Handle Draw Winner
-if (isset($_POST['draw_winner'])) {
-    $prize_id = intval($_POST['prize_id']);
+if (!isset($current_event_id)) {
+    $current_event_id = isset($_SESSION['event_id']) ? intval($_SESSION['event_id']) : 1;
+}
 
+// Handle Draw Winner (find by number)
+if (isset($_POST['draw_winner'])) {
     $drawn_number = trim($_POST['drawn_number']);
     $drawn_number = ltrim($drawn_number, '0');
-    if ($drawn_number === '') {
-        $drawn_number = '0';
-    }
+    if ($drawn_number === '') $drawn_number = '0';
     $drawn_number = (int)$drawn_number;
-
-    // Validation
-    if (empty($prize_id)) {
-        echo json_encode(['success' => false, 'message' => 'Please select a prize.']);
-        exit;
-    }
 
     if (empty($drawn_number)) {
         echo json_encode(['success' => false, 'message' => 'Please enter a number.']);
         exit;
     }
 
-    // Check if prize exists and is active
-    $stmt = $conn->prepare("SELECT * FROM prizes WHERE id = ? AND event_id = ?");
-    $stmt->bind_param("ii", $prize_id, $current_event_id);
-    $stmt->execute();
-    $prize_query = $stmt->get_result();
-
-    if ($prize_query->num_rows == 0) {
-        echo json_encode(['success ' => false, 'message' => 'Prize not found.']);
-        exit;
-    }
-
-    $prize = $prize_query->fetch_assoc();
-
-    if ($prize['quantity'] <= 0) {
-        echo json_encode(['success' => false, 'message' => 'This prize has no remaining quantity.']);
-        exit;
-    }
-
-    // Check if participant exists
     $stmt = $conn->prepare("SELECT * FROM participants WHERE number = ? AND event_id = ?");
     $stmt->bind_param("ii", $drawn_number, $current_event_id);
     $stmt->execute();
@@ -53,41 +28,12 @@ if (isset($_POST['draw_winner'])) {
 
     $participant = $participant_query->fetch_assoc();
 
-   if ($prize['type'] == 'Minor') {
-        $stmt = $conn->prepare("SELECT * FROM winners WHERE number = ? AND prize_type = 'Minor' AND event_id = ?");
-        $stmt->bind_param("ii", $drawn_number, $current_event_id);
-        $stmt->execute();
-        $check_winner = $stmt->get_result();
-
-        if ($check_winner->num_rows > 0) {
-            echo json_encode(['success' => false, 'message' => 'This number has already won a Minor prize.']);
-            exit;
-        }
-    }
-
-    if ($prize['type'] == 'Major') {
-        $stmt = $conn->prepare("SELECT * FROM winners WHERE number = ? AND prize_type = 'Major' AND event_id = ?");
-        $stmt->bind_param("ii", $drawn_number, $current_event_id);
-        $stmt->execute();
-        $check_winner = $stmt->get_result();
-
-        if ($check_winner->num_rows > 0) {
-            echo json_encode(['success' => false, 'message' => 'This number has already won a Major prize.']);
-            exit;
-        }
-    }
-
-    // Return winner data for modal display
     echo json_encode([
         'success' => true,
         'winner' => [
             'number' => $participant['number'],
             'name' => $participant['name'],
             'barangay' => $participant['barangay'],
-            'contact' => $participant['contact_number'],
-            'prize_name' => $prize['prize_name'],
-            'prize_type' => $prize['type'],
-            'prize_id' => $prize['id'],
             'participant_id' => $participant['id']
         ]
     ]);
@@ -95,10 +41,9 @@ if (isset($_POST['draw_winner'])) {
 }
 
 if (isset($_POST['search_participant_prefix'])) {
-    $prefix = ltrim($_POST['number_prefix'], '0'); // remove leading zeros
+    $prefix = ltrim($_POST['number_prefix'], '0');
     if ($prefix === '') $prefix = '0';
 
-    // We'll fetch all possible numbers, then filter by numeric prefix
     $stmt = $conn->prepare("SELECT number, name FROM participants WHERE event_id = ?");
     $stmt->bind_param("i", $current_event_id);
     $stmt->execute();
@@ -106,11 +51,9 @@ if (isset($_POST['search_participant_prefix'])) {
 
     $participants = [];
     while ($row = $result->fetch_assoc()) {
-        // Remove leading zeros for comparison
         $numValue = ltrim($row['number'], '0');
         if ($numValue === '') $numValue = '0';
 
-        // Check if the number starts with the prefix
         if (strpos($numValue, $prefix) === 0) {
             $participants[] = [
                 'number' => $row['number'],
@@ -118,7 +61,6 @@ if (isset($_POST['search_participant_prefix'])) {
             ];
         }
 
-        // Stop after 10 matches
         if (count($participants) >= 10) break;
     }
 
@@ -126,34 +68,27 @@ if (isset($_POST['search_participant_prefix'])) {
     exit;
 }
 
-
-
-
 // Handle Confirm Winner
 if (isset($_POST['confirm_winner'])) {
-    $prize_id = intval($_POST['prize_id']);
     $participant_id = intval($_POST['participant_id']);
     $number = intval($_POST['number']);
     $name = sanitize_input($_POST['name']);
     $barangay = sanitize_input($_POST['barangay']);
-    $prize_name = sanitize_input($_POST['prize_name']);
-    $prize_type = sanitize_input($_POST['prize_type']);
-    
-    // Insert into winners table
+    $prize_id = intval($_POST['prize_id'] ?? 0);
+    $prize_name = isset($_POST['prize_name']) ? sanitize_input($_POST['prize_name']) : '';
+    $prize_type = isset($_POST['prize_type']) ? sanitize_input($_POST['prize_type']) : '';
+
+    if ($prize_id > 0) {
+        $upd = $conn->prepare("UPDATE prizes SET claimed = claimed + 1, enabled = IF(claimed + 1 >= quantity, 0, 1) WHERE id = ? AND event_id = ?");
+        $upd->bind_param("ii", $prize_id, $current_event_id);
+        $upd->execute();
+        $upd->close();
+    }
+
     $stmt = $conn->prepare("INSERT INTO winners (event_id, participant_id, prize_id, number, name, barangay, prize_name, prize_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-    $stmt->bind_param("iiiissss", $current_event_id, $participant_id, $prize_id, $number, $name, $barangay, $prize_name, $prize_type);
-    
+    $stmt->bind_param("iiisssss", $current_event_id, $participant_id, $prize_id, $number, $name, $barangay, $prize_name, $prize_type);
+
     if ($stmt->execute()) {
-        // Decrease prize quantity
-        $conn->query("UPDATE prizes SET quantity = quantity - 1 WHERE id = $prize_id");
-        
-        // Check if quantity is 0 and disable prize
-        $check_qty = $conn->query("SELECT quantity FROM prizes WHERE id = $prize_id");
-        $qty_data = $check_qty->fetch_assoc();
-        if ($qty_data['quantity'] <= 0) {
-            $conn->query("UPDATE prizes SET status = 'Disabled' WHERE id = $prize_id");
-        }
-        
         echo json_encode(['success' => true, 'message' => 'Winner confirmed successfully!']);
     } else {
         echo json_encode(['success' => false, 'message' => 'Failed to confirm winner.']);
@@ -162,18 +97,20 @@ if (isset($_POST['confirm_winner'])) {
     exit;
 }
 
-// Get active prizes
-$stmt_ap = $conn->prepare("SELECT * FROM prizes WHERE quantity > 0 AND event_id = ? ORDER BY type, prize_name");
-$stmt_ap->bind_param("i", $current_event_id);
-$stmt_ap->execute();
-$active_prizes = $stmt_ap->get_result();
+// Fetch available prizes
+$prizes_stmt = $conn->prepare("SELECT * FROM prizes WHERE event_id = ? AND enabled = 1 AND claimed < quantity ORDER BY (type = 'Major') DESC, id ASC");
+$prizes_stmt->bind_param("i", $current_event_id);
+$prizes_stmt->execute();
+$prizes_result = $prizes_stmt->get_result();
+$prizes = [];
+while ($p = $prizes_result->fetch_assoc()) {
+    $prizes[] = $p;
+}
 
-// Get past winners (most recent first)
-$stmt_pw = $conn->prepare("SELECT w.number, w.name, w.barangay, w.prize_name, w.prize_type, w.won_at 
-                           FROM winners w 
-                           WHERE w.event_id = ?
-                           ORDER BY w.won_at DESC 
-                           LIMIT 10");
+$no_prizes = empty($prizes);
+
+// Get past winners
+$stmt_pw = $conn->prepare("SELECT number, name, barangay, prize_name, won_at FROM winners WHERE event_id = ? ORDER BY won_at DESC LIMIT 10");
 $stmt_pw->bind_param("i", $current_event_id);
 $stmt_pw->execute();
 $past_winners = $stmt_pw->get_result();
@@ -181,40 +118,41 @@ $past_winners = $stmt_pw->get_result();
 
 <?php display_message(); ?>
 
-<?php if ($active_prizes->num_rows == 0): ?>
-<div style="text-align: center; padding: 80px 40px;">
-  <div style="font-size: 64px; margin-bottom: 24px; opacity: 0.5;">🎯</div>
-  <h2 style="color: #4a4a6a; margin-bottom: 15px; font-size: 28px;">No Active Prize</h2>
-  <p style="color: #6b7280; margin-bottom: 40px; font-size: 16px;">Please add prizes in the Prize section before drawing winners.</p>
-  <a href="index.php?page=prize" class="btn btn-primary" style="display:inline-block; margin-top:20px;">Go to Prizes</a>
-</div>
-<?php else: ?>
 <div class="container1">
   <div class="draw-panel">
     <div class="draw-panel-inner">
+
       <div class="draw-header-area">
         <div class="draw-header-icon">🎯</div>
         <div>
           <h2 class="draw-heading">Draw Entry</h2>
-          <p class="draw-subtitle">Select a prize &amp; enter ticket number</p>
+          <p class="draw-subtitle">Enter ticket number to find winner</p>
         </div>
       </div>
 
+      <?php if ($no_prizes): ?>
+      <div class="no-prize-notice">
+        ⚠️ No prizes available yet. <a href="admin.php?page=prizes" style="color:#ec4899; font-weight:700; text-decoration:none;">Add prizes</a> before drawing.
+      </div>
+      <?php endif; ?>
+
       <div class="draw-prize-select">
-        <label class="draw-label">Select Prize</label>
-        <select id="prize_select" class="prize-select" required>
-          <option value="">Choose a prize...</option>
-          <?php while ($prize = $active_prizes->fetch_assoc()): ?>
-          <option value="<?php echo $prize['id']; ?>" data-type="<?php echo $prize['type']; ?>">
-            <?php echo htmlspecialchars($prize['prize_name']); ?>
-            (<?php echo $prize['type']; ?> - <?php echo $prize['quantity']; ?> left)
+        <label class="draw-label">Prize for this draw</label>
+        <select id="prize_select" class="prize-select" <?php echo $no_prizes ? 'disabled' : ''; ?>>
+          <option value="0">— No Prize Selected —</option>
+          <?php foreach ($prizes as $p): ?>
+          <?php $remaining = $p['quantity'] - $p['claimed']; ?>
+          <option value="<?php echo $p['id']; ?>"
+                  data-name="<?php echo htmlspecialchars($p['name']); ?>"
+                  data-type="<?php echo $p['type']; ?>"
+                  data-image="<?php echo htmlspecialchars($p['image']); ?>">
+            <?php echo htmlspecialchars($p['name']); ?> (<?php echo $remaining; ?> left)
           </option>
-          <?php endwhile; ?>
+          <?php endforeach; ?>
         </select>
       </div>
 
       <div class="draw-number-section">
-        <label class="draw-label">Enter Ticket Number</label>
         <div class="number-display-bg">
           <div class="number-display-inner">
             <input type="text" autofocus id="drawn_number" class="draw-number-input" maxlength="5" placeholder="—" />
@@ -236,33 +174,42 @@ $past_winners = $stmt_pw->get_result();
       <div class="draw-help-wrap">
         <span class="draw-help">Press <kbd>Enter</kbd> to search</span>
       </div>
+
     </div>
   </div>
 </div>
-<?php endif; ?>
 
-<!-- Winner Modal -->
+<!-- Elegant Winner Modal -->
 <div id="winnerModal" class="modal">
-    <div class="modal-content">
-        <div class="modal-header" style="<?php if (file_exists('uploads/bg/custom_bg.jpg')): ?>background:linear-gradient(135deg, rgba(236,73,153,0.85), rgba(244,114,182,0.7)), url('uploads/bg/custom_bg.jpg?v=<?php echo filemtime('uploads/bg/custom_bg.jpg'); ?>') center/cover;<?php endif; ?>">
-            <span class="close">&times;</span>
-            <h2>We have a winner!</h2>
+    <div class="modal-content winner-modal">
+        <span class="close">&times;</span>
+        <div class="wm-trophy-wrap">
+            <div class="wm-trophy">🏆</div>
+            <div class="wm-sparkle s1">✦</div>
+            <div class="wm-sparkle s2">✦</div>
+            <div class="wm-sparkle s3">✦</div>
         </div>
-        <div class="modal-body">
-           
-            <div class="winner-info">
-                <div class="winner-number" id="winner_name"></div>
-                <h4 class="winner_barangay">Barangay&nbsp;<span id="winner_barangay"></span></h4>
-                <p style="display:none;"><strong>Contact:</strong> <span id="winner_contact"></span></p>
 
-                <p style="display:none;"><strong>Type:</strong> <span id="winner_type"></span></p>
-            </div>
-             <h6 class="winner_ticket"><small>Ticket #</small>&nbsp;<span id="winner_number"></span></h6>
-            <h6 class="winner-prize">Prize:&nbsp;<span id="winner_prize"></span></h6>
+        <div class="wm-label">🎉 Congratulations! 🎉</div>
+        <div class="winner-name" id="winner_name"></div>
+
+        <div class="wm-ticket">
+            <span class="wm-ticket-label">Ticket No.</span>
+            <span class="wm-ticket-number" id="winner_number"></span>
         </div>
-        <div class="modal-footer">
-            <button type="button" id="confirm_btn" class="btn btn-success">Confirm Winner</button>
-            <button type="button" class="btn btn-secondary close-modal">Cancel</button>
+        <div class="winner-barangay" id="winner_barangay"></div>
+
+        <div id="wm_prize_card" class="wm-prize-card">
+            <div class="wm-prize-image" id="wm_prize_image">🎁</div>
+            <div class="wm-prize-info">
+                <div class="wm-prize-label">Drawn Prize</div>
+                <div class="wm-prize-name" id="wm_prize_name">No Prize Selected</div>
+            </div>
+        </div>
+
+        <div class="winner-actions">
+            <button type="button" id="confirm_btn" class="btn btn-confirm">Confirm Winner</button>
+            <button type="button" class="btn btn-cancel close-modal">Cancel</button>
         </div>
     </div>
 </div>
@@ -271,20 +218,25 @@ $past_winners = $stmt_pw->get_result();
 let currentWinner = null;
 let nameCheckTimeout = null;
 
-// Draw button click
+function getSelectedPrize() {
+    const sel = document.getElementById('prize_select');
+    const opt = sel.options[sel.selectedIndex];
+    return {
+        id: parseInt(opt.value || '0', 10),
+        name: opt.getAttribute('data-name') || '',
+        type: opt.getAttribute('data-type') || '',
+        image: opt.getAttribute('data-image') || ''
+    };
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     const drawBtn = document.getElementById('draw_btn');
     const resetBtn = document.getElementById('reset_drawn_number');
 
     if (drawBtn) {
         drawBtn.addEventListener('click', function() {
-            const prizeId = document.getElementById('prize_select').value;
             const drawnNumber = document.getElementById('drawn_number').value.trim();
 
-            if (!prizeId) {
-                showToast('Please select a prize.', 'error');
-                return;
-            }
             if (!drawnNumber) {
                 showToast('Please enter a number.', 'error');
                 return;
@@ -292,7 +244,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
             const formData = new FormData();
             formData.append('draw_winner', '1');
-            formData.append('prize_id', prizeId);
             formData.append('drawn_number', drawnNumber);
 
             fetch('draw.php', { method: 'POST', body: formData })
@@ -305,7 +256,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         showToast(data.message, 'error');
                     }
                 })
-                .catch(error => {
+                .catch(() => {
                     showToast('An error occurred. Please try again.', 'error');
                 });
         });
@@ -320,63 +271,58 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function showWinnerModal(winner) {
-    document.getElementById('winner_number').textContent = winner.number;
     document.getElementById('winner_name').textContent = winner.name;
-    document.getElementById('winner_barangay').textContent = winner.barangay;
-    document.getElementById('winner_contact').textContent = winner.contact;
-    document.getElementById('winner_prize').textContent = winner.prize_name;
-    document.getElementById('winner_type').textContent = winner.prize_type;
-    document.getElementById('winnerModal').style.display = 'block';
+    document.getElementById('winner_number').textContent = winner.number;
+    document.getElementById('winner_barangay').innerHTML = 'Barangay ' + winner.barangay;
+
+    const prize = getSelectedPrize();
+    const imgEl = document.getElementById('wm_prize_image');
+    const nameEl = document.getElementById('wm_prize_name');
+
+    if (prize.id > 0 && prize.image) {
+        imgEl.innerHTML = '';
+        const img = document.createElement('img');
+        img.src = prize.image;
+        img.alt = prize.name;
+        imgEl.appendChild(img);
+    } else {
+        imgEl.innerHTML = '🎁';
+    }
+    nameEl.textContent = prize.id > 0 ? prize.name : 'No Prize Selected';
+
+    document.getElementById('winnerModal').classList.add('show');
     if (typeof startConfetti === 'function') startConfetti();
 }
 
 function confirmWinner(winner) {
+    const prize = getSelectedPrize();
     const formData = new FormData();
     formData.append('confirm_winner', '1');
-    formData.append('prize_id', winner.prize_id);
     formData.append('participant_id', winner.participant_id);
     formData.append('number', winner.number);
     formData.append('name', winner.name);
     formData.append('barangay', winner.barangay);
-    formData.append('prize_name', winner.prize_name);
-    formData.append('prize_type', winner.prize_type);
+    formData.append('prize_id', prize.id);
+    formData.append('prize_name', prize.name);
+    formData.append('prize_type', prize.type);
 
     fetch('draw.php', { method: 'POST', body: formData })
         .then(response => response.json())
         .then(data => {
             if (data.success) {
                 showToast('Winner confirmed successfully!', 'success');
-                document.getElementById('winnerModal').style.display = 'none';
+                document.getElementById('winnerModal').classList.remove('show');
                 if (typeof stopConfetti === 'function') stopConfetti();
                 currentWinner = null;
                 document.getElementById('drawn_number').value = '';
                 document.getElementById('participant_name_hint').innerHTML = '';
-                updatePrizeDropdown(winner.prize_id);
             } else {
                 showToast(data.message, 'error');
             }
         })
-        .catch(error => {
+        .catch(() => {
             showToast('An error occurred. Please try again.', 'error');
         });
-}
-
-function updatePrizeDropdown(prizeId) {
-    const prizeSelect = document.getElementById('prize_select');
-    const selectedOption = prizeSelect.querySelector(`option[value="${prizeId}"]`);
-    if (selectedOption) {
-        const match = selectedOption.textContent.match(/\(([^-]+)-\s*(\d+)\s*left\)/);
-        if (match) {
-            let qty = parseInt(match[2], 10) - 1;
-            if (qty <= 0) {
-                selectedOption.remove();
-                prizeSelect.selectedIndex = 0;
-            } else {
-                selectedOption.textContent = selectedOption.textContent.replace(
-                    /\(\s*([^-]+)-\s*\d+\s*left\)/, `(${match[1]}- ${qty} left)`);
-            }
-        }
-    }
 }
 
 document.getElementById('confirm_btn').addEventListener('click', function() {
@@ -386,7 +332,7 @@ document.getElementById('confirm_btn').addEventListener('click', function() {
 
 document.querySelectorAll('.close, .close-modal').forEach(element => {
     element.addEventListener('click', function() {
-        document.getElementById('winnerModal').style.display = 'none';
+        document.getElementById('winnerModal').classList.remove('show');
         if (typeof stopConfetti === 'function') stopConfetti();
         currentWinner = null;
         document.getElementById('drawn_number').value = '';
@@ -394,16 +340,15 @@ document.querySelectorAll('.close, .close-modal').forEach(element => {
     });
 });
 
-window.onclick = function(event) {
-    const modal = document.getElementById('winnerModal');
-    if (event.target == modal) {
-        modal.style.display = 'none';
+document.getElementById('winnerModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        this.classList.remove('show');
         if (typeof stopConfetti === 'function') stopConfetti();
         currentWinner = null;
         document.getElementById('drawn_number').value = '';
         document.getElementById('participant_name_hint').textContent = '';
     }
-}
+});
 
 document.getElementById('drawn_number').addEventListener('keydown', function(e) {
     if (e.key === 'Enter') {
@@ -447,60 +392,4 @@ document.getElementById('reset_drawn_number').addEventListener('click', function
     document.getElementById('drawn_number').value = '';
     document.getElementById('drawn_number').focus();
 });
-
-function checkParticipantName(number) {
-    const hintDiv = document.getElementById('participant_name_hint');
-    if (nameCheckTimeout) clearTimeout(nameCheckTimeout);
-    number = number.trim();
-    if (!number) { hintDiv.innerHTML = ''; return; }
-    hintDiv.innerHTML = '<span style="color: #6b7280;">Loading...</span>';
-    nameCheckTimeout = setTimeout(() => {
-        fetch('draw.php', {
-                method: 'POST',
-                body: new URLSearchParams({ search_participant_prefix: '1', number_prefix: number })
-            })
-            .then(res => res.json())
-            .then(data => {
-                hintDiv.innerHTML = '';
-                if (data.success && Array.isArray(data.results) && data.results.length > 0) {
-                    if (data.results.length === 1) {
-                        const title = document.createElement('h4');
-                        title.textContent = '🎯 Possible Winner';
-                        title.className = 'winner-title';
-                        hintDiv.appendChild(title);
-                        const slotMachine = document.createElement('div');
-                        slotMachine.className = 'slot-machine';
-                        const ul = document.createElement('ul');
-                        ul.className = 'winner-list';
-                        const textLi = document.createElement('li');
-                        textLi.textContent = '🎉 And the Winner is...';
-                        ul.appendChild(textLi);
-                        slotMachine.appendChild(ul);
-                        hintDiv.appendChild(slotMachine);
-                    } else {
-                        const title = document.createElement('h4');
-                        title.textContent = '🎯 Possible Winners';
-                        title.className = 'winner-title';
-                        hintDiv.appendChild(title);
-                        const slotMachine = document.createElement('div');
-                        slotMachine.className = 'slot-machine';
-                        const ul = document.createElement('ul');
-                        ul.className = 'winner-list';
-                        const shuffled = [...data.results].sort(() => 0.5 - Math.random()).slice(0, 10);
-                        shuffled.forEach(item => {
-                            const li = document.createElement('li');
-                            li.textContent = `Ticket # ${item.number} - ${item.name}`;
-                            ul.appendChild(li);
-                        });
-                        slotMachine.appendChild(ul);
-                        hintDiv.appendChild(slotMachine);
-
-                    }
-                } else {
-                    hintDiv.innerHTML = '<span style="color:#6b7280;">No matches found</span>';
-                }
-            })
-            .catch(() => { hintDiv.innerHTML = ''; });
-    }, 300);
-}
 </script>

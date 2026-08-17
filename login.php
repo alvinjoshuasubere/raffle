@@ -1,11 +1,18 @@
 <?php
 session_start();
 if (isset($_SESSION['user_id'])) {
-    header('Location: index.php');
+    header('Location: admin.php');
     exit;
 }
 
 require_once 'config.php';
+
+// Get active event name
+$event_name = 'Raffle Event';
+$ev = $conn->query("SELECT name FROM events WHERE status='Active' ORDER BY id ASC LIMIT 1");
+if ($ev && $ev->num_rows > 0) {
+    $event_name = $ev->fetch_assoc()['name'];
+}
 
 if (isset($_POST['login'])) {
     $username = sanitize_input($_POST['username']);
@@ -25,7 +32,7 @@ if (isset($_POST['login'])) {
                 $_SESSION['user_id'] = $user['id'];
                 $_SESSION['username'] = $user['username'];
                 $_SESSION['display_name'] = $user['display_name'];
-                header('Location: index.php');
+                header('Location: admin.php');
                 exit;
             }
         }
@@ -38,7 +45,7 @@ if (isset($_POST['login'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Raffle System</title>
+    <title>Login - <?php echo htmlspecialchars($event_name); ?> Raffle System</title>
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
@@ -314,6 +321,29 @@ if (isset($_POST['login'])) {
             transform: none;
         }
 
+        .btn-register {
+            display: block;
+            margin-top: 16px;
+            padding: 14px;
+            border: 2px solid rgba(244,114,182,0.25);
+            border-radius: 14px;
+            font-size: 14px;
+            font-weight: 700;
+            font-family: inherit;
+            background: transparent;
+            color: #f9a8d4;
+            text-decoration: none;
+            text-align: center;
+            transition: all 0.3s ease;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-register:hover {
+            border-color: #f472b6;
+            color: #ffffff;
+            background: rgba(244,114,182,0.12);
+        }
+
         .error-msg {
             background: #fef2f2;
             border: 1px solid #fecaca;
@@ -371,8 +401,8 @@ if (isset($_POST['login'])) {
     <div class="login-wrapper">
         <div class="login-card">
             <img src="Logo.png" alt="Logo" class="logo">
-            <h1>Raffle System</h1>
-            <p class="subtitle">Sign in to manage your raffle events</p>
+            <h1><?php echo htmlspecialchars($event_name); ?></h1>
+            <p class="subtitle">Raffle System &mdash; Admin Access</p>
             <?php if (isset($error)): ?>
                 <div class="error-msg"><?php echo htmlspecialchars($error); ?></div>
             <?php endif; ?>
@@ -392,8 +422,9 @@ if (isset($_POST['login'])) {
                     </div>
                 </div>
                 <button type="submit" name="login" class="btn">Sign In</button>
+                <a href="register.php" class="btn-register">Register as Participant</a>
             </form>
-            <div class="login-footer">Raffle System &mdash; Raffle Draw Management</div>
+            <div class="login-footer"><?php echo htmlspecialchars($event_name); ?> &mdash; Raffle Draw Management</div>
         </div>
     </div>
 </body>

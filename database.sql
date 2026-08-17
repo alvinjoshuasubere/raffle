@@ -20,6 +20,8 @@ CREATE TABLE IF NOT EXISTS events (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     description TEXT,
+    registration_start_at DATETIME NULL DEFAULT NULL,
+    registration_end_at DATETIME NULL DEFAULT NULL,
     status ENUM('Active', 'Inactive') DEFAULT 'Active',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -33,25 +35,18 @@ CREATE TABLE IF NOT EXISTS participants (
     id INT AUTO_INCREMENT PRIMARY KEY,
     event_id INT NOT NULL DEFAULT 1,
     number VARCHAR(50) NOT NULL,
+    lastname VARCHAR(255) NOT NULL DEFAULT '',
+    firstname VARCHAR(255) NOT NULL DEFAULT '',
+    middlename VARCHAR(255) NOT NULL DEFAULT '',
     name VARCHAR(255) NOT NULL,
+    birthdate DATE DEFAULT NULL,
+    province VARCHAR(255) NOT NULL DEFAULT 'South Cotabato',
+    city VARCHAR(255) NOT NULL DEFAULT 'Koronadal',
     barangay VARCHAR(255) NOT NULL,
+    purok VARCHAR(255) NOT NULL DEFAULT '',
     contact_number VARCHAR(50) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE KEY unique_event_number (event_id, number),
-    FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- Prizes Table
-CREATE TABLE IF NOT EXISTS prizes (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    event_id INT NOT NULL DEFAULT 1,
-    prize_name VARCHAR(255) NOT NULL,
-    image_path VARCHAR(255),
-    quantity INT NOT NULL DEFAULT 1,
-    original_quantity INT NOT NULL DEFAULT 1,
-    type ENUM('Major', 'Minor') NOT NULL,
-    status ENUM('Active', 'Disabled') DEFAULT 'Active',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -60,22 +55,34 @@ CREATE TABLE IF NOT EXISTS winners (
     id INT AUTO_INCREMENT PRIMARY KEY,
     event_id INT NOT NULL DEFAULT 1,
     participant_id INT NOT NULL,
-    prize_id INT NOT NULL,
+    prize_id INT DEFAULT NULL,
     number VARCHAR(50) NOT NULL,
     name VARCHAR(255) NOT NULL,
     barangay VARCHAR(255) NOT NULL,
-    prize_name VARCHAR(255) NOT NULL,
-    prize_type ENUM('Major', 'Minor') NOT NULL,
+    prize_name VARCHAR(255) DEFAULT '',
+    prize_type VARCHAR(50) DEFAULT '',
     won_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE,
-    FOREIGN KEY (participant_id) REFERENCES participants(id) ON DELETE CASCADE,
-    FOREIGN KEY (prize_id) REFERENCES prizes(id) ON DELETE CASCADE
+    FOREIGN KEY (participant_id) REFERENCES participants(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Prizes Table
+CREATE TABLE IF NOT EXISTS prizes (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    event_id INT NOT NULL DEFAULT 1,
+    name VARCHAR(255) NOT NULL,
+    image VARCHAR(500) NOT NULL DEFAULT '',
+    quantity INT NOT NULL DEFAULT 1,
+    claimed INT NOT NULL DEFAULT 0,
+    type ENUM('Major', 'Minor') NOT NULL DEFAULT 'Minor',
+    enabled TINYINT(1) NOT NULL DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- Create indexes for better performance
 CREATE INDEX idx_number ON participants(number);
-CREATE INDEX idx_prize_type ON prizes(type);
 CREATE INDEX idx_winner_number ON winners(number);
 CREATE INDEX idx_event_participants ON participants(event_id);
-CREATE INDEX idx_event_prizes ON prizes(event_id);
 CREATE INDEX idx_event_winners ON winners(event_id);
+CREATE INDEX idx_event_prizes ON prizes(event_id);

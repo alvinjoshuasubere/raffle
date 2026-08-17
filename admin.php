@@ -13,6 +13,9 @@ $page = isset($_GET['page']) ? $_GET['page'] : 'events';
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Raffle System - <?php echo htmlspecialchars($current_event_name); ?></title>
     <link rel="stylesheet" href="style.css">
+    <?php if ($page === 'wheel'): ?>
+    <link rel="stylesheet" href="wheel-modern.css?v=2">
+    <?php endif; ?>
     <style>
         .toast-container { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); z-index:99999; display:flex; flex-direction:column-reverse; gap:10px; pointer-events:none; align-items:center; }
         .toast { pointer-events:auto; padding:14px 22px; border-radius:12px; font-size:14px; font-weight:600; color:#fff; box-shadow:0 8px 30px rgba(0,0,0,0.12); animation:toastIn .4s cubic-bezier(.34,1.56,.64,1); max-width:380px; display:flex; align-items:center; gap:10px; }
@@ -96,7 +99,6 @@ $page = isset($_GET['page']) ? $_GET['page'] : 'events';
             <a href="logout.php">Logout</a>
         </div>
     </div>
-
 
     <!-- Main Content -->
     <div class="container">

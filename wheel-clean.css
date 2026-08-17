@@ -1,0 +1,74 @@
+/* Clean raffle wheel - final presentation layer */
+:root{--cw-primary:#c21872;--cw-primary-dark:#9f155f;--cw-ink:#172033;--cw-muted:#667085;--cw-border:#e7eaf0;--cw-bg:#f6f8fb}
+
+body.wheel-active{background:var(--cw-bg)!important;overflow:hidden!important}
+body.wheel-active .container{max-width:none!important;padding:0!important;margin:0!important}
+body.wheel-active .content.fullscreen{width:100%!important;height:calc(100vh - 57px)!important;min-height:0!important;margin:57px 0 0!important;padding:0!important;border:0!important;border-radius:0!important;background:var(--cw-bg)!important;box-shadow:none!important;overflow:hidden!important}
+
+body.wheel-active .container1{position:relative!important;inset:auto!important;width:100%!important;height:100%!important;min-height:0!important;padding:28px clamp(20px,4vw,72px)!important;display:grid!important;grid-template-columns:minmax(0,1fr) 300px!important;align-items:center!important;justify-content:center!important;gap:clamp(24px,4vw,64px)!important;overflow:hidden!important;background:var(--cw-bg)!important}
+
+body.wheel-active .wheel-hero{height:100%!important;min-height:0!important;width:100%!important;min-width:0!important;display:flex!important;align-items:center!important;justify-content:center!important;background:#fff!important;border:1px solid var(--cw-border)!important;border-radius:24px!important;box-shadow:0 12px 40px rgba(15,23,42,.07)!important;overflow:hidden!important}
+body.wheel-active .wheel-hero::before{display:none!important}
+body.wheel-active .wheel-hero-inner{width:100%!important;height:100%!important;padding:10px!important;display:flex!important;align-items:center!important;justify-content:center!important;position:relative!important}
+body.wheel-active .wheel-hero-title,body.wheel-active .wheel-hero-status{display:none!important}
+
+/* A truly square stage keeps the canvas mathematically circular at every viewport size. */
+body.wheel-active .big-wheel-stage{position:relative!important;width:min(78vh,760px,calc(100vw - 430px))!important;height:min(78vh,760px,calc(100vw - 430px))!important;aspect-ratio:1/1!important;max-width:calc(100% - 10px)!important;max-height:calc(100% - 10px)!important;margin:0!important;display:grid!important;place-items:center!important;flex:0 0 auto!important}
+body.wheel-active #wheelCanvas{display:block!important;width:100%!important;height:100%!important;aspect-ratio:1/1!important;max-width:100%!important;max-height:100%!important;object-fit:contain!important;position:relative!important;z-index:2!important;filter:drop-shadow(0 18px 22px rgba(15,23,42,.16))!important}
+body.wheel-active .wheel-lights{display:none!important}
+
+body.wheel-active .big-wheel-pointer{z-index:10!important;top:-4px!important;border-left-width:15px!important;border-right-width:15px!important;border-bottom:34px solid #172033!important}
+body.wheel-active .big-wheel-pointer::after{top:23px!important;background:#f4b942!important}
+body.wheel-active .big-wheel-hub{width:108px!important;height:108px!important;border:7px solid #fff!important;box-shadow:0 8px 24px rgba(15,23,42,.18),inset 0 0 0 2px #e5e7eb!important}
+
+/* Simple control card: only what is needed to run the draw. */
+body.wheel-active .draw-panel{width:300px!important;max-width:300px!important;margin:0!important;align-self:center!important;background:#fff!important;border:1px solid var(--cw-border)!important;border-radius:20px!important;box-shadow:0 12px 40px rgba(15,23,42,.07)!important;overflow:hidden!important}
+body.wheel-active .draw-panel-inner{padding:24px!important}
+body.wheel-active .draw-header-area{margin-bottom:20px!important}
+body.wheel-active .draw-header-icon{width:44px!important;height:44px!important;border-radius:12px!important;background:#fdf1f7!important;border:1px solid #f4d7e5!important}
+body.wheel-active .draw-heading{font-size:19px!important}
+body.wheel-active .draw-subtitle{font-size:11px!important}
+body.wheel-active .no-prize-notice{font-size:11px!important}
+body.wheel-active .draw-label{font-size:11px!important}
+body.wheel-active .prize-select{height:46px!important;border-radius:11px!important}
+body.wheel-active .wheel-status-card,body.wheel-active .wheel-count,body.wheel-active .wheel-last-wrap{display:none!important}
+body.wheel-active .wheel-controls{margin-top:18px!important}
+body.wheel-active .spin-wrap{margin-top:0!important}
+body.wheel-active .btn-spin-big{min-height:58px!important;border-radius:14px!important;background:linear-gradient(135deg,var(--cw-primary-dark),var(--cw-primary))!important;box-shadow:0 10px 22px rgba(194,24,114,.22)!important}
+body.wheel-active .btn-spin-big:hover{transform:translateY(-2px)!important;box-shadow:0 14px 26px rgba(194,24,114,.28)!important}
+
+/* Large, clean winner dialog. */
+body.wheel-active #winnerModal{padding:24px!important}
+body.wheel-active #winnerModal .winner-modal{width:min(760px,94vw)!important;max-width:760px!important;min-height:460px!important;padding:54px 52px 42px!important;border-radius:30px!important;background:#fff!important;box-shadow:0 35px 100px rgba(15,23,42,.28)!important}
+body.wheel-active #winnerModal .wm-trophy-wrap{transform:scale(1.08)!important;margin-bottom:10px!important}
+body.wheel-active #winnerModal .wm-label{font-size:14px!important;letter-spacing:2px!important;color:var(--cw-primary)!important}
+body.wheel-active #winnerModal .winner-name{font-size:clamp(42px,6vw,68px)!important;line-height:1.08!important;margin:18px auto 8px!important;color:var(--cw-ink)!important}
+body.wheel-active #winnerModal .winner-barangay{font-size:18px!important;margin-bottom:24px!important}
+body.wheel-active #winnerModal .wm-ticket{padding:10px 18px!important;margin:10px auto 10px!important}
+body.wheel-active #winnerModal .wm-ticket-number{font-size:20px!important}
+body.wheel-active #winnerModal .wm-prize-card{max-width:500px!important;margin:20px auto 28px!important;padding:16px!important;border-radius:18px!important}
+body.wheel-active #winnerModal .wm-prize-image{width:70px!important;height:70px!important;border-radius:14px!important}
+body.wheel-active #winnerModal .wm-prize-name{font-size:18px!important}
+body.wheel-active #winnerModal .winner-actions{gap:14px!important}
+body.wheel-active #winnerModal .winner-actions .btn{min-width:180px!important;padding:15px 28px!important;font-size:13px!important;border-radius:12px!important}
+
+@media(max-width:900px){
+ body.wheel-active{overflow:auto!important}
+ body.wheel-active .content.fullscreen{height:auto!important;min-height:calc(100vh - 57px)!important;overflow:auto!important}
+ body.wheel-active .container1{height:auto!important;min-height:calc(100vh - 57px)!important;grid-template-columns:1fr!important;padding:18px!important;gap:18px!important;overflow:auto!important}
+ body.wheel-active .wheel-hero{height:auto!important;min-height:calc(100vh - 270px)!important;padding:10px!important}
+ body.wheel-active .big-wheel-stage{width:min(76vw,620px)!important;height:min(76vw,620px)!important;max-width:100%!important;max-height:none!important}
+ body.wheel-active .draw-panel{width:min(100%,420px)!important;max-width:420px!important}
+}
+@media(max-width:520px){
+ body.wheel-active .container1{padding:10px!important}
+ body.wheel-active .wheel-hero{min-height:calc(100vh - 260px)!important;border-radius:18px!important}
+ body.wheel-active .big-wheel-stage{width:min(88vw,500px)!important;height:min(88vw,500px)!important}
+ body.wheel-active .big-wheel-hub{width:76px!important;height:76px!important;border-width:5px!important}
+ body.wheel-active .hub-icon{font-size:20px!important}.hub-text{font-size:9px!important}
+ body.wheel-active .draw-panel{border-radius:16px!important}
+ body.wheel-active .draw-panel-inner{padding:18px!important}
+ body.wheel-active #winnerModal .winner-modal{width:96vw!important;min-height:0!important;padding:40px 20px 26px!important;border-radius:24px!important}
+ body.wheel-active #winnerModal .winner-name{font-size:38px!important}
+ body.wheel-active #winnerModal .winner-actions .btn{min-width:140px!important}
+}

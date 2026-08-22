@@ -28,6 +28,15 @@ if (isset($_POST['draw_winner'])) {
 
     $participant = $participant_query->fetch_assoc();
 
+    if ($participant['status'] === 'winner') {
+        echo json_encode(['success' => false, 'message' => 'This participant has already won and cannot be selected again.']);
+        exit;
+    }
+    if ($participant['status'] === 'removed') {
+        echo json_encode(['success' => false, 'message' => 'This participant has been removed from the list.']);
+        exit;
+    }
+
     echo json_encode([
         'success' => true,
         'winner' => [
@@ -44,7 +53,7 @@ if (isset($_POST['search_participant_prefix'])) {
     $prefix = ltrim($_POST['number_prefix'], '0');
     if ($prefix === '') $prefix = '0';
 
-    $stmt = $conn->prepare("SELECT number, name FROM participants WHERE event_id = ?");
+    $stmt = $conn->prepare("SELECT number, name FROM participants WHERE event_id = ? AND (status IS NULL OR status = '')");
     $stmt->bind_param("i", $current_event_id);
     $stmt->execute();
     $result = $stmt->get_result();
@@ -89,9 +98,28 @@ if (isset($_POST['confirm_winner'])) {
     $stmt->bind_param("iiisssss", $current_event_id, $participant_id, $prize_id, $number, $name, $barangay, $prize_name, $prize_type);
 
     if ($stmt->execute()) {
+        $upd_status = $conn->prepare("UPDATE participants SET status = 'winner' WHERE id = ? AND event_id = ?");
+        $upd_status->bind_param("ii", $participant_id, $current_event_id);
+        $upd_status->execute();
+        $upd_status->close();
         echo json_encode(['success' => true, 'message' => 'Winner confirmed successfully!']);
     } else {
         echo json_encode(['success' => false, 'message' => 'Failed to confirm winner.']);
+    }
+    $stmt->close();
+    exit;
+}
+
+// Handle Remove from List (tag status only, keep record)
+if (isset($_POST['remove_participant'])) {
+    $participant_id = intval($_POST['participant_id']);
+    $stmt = $conn->prepare("UPDATE participants SET status = 'removed' WHERE id = ? AND event_id = ?");
+    $stmt->bind_param("ii", $participant_id, $current_event_id);
+
+    if ($stmt->execute()) {
+        echo json_encode(['success' => true, 'message' => 'Participant removed from the draw list. Record kept.']);
+    } else {
+        echo json_encode(['success' => false, 'message' => 'Failed to remove participant.']);
     }
     $stmt->close();
     exit;
@@ -179,36 +207,33 @@ $past_winners = $stmt_pw->get_result();
   </div>
 </div>
 
-<!-- Elegant Winner Modal -->
+<!-- Winner Modal -->
 <div id="winnerModal" class="modal">
+    <div class="modal-overlay"></div>
     <div class="modal-content winner-modal">
         <span class="close">&times;</span>
-        <div class="wm-trophy-wrap">
-            <div class="wm-trophy">🏆</div>
-            <div class="wm-sparkle s1">✦</div>
-            <div class="wm-sparkle s2">✦</div>
-            <div class="wm-sparkle s3">✦</div>
-        </div>
 
-        <div class="wm-label">🎉 Congratulations! 🎉</div>
-        <div class="winner-name" id="winner_name"></div>
+        <div class="wm-congrats">Congratulations!</div>
 
         <div class="wm-ticket">
             <span class="wm-ticket-label">Ticket No.</span>
             <span class="wm-ticket-number" id="winner_number"></span>
         </div>
+
+        <div class="winner-name" id="winner_name"></div>
         <div class="winner-barangay" id="winner_barangay"></div>
 
         <div id="wm_prize_card" class="wm-prize-card">
             <div class="wm-prize-image" id="wm_prize_image">🎁</div>
             <div class="wm-prize-info">
-                <div class="wm-prize-label">Drawn Prize</div>
+                <div class="wm-prize-label">Prize</div>
                 <div class="wm-prize-name" id="wm_prize_name">No Prize Selected</div>
             </div>
         </div>
 
         <div class="winner-actions">
             <button type="button" id="confirm_btn" class="btn btn-confirm">Confirm Winner</button>
+            <button type="button" id="remove_btn" class="btn btn-remove">Remove from List</button>
             <button type="button" class="btn btn-cancel close-modal">Cancel</button>
         </div>
     </div>
@@ -232,10 +257,21 @@ function getSelectedPrize() {
 document.addEventListener('DOMContentLoaded', function() {
     const drawBtn = document.getElementById('draw_btn');
     const resetBtn = document.getElementById('reset_drawn_number');
+    const prizeSelect = document.getElementById('prize_select');
+
+    if (prizeSelect && prizeSelect.options.length > 1) {
+        prizeSelect.selectedIndex = 1;
+    }
 
     if (drawBtn) {
         drawBtn.addEventListener('click', function() {
             const drawnNumber = document.getElementById('drawn_number').value.trim();
+            const prizeSelect = document.getElementById('prize_select');
+
+            if (!prizeSelect.value || prizeSelect.value === '0') {
+                showToast('Please select a prize first.', 'error');
+                return;
+            }
 
             if (!drawnNumber) {
                 showToast('Please enter a number.', 'error');
@@ -328,6 +364,37 @@ function confirmWinner(winner) {
 document.getElementById('confirm_btn').addEventListener('click', function() {
     if (!currentWinner) return;
     confirmWinner(currentWinner);
+});
+
+function removeFromList(winner) {
+    if (!confirm('Remove this participant from the draw list?\n\nThe record will be kept, but they can no longer be drawn.')) return;
+
+    const formData = new FormData();
+    formData.append('remove_participant', '1');
+    formData.append('participant_id', winner.participant_id);
+
+    fetch('draw.php', { method: 'POST', body: formData })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showToast(data.message, 'success');
+                document.getElementById('winnerModal').classList.remove('show');
+                if (typeof stopConfetti === 'function') stopConfetti();
+                currentWinner = null;
+                document.getElementById('drawn_number').value = '';
+                document.getElementById('participant_name_hint').innerHTML = '';
+            } else {
+                showToast(data.message, 'error');
+            }
+        })
+        .catch(() => {
+            showToast('An error occurred. Please try again.', 'error');
+        });
+}
+
+document.getElementById('remove_btn').addEventListener('click', function() {
+    if (!currentWinner) return;
+    removeFromList(currentWinner);
 });
 
 document.querySelectorAll('.close, .close-modal').forEach(element => {

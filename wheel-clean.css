@@ -38,19 +38,20 @@ body.wheel-active .btn-spin-big{min-height:58px!important;border-radius:14px!imp
 body.wheel-active .btn-spin-big:hover{transform:translateY(-2px)!important;box-shadow:0 14px 26px rgba(194,24,114,.28)!important}
 
 /* Large, clean winner dialog. */
-body.wheel-active #winnerModal{padding:24px!important}
-body.wheel-active #winnerModal .winner-modal{width:min(760px,94vw)!important;max-width:760px!important;min-height:460px!important;padding:54px 52px 42px!important;border-radius:30px!important;background:#fff!important;box-shadow:0 35px 100px rgba(15,23,42,.28)!important}
-body.wheel-active #winnerModal .wm-trophy-wrap{transform:scale(1.08)!important;margin-bottom:10px!important}
-body.wheel-active #winnerModal .wm-label{font-size:14px!important;letter-spacing:2px!important;color:var(--cw-primary)!important}
-body.wheel-active #winnerModal .winner-name{font-size:clamp(42px,6vw,68px)!important;line-height:1.08!important;margin:18px auto 8px!important;color:var(--cw-ink)!important}
-body.wheel-active #winnerModal .winner-barangay{font-size:18px!important;margin-bottom:24px!important}
-body.wheel-active #winnerModal .wm-ticket{padding:10px 18px!important;margin:10px auto 10px!important}
-body.wheel-active #winnerModal .wm-ticket-number{font-size:20px!important}
-body.wheel-active #winnerModal .wm-prize-card{max-width:500px!important;margin:20px auto 28px!important;padding:16px!important;border-radius:18px!important}
-body.wheel-active #winnerModal .wm-prize-image{width:70px!important;height:70px!important;border-radius:14px!important}
-body.wheel-active #winnerModal .wm-prize-name{font-size:18px!important}
-body.wheel-active #winnerModal .winner-actions{gap:14px!important}
-body.wheel-active #winnerModal .winner-actions .btn{min-width:180px!important;padding:15px 28px!important;font-size:13px!important;border-radius:12px!important}
+body.wheel-active #winnerModal .modal-overlay{background:#fff!important}
+body.wheel-active #winnerModal .winner-modal .close{color:rgba(0,0,0,.3)!important}
+body.wheel-active #winnerModal .winner-modal .close:hover{color:rgba(0,0,0,.6)!important}
+body.wheel-active #winnerModal .wm-congrats{color:rgba(0,0,0,.4)!important}
+body.wheel-active #winnerModal .winner-name{color:#0b0f2a!important;text-shadow:none!important}
+body.wheel-active #winnerModal .winner-barangay{background:rgba(139,92,246,.1)!important;border-color:rgba(139,92,246,.25)!important;color:#7c3aed!important}
+body.wheel-active #winnerModal .wm-ticket{background:rgba(0,0,0,.04)!important;border-color:rgba(0,0,0,.08)!important}
+body.wheel-active #winnerModal .wm-ticket-label{color:rgba(0,0,0,.35)!important}
+body.wheel-active #winnerModal .wm-ticket-number{color:#0891b2!important}
+body.wheel-active #winnerModal .wm-prize-card{background:rgba(0,0,0,.04)!important;border-color:rgba(0,0,0,.08)!important}
+body.wheel-active #winnerModal .wm-prize-label{color:rgba(0,0,0,.35)!important}
+body.wheel-active #winnerModal .wm-prize-name{color:#1e293b!important}
+body.wheel-active #winnerModal .winner-actions .btn-cancel{background:rgba(0,0,0,.05)!important;color:rgba(0,0,0,.4)!important;border-color:rgba(0,0,0,.1)!important}
+body.wheel-active #winnerModal .winner-actions .btn-cancel:hover{background:rgba(0,0,0,.08)!important;color:rgba(0,0,0,.6)!important}
 
 @media(max-width:900px){
  body.wheel-active{overflow:auto!important}
@@ -66,9 +67,6 @@ body.wheel-active #winnerModal .winner-actions .btn{min-width:180px!important;pa
  body.wheel-active .big-wheel-stage{width:min(88vw,500px)!important;height:min(88vw,500px)!important}
  body.wheel-active .big-wheel-hub{width:76px!important;height:76px!important;border-width:5px!important}
  body.wheel-active .hub-icon{font-size:20px!important}.hub-text{font-size:9px!important}
- body.wheel-active .draw-panel{border-radius:16px!important}
- body.wheel-active .draw-panel-inner{padding:18px!important}
- body.wheel-active #winnerModal .winner-modal{width:96vw!important;min-height:0!important;padding:40px 20px 26px!important;border-radius:24px!important}
- body.wheel-active #winnerModal .winner-name{font-size:38px!important}
- body.wheel-active #winnerModal .winner-actions .btn{min-width:140px!important}
+  body.wheel-active .draw-panel{border-radius:16px!important}
+  body.wheel-active .draw-panel-inner{padding:18px!important}
 }

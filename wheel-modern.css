@@ -339,22 +339,16 @@ body.wheel-active #wheel_participant_count { color: var(--wheel-primary); font-s
 body.wheel-active .wheel-last-wrap { margin-top: 18px; padding-top: 16px; border-top: 1px solid #edf0f5; text-align: center; }
 body.wheel-active .wheel-last { color: #98a2b3; font-size: 10px; font-weight: 700; }
 
-/* More polished winner modal while keeping the same confirm/redraw behavior. */
-body.wheel-active .winner-modal {
-  width: min(520px, 94vw);
-  padding: 42px 34px 30px;
-  border: 1px solid rgba(255,255,255,.6);
-  box-shadow: 0 35px 100px rgba(12,18,32,.24);
-}
-body.wheel-active .wm-label { color: var(--wheel-primary); font-size: 12px; font-weight: 900; text-transform: uppercase; letter-spacing: 1.8px; }
-body.wheel-active .wm-ticket { display: inline-flex; align-items: center; gap: 10px; margin: 8px auto 6px; padding: 8px 14px; border-radius: 999px; background: #f8f9fc; border: 1px solid #edf0f5; }
-body.wheel-active .wm-ticket-label { color: #98a2b3; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; }
-body.wheel-active .wm-ticket-number { color: var(--wheel-ink); font-size: 16px; font-weight: 900; }
-body.wheel-active .wm-prize-card { margin: 18px auto 24px; max-width: 360px; border: 1px solid #edf0f5; background: #fafbfc; border-radius: 16px; padding: 12px; display: flex; align-items: center; gap: 12px; text-align: left; }
-body.wheel-active .wm-prize-image { width: 58px; height: 58px; display: grid; place-items: center; border-radius: 12px; background: #fff; overflow: hidden; flex: 0 0 auto; }
-body.wheel-active .wm-prize-image img { width: 100%; height: 100%; object-fit: cover; }
-body.wheel-active .wm-prize-label { color: #98a2b3; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .8px; }
-body.wheel-active .wm-prize-name { color: #344054; font-size: 13px; font-weight: 850; margin-top: 3px; }
+/* Winner modal fullscreen overrides. */
+body.wheel-active .winner-modal .close { color: rgba(255,255,255,.5) !important; }
+body.wheel-active .winner-modal .close:hover { color: #fff !important; }
+body.wheel-active .wm-congrats { color: #a5b4fc; font-size: 22px; font-weight: 600; text-transform: uppercase; letter-spacing: 8px; }
+body.wheel-active .wm-ticket { background: rgba(255,255,255,.06) !important; border-color: rgba(255,255,255,.12) !important; }
+body.wheel-active .wm-ticket-label { color: rgba(255,255,255,.4) !important; font-size: 10px; font-weight: 700; }
+body.wheel-active .wm-ticket-number { color: #22d3ee !important; font-size: 20px; font-weight: 800; }
+body.wheel-active .wm-prize-card { background: rgba(255,255,255,.05) !important; border-color: rgba(255,255,255,.1) !important; }
+body.wheel-active .wm-prize-label { color: rgba(255,255,255,.35) !important; }
+body.wheel-active .wm-prize-name { color: #e2e8f0 !important; }
 
 @media (max-width: 1050px) {
   body.wheel-active { overflow: auto; }

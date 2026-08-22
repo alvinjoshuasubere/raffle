@@ -45,6 +45,9 @@ CREATE TABLE IF NOT EXISTS participants (
     barangay VARCHAR(255) NOT NULL,
     purok VARCHAR(255) NOT NULL DEFAULT '',
     contact_number VARCHAR(50) NOT NULL,
+    photo_data LONGBLOB DEFAULT NULL,
+    registration_attachment LONGBLOB DEFAULT NULL,
+    status VARCHAR(20) DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE KEY unique_event_number (event_id, number),
     FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE

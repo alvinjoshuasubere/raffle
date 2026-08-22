@@ -25,9 +25,28 @@ if (isset($_POST['confirm_winner'])) {
     $stmt->bind_param("iiisssss", $current_event_id, $participant_id, $prize_id, $number, $name, $barangay, $prize_name, $prize_type);
 
     if ($stmt->execute()) {
+        $upd_status = $conn->prepare("UPDATE participants SET status = 'winner' WHERE id = ? AND event_id = ?");
+        $upd_status->bind_param("ii", $participant_id, $current_event_id);
+        $upd_status->execute();
+        $upd_status->close();
         echo json_encode(['success' => true, 'message' => 'Winner confirmed successfully!']);
     } else {
         echo json_encode(['success' => false, 'message' => 'Failed to confirm winner.']);
+    }
+    $stmt->close();
+    exit;
+}
+
+// Handle Remove from List (tag status only, keep record)
+if (isset($_POST['remove_participant'])) {
+    $participant_id = intval($_POST['participant_id']);
+    $stmt = $conn->prepare("UPDATE participants SET status = 'removed' WHERE id = ? AND event_id = ?");
+    $stmt->bind_param("ii", $participant_id, $current_event_id);
+
+    if ($stmt->execute()) {
+        echo json_encode(['success' => true, 'message' => 'Participant removed from the draw list. Record kept.']);
+    } else {
+        echo json_encode(['success' => false, 'message' => 'Failed to remove participant.']);
     }
     $stmt->close();
     exit;
@@ -46,7 +65,7 @@ while ($p = $prizes_result->fetch_assoc()) {
 $no_prizes = empty($prizes);
 
 // Fetch all participants for the wheel
-$wheel_stmt = $conn->prepare("SELECT id, number, name, barangay FROM participants WHERE event_id = ? ORDER BY CAST(number AS UNSIGNED) ASC");
+$wheel_stmt = $conn->prepare("SELECT id, number, name, barangay FROM participants WHERE event_id = ? AND (status IS NULL OR status = '') ORDER BY CAST(number AS UNSIGNED) ASC");
 $wheel_stmt->bind_param("i", $current_event_id);
 $wheel_stmt->execute();
 $wheel_participants = $wheel_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
@@ -142,36 +161,33 @@ $wheel_participants = $wheel_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
   </div>
 </div>
 
-<!-- Elegant Winner Modal -->
+<!-- Winner Modal -->
 <div id="winnerModal" class="modal">
+    <div class="modal-overlay"></div>
     <div class="modal-content winner-modal">
         <span class="close">&times;</span>
-        <div class="wm-trophy-wrap">
-            <div class="wm-trophy">🏆</div>
-            <div class="wm-sparkle s1">✦</div>
-            <div class="wm-sparkle s2">✦</div>
-            <div class="wm-sparkle s3">✦</div>
-        </div>
 
-        <div class="wm-label">🎉 Congratulations! 🎉</div>
-        <div class="winner-name" id="winner_name"></div>
+        <div class="wm-congrats">Congratulations!</div>
 
         <div class="wm-ticket">
             <span class="wm-ticket-label">Ticket No.</span>
             <span class="wm-ticket-number" id="winner_number"></span>
         </div>
+
+        <div class="winner-name" id="winner_name"></div>
         <div class="winner-barangay" id="winner_barangay"></div>
 
         <div id="wm_prize_card" class="wm-prize-card">
             <div class="wm-prize-image" id="wm_prize_image">🎁</div>
             <div class="wm-prize-info">
-                <div class="wm-prize-label">Drawn Prize</div>
+                <div class="wm-prize-label">Prize</div>
                 <div class="wm-prize-name" id="wm_prize_name">No Prize Selected</div>
             </div>
         </div>
 
         <div class="winner-actions">
             <button type="button" id="confirm_btn" class="btn btn-confirm">Confirm Winner</button>
+            <button type="button" id="remove_btn" class="btn btn-remove">Remove from List</button>
             <button type="button" class="btn btn-cancel close-modal">Redraw</button>
         </div>
     </div>
@@ -198,6 +214,12 @@ function getSelectedPrize() {
 
 document.addEventListener('DOMContentLoaded', function() {
     const spinBtn = document.getElementById('spin_btn');
+    const prizeSelect = document.getElementById('prize_select');
+
+    if (prizeSelect && prizeSelect.options.length > 1) {
+        prizeSelect.selectedIndex = 1;
+    }
+
     if (spinBtn) {
         spinBtn.addEventListener('click', spinWheel);
     }
@@ -206,7 +228,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 /* ===== WHEEL ===== */
-const WHEEL_COLORS = ['#ec4899', '#a855f7', '#6366f1', '#0ea5e9', '#14b8a6', '#84cc16', '#f59e0b', '#f43f5e'];
+const WHEEL_COLORS = ['#ec4899', '#8b5cf6', '#6366f1', '#0ea5e9', '#14b8a6', '#22c55e', '#f59e0b', '#ef4444', '#a855f7', '#06b6d4', '#84cc16', '#f97316'];
 
 function shadeHex(hex, pct) {
     const num = parseInt(hex.replace('#', ''), 16);
@@ -450,6 +472,12 @@ function spinWheel() {
         return;
     }
 
+    const prizeSelect = document.getElementById('prize_select');
+    if (!prizeSelect.value || prizeSelect.value === '0') {
+        showToast('Please select a prize first.', 'error');
+        return;
+    }
+
     wheelSpinning = true;
     winningSegmentIndex = null;
     const spinBtnEl = document.getElementById('spin_btn');
@@ -458,15 +486,26 @@ function spinWheel() {
     document.getElementById('wheelLights').classList.add('lights-on');
     setWheelStatus('🎡', 'Spinning the wheel...');
 
-    const fullTurns = 5 + Math.floor(Math.random() * 4);
-    const targetAngle = wheelAngle + fullTurns * 2 * Math.PI;
+    const fullTurns = 8 + Math.floor(Math.random() * 6);
+    const extraAngle = Math.random() * 2 * Math.PI;
+    const targetAngle = wheelAngle + fullTurns * 2 * Math.PI + extraAngle;
     const startAngle = wheelAngle;
-    const duration = 5000;
+    const duration = 6000;
     const startTime = performance.now();
+    const trembleStart = 0.78;
 
     function frame(now) {
         const t = Math.min((now - startTime) / duration, 1);
-        const eased = 1 - Math.pow(1 - t, 5);
+        let eased;
+        if (t < trembleStart) {
+            eased = 1 - Math.pow(1 - (t / trembleStart), 5);
+        } else {
+            const tt = (t - trembleStart) / (1 - trembleStart);
+            const slow = 1 - Math.pow(1 - tt, 3);
+            eased = (1 - Math.pow(1 - trembleStart, 5)) + slow * (1 - (1 - Math.pow(1 - trembleStart, 5)));
+            const tremble = Math.sin(tt * Math.PI * 12) * (1 - tt) * 0.008;
+            eased += tremble;
+        }
         wheelAngle = startAngle + (targetAngle - startAngle) * eased;
         drawWheel();
         if (t < 1) {
@@ -502,7 +541,7 @@ function spinWheel() {
             setWheelStatus('🏆', 'Winner: Ticket #' + winner.number);
             const lastEl = document.getElementById('wheel_last_winner');
             if (lastEl) lastEl.textContent = 'Last winner: Ticket #' + winner.number;
-            setTimeout(function() { showWinnerModal(currentWinner); }, 650);
+            setTimeout(function() { showWinnerModal(currentWinner); }, 800);
         }
     }
 
@@ -577,6 +616,44 @@ function confirmWinner(winner) {
 document.getElementById('confirm_btn').addEventListener('click', function() {
     if (!currentWinner) return;
     confirmWinner(currentWinner);
+});
+
+function removeFromList(winner) {
+    if (!confirm('Remove this participant from the draw list?\n\nThe record will be kept, but they can no longer be drawn.')) return;
+
+    const formData = new FormData();
+    formData.append('remove_participant', '1');
+    formData.append('participant_id', winner.participant_id);
+
+    fetch('wheel.php', { method: 'POST', body: formData })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showToast(data.message, 'success');
+
+                const idx = WHEEL_DATA.findIndex(w => w.id === winner.participant_id);
+                if (idx !== -1) WHEEL_DATA.splice(idx, 1);
+                const countEl = document.getElementById('wheel_participant_count');
+                if (countEl) countEl.textContent = WHEEL_DATA.length;
+                winningSegmentIndex = null;
+                drawWheel();
+                setWheelStatus('🎯', 'Ready to spin the wheel');
+
+                document.getElementById('winnerModal').classList.remove('show');
+                if (typeof stopConfetti === 'function') stopConfetti();
+                currentWinner = null;
+            } else {
+                showToast(data.message, 'error');
+            }
+        })
+        .catch(() => {
+            showToast('An error occurred. Please try again.', 'error');
+        });
+}
+
+document.getElementById('remove_btn').addEventListener('click', function() {
+    if (!currentWinner) return;
+    removeFromList(currentWinner);
 });
 
 document.querySelectorAll('.close, .close-modal').forEach(element => {

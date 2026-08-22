@@ -50,25 +50,46 @@ if (!file_exists($json_file)) {
 
 $success = null;
 $error = null;
+$error_step = 1;
 $submitted = [];
 
-if (isset($_POST['register'])) {
-    foreach (['lastname','firstname','middlename','birthdate','province','city','barangay','purok','contact_number'] as $f) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
+    foreach (['lastname','firstname','middlename','birthdate','barangay','purok','contact_number'] as $f) {
         $submitted[$f] = strtoupper(trim($_POST[$f] ?? ''));
     }
     $lastname = $submitted['lastname'];
     $firstname = $submitted['firstname'];
     $middlename = $submitted['middlename'];
     $birthdate = $submitted['birthdate'];
-    $province = $submitted['province'] ?: 'SOUTH COTABATO';
-    $city = $submitted['city'] ?: 'KORONADAL';
+    $province = 'South Cotabato';
+    $city = 'City of Koronadal';
     $barangay = $submitted['barangay'];
     $purok = $submitted['purok'];
     $contact = $submitted['contact_number'];
 
-    if (empty($lastname) || empty($firstname) || empty($middlename) || empty($birthdate) || empty($barangay) || empty($contact)) {
+    $photo_data = null;
+    $reg_attachment = null;
+
+    if (!empty($_FILES['photo_data']['tmp_name'])) {
+        if ($_FILES['photo_data']['size'] <= 5 * 1024 * 1024) {
+            $photo_data = file_get_contents($_FILES['photo_data']['tmp_name']);
+        } else {
+            $error = 'Profile image must be 5MB or less.';
+            $error_step = 2;
+        }
+    }
+    if (!$error && !empty($_FILES['registration_attachment']['tmp_name'])) {
+        if ($_FILES['registration_attachment']['size'] <= 10 * 1024 * 1024) {
+            $reg_attachment = file_get_contents($_FILES['registration_attachment']['tmp_name']);
+        } else {
+            $error = 'Attachment must be 10MB or less.';
+            $error_step = 2;
+        }
+    }
+
+    if (!$error && (empty($lastname) || empty($firstname) || empty($middlename) || empty($birthdate) || empty($barangay) || empty($contact))) {
         $error = 'Please fill in all required fields.';
-    } else {
+    } elseif (!$error) {
         // Load JSON data for duplicate check
         $fp = fopen($json_file, 'c+');
         if (flock($fp, LOCK_EX)) {
@@ -125,8 +146,8 @@ if (isset($_POST['register'])) {
                 rewind($fp);
                 fwrite($fp, json_encode($jdata, JSON_PRETTY_PRINT));
 
-                $ins = $conn->prepare("INSERT INTO participants (event_id, number, lastname, firstname, middlename, name, birthdate, province, city, barangay, purok, contact_number) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-                $ins->bind_param("isssssssssss", $current_event_id, $number, $lastname, $firstname, $middlename, $fullname, $birthdate, $province, $city, $barangay, $purok, $contact);
+                $ins = $conn->prepare("INSERT INTO participants (event_id, number, lastname, firstname, middlename, name, birthdate, province, city, barangay, purok, contact_number, photo_data, registration_attachment) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                $ins->bind_param("isssssssssssbb", $current_event_id, $number, $lastname, $firstname, $middlename, $fullname, $birthdate, $province, $city, $barangay, $purok, $contact, $photo_data, $reg_attachment);
                 $ins->execute();
                 $ins->close();
 
@@ -281,6 +302,12 @@ if (isset($_POST['register'])) {
             box-shadow:0 0 0 3px rgba(244,114,182,.1);
         }
         .fld input::placeholder { color:var(--gray-300); font-weight:400; }
+        .fld input[type="file"] {
+            padding:10px 14px;
+            font-size:13px;
+            font-weight:500;
+            color:var(--gray-500);
+        }
         .fld select:disabled { opacity:.4; cursor:not-allowed; background:var(--gray-50); }
 
         /* ── Button ── */
@@ -377,6 +404,83 @@ if (isset($_POST['register'])) {
             position:relative; z-index:1;
         }
 
+        /* ── Stepper ── */
+        .stepper {
+            display:flex; align-items:center; justify-content:center;
+            gap:0; margin-bottom:28px; padding:0 10px;
+        }
+        .step-item {
+            display:flex; align-items:center; gap:8px;
+        }
+        .step-circle {
+            width:32px; height:32px; border-radius:50%;
+            display:flex; align-items:center; justify-content:center;
+            font-size:13px; font-weight:700;
+            background:var(--gray-200); color:var(--gray-400);
+            transition:all .3s ease;
+        }
+        .step-item.active .step-circle {
+            background:linear-gradient(135deg, var(--pink-500), var(--pink-400));
+            color:#fff;
+            box-shadow:0 4px 14px rgba(236,73,153,.3);
+        }
+        .step-item.done .step-circle {
+            background:#10b981; color:#fff;
+        }
+        .step-label {
+            font-size:12px; font-weight:600; color:var(--gray-400);
+            transition:color .3s ease;
+        }
+        .step-item.active .step-label,
+        .step-item.done .step-label { color:var(--gray-900); }
+        .step-line {
+            width:60px; height:2px; margin:0 8px;
+            background:var(--gray-200);
+            transition:background .3s ease;
+        }
+        .step-line.done { background:#10b981; }
+
+        .step-content { display:none; }
+        .step-content.active { display:block; animation:fadeIn .3s ease; }
+
+        .btn-row {
+            display:flex; gap:12px; margin-top:10px;
+        }
+        .btn-row .btn { flex:1; }
+        .btn-secondary {
+            background:var(--gray-200); color:var(--gray-600);
+            box-shadow:none;
+        }
+        .btn-secondary:hover {
+            background:var(--gray-300); transform:translateY(-2px);
+            box-shadow:none;
+        }
+
+        .file-drop {
+            border:2px dashed var(--gray-200); border-radius:14px;
+            padding:32px 20px; text-align:center;
+            cursor:pointer; transition:all .25s ease;
+        }
+        .file-drop:hover,
+        .file-drop.dragover {
+            border-color:var(--pink-400);
+            background:rgba(244,114,182,.03);
+        }
+        .file-drop input[type="file"] { display:none; }
+        .file-drop .drop-icon {
+            font-size:36px; margin-bottom:8px;
+        }
+        .file-drop .drop-label {
+            font-size:14px; font-weight:600; color:var(--gray-600);
+        }
+        .file-drop .drop-hint {
+            font-size:12px; color:var(--gray-400); margin-top:4px;
+        }
+        .file-drop .file-name {
+            font-size:13px; font-weight:600; color:var(--pink-500);
+            margin-top:8px; word-break:break-all;
+        }
+
         #confetti { position:fixed; inset:0; pointer-events:none; z-index:1000; }
     </style>
 </head>
@@ -418,74 +522,152 @@ if (isset($_POST['register'])) {
                 <div class="msg msg-err"><?php echo htmlspecialchars($error); ?></div>
             <?php endif; ?>
 
-            <form id="regForm" method="POST" autocomplete="off" novalidate>
-                <div class="grid">
+            <form id="regForm" method="POST" autocomplete="off" novalidate enctype="multipart/form-data">
 
-                    <div class="fld">
-                        <label for="lastname">Lastname <span class="star">*</span></label>
-                        <div class="ctrl">
-                            <input type="text" name="lastname" id="lastname" placeholder="e.g. Santos" value="<?php echo htmlspecialchars($submitted['lastname'] ?? ''); ?>" required>
-                        </div>
+                <!-- Stepper -->
+                <div class="stepper">
+                    <div class="step-item active" id="stepItem1">
+                        <div class="step-circle">1</div>
+                        <span class="step-label">Personal Info</span>
                     </div>
-
-                    <div class="fld">
-                        <label for="firstname">Firstname <span class="star">*</span></label>
-                        <div class="ctrl">
-                            <input type="text" name="firstname" id="firstname" placeholder="e.g. Maria" value="<?php echo htmlspecialchars($submitted['firstname'] ?? ''); ?>" required>
-                        </div>
+                    <div class="step-line" id="stepLine1"></div>
+                    <div class="step-item" id="stepItem2">
+                        <div class="step-circle">2</div>
+                        <span class="step-label">Documents</span>
                     </div>
-
-                    <div class="fld">
-                        <label for="middlename">Middlename <span class="star">*</span></label>
-                        <div class="ctrl">
-                            <input type="text" name="middlename" id="middlename" placeholder="e.g. Reyes" value="<?php echo htmlspecialchars($submitted['middlename'] ?? ''); ?>" required>
-                        </div>
-                    </div>
-
-                    <div class="fld">
-                        <label for="birthdate">Birthdate <span class="star">*</span></label>
-                        <div class="ctrl">
-                            <input type="date" name="birthdate" id="birthdate" value="<?php echo htmlspecialchars($submitted['birthdate'] ?? ''); ?>" required>
-                        </div>
-                    </div>
-
-                    <div class="fld">
-                        <label for="province">Province <span class="star">*</span></label>
-                        <select name="province" id="province" required>
-                            <option value="">Select your province</option>
-                        </select>
-                    </div>
-
-                    <div class="fld">
-                        <label for="city">City / Municipality <span class="star">*</span></label>
-                        <select name="city" id="city" required disabled>
-                            <option value="">Select province first</option>
-                        </select>
-                    </div>
-
-                    <div class="fld">
-                        <label for="barangay">Barangay <span class="star">*</span></label>
-                        <select name="barangay" id="barangay" required disabled>
-                            <option value="">Select city first</option>
-                        </select>
-                    </div>
-
-                    <div class="fld">
-                        <label for="purok">Purok <span style="color:var(--gray-300);font-size:11px;font-weight:400;">(optional)</span></label>
-                        <div class="ctrl">
-                            <input type="text" name="purok" id="purok" placeholder="e.g. Purok 3" value="<?php echo htmlspecialchars($submitted['purok'] ?? ''); ?>">
-                        </div>
-                    </div>
-
-                    <div class="fld span2">
-                        <label for="contact_number">Contact Number <span class="star">*</span></label>
-                        <div class="ctrl">
-                            <input type="text" name="contact_number" id="contact_number" placeholder="e.g. 0917 123 4567" value="<?php echo htmlspecialchars($submitted['contact_number'] ?? ''); ?>" required>
-                        </div>
-                    </div>
-
                 </div>
-                <button type="submit" name="register" class="btn">Register Now</button>
+
+                <!-- Step 1: Personal Info -->
+                <div class="step-content active" id="step1">
+                    <div class="grid">
+
+                        <div class="fld">
+                            <label for="lastname">Lastname <span class="star">*</span></label>
+                            <div class="ctrl">
+                                <input type="text" name="lastname" id="lastname" placeholder="e.g. Santos" value="<?php echo htmlspecialchars($submitted['lastname'] ?? ''); ?>" required>
+                            </div>
+                        </div>
+
+                        <div class="fld">
+                            <label for="firstname">Firstname <span class="star">*</span></label>
+                            <div class="ctrl">
+                                <input type="text" name="firstname" id="firstname" placeholder="e.g. Maria" value="<?php echo htmlspecialchars($submitted['firstname'] ?? ''); ?>" required>
+                            </div>
+                        </div>
+
+                        <div class="fld">
+                            <label for="middlename">Middlename <span class="star">*</span></label>
+                            <div class="ctrl">
+                                <input type="text" name="middlename" id="middlename" placeholder="e.g. Reyes" value="<?php echo htmlspecialchars($submitted['middlename'] ?? ''); ?>" required>
+                            </div>
+                        </div>
+
+                        <div class="fld">
+                            <label for="birthdate">Birthdate <span class="star">*</span></label>
+                            <div class="ctrl">
+                                <input type="date" name="birthdate" id="birthdate" value="<?php echo htmlspecialchars($submitted['birthdate'] ?? ''); ?>" required>
+                            </div>
+                        </div>
+
+                        <div class="fld">
+                            <label for="province">Province</label>
+                            <select name="province" id="province" disabled>
+                                <option value="South Cotabato" selected>South Cotabato</option>
+                            </select>
+                        </div>
+
+                        <div class="fld">
+                            <label for="city">City / Municipality</label>
+                            <select name="city" id="city" disabled>
+                                <option value="City of Koronadal" selected>City of Koronadal</option>
+                            </select>
+                        </div>
+
+                        <div class="fld">
+                            <label for="barangay">Barangay <span class="star">*</span></label>
+                            <select name="barangay" id="barangay" required>
+                                <option value="">— Select Barangay —</option>
+                                <option value="Assumption">Assumption</option>
+                                <option value="Avanceña">Avanceña</option>
+                                <option value="Cacub">Cacub</option>
+                                <option value="Caloocan">Caloocan</option>
+                                <option value="Carpenter Hill">Carpenter Hill</option>
+                                <option value="Concepcion">Concepcion</option>
+                                <option value="Esperanza">Esperanza</option>
+                                <option value="General Paulino Santos">General Paulino Santos</option>
+                                <option value="Mabini">Mabini</option>
+                                <option value="Magsaysay">Magsaysay</option>
+                                <option value="Mambucal">Mambucal</option>
+                                <option value="Morales">Morales</option>
+                                <option value="Namnama">Namnama</option>
+                                <option value="New Pangasinan">New Pangasinan</option>
+                                <option value="Paraiso">Paraiso</option>
+                                <option value="Rotonda">Rotonda</option>
+                                <option value="San Isidro">San Isidro</option>
+                                <option value="San Jose">San Jose</option>
+                                <option value="San Roque">San Roque</option>
+                                <option value="Santa Cruz">Santa Cruz</option>
+                                <option value="Santo Niño">Santo Niño</option>
+                                <option value="Saravia">Saravia</option>
+                                <option value="Topland">Topland</option>
+                                <option value="Zone I (Pob.)">Zone I (Pob.)</option>
+                                <option value="Zone II (Pob.)">Zone II (Pob.)</option>
+                                <option value="Zone III (Pob.)">Zone III (Pob.)</option>
+                                <option value="Zone IV (Pob.)">Zone IV (Pob.)</option>
+                            </select>
+                        </div>
+
+                        <div class="fld">
+                            <label for="purok">Purok <span style="color:var(--gray-300);font-size:11px;font-weight:400;">(optional)</span></label>
+                            <div class="ctrl">
+                                <input type="text" name="purok" id="purok" placeholder="e.g. Purok 3" value="<?php echo htmlspecialchars($submitted['purok'] ?? ''); ?>">
+                            </div>
+                        </div>
+
+                        <div class="fld span2">
+                            <label for="contact_number">Contact Number <span class="star">*</span></label>
+                            <div class="ctrl">
+                                <input type="text" name="contact_number" id="contact_number" placeholder="e.g. 0917 123 4567" value="<?php echo htmlspecialchars($submitted['contact_number'] ?? ''); ?>" required>
+                            </div>
+                        </div>
+
+                    </div>
+                    <div class="btn-row">
+                        <button type="button" id="toStep2" class="btn">Next &rarr;</button>
+                    </div>
+                </div>
+
+                <!-- Step 2: Documents -->
+                <div class="step-content" id="step2">
+                    <div class="grid">
+                        <div class="fld span2">
+                            <label for="photo_data">Profile Image <span style="color:var(--gray-300);font-size:11px;font-weight:400;">(optional)</span></label>
+                            <div class="file-drop" id="photoDrop">
+                                <input type="file" name="photo_data" id="photo_data" accept="image/*">
+                                <div class="drop-icon">📷</div>
+                                <div class="drop-label">Tap to upload profile image</div>
+                                <div class="drop-hint">JPG, PNG &mdash; max 5MB</div>
+                                <div class="file-name" id="photoFileName"></div>
+                            </div>
+                        </div>
+
+                        <div class="fld span2">
+                            <label for="registration_attachment">Registration Attachment <span style="color:var(--gray-300);font-size:11px;font-weight:400;">(optional)</span></label>
+                            <div class="file-drop" id="attachDrop">
+                                <input type="file" name="registration_attachment" id="registration_attachment" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
+                                <div class="drop-icon">📎</div>
+                                <div class="drop-label">Tap to upload attachment</div>
+                                <div class="drop-hint">PDF, DOC, DOCX, JPG, PNG &mdash; max 10MB</div>
+                                <div class="file-name" id="attachFileName"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="btn-row">
+                        <button type="button" id="backToStep1" class="btn btn-secondary">&larr; Back</button>
+                        <button type="submit" name="register" class="btn">Register Now</button>
+                    </div>
+                </div>
+
             </form>
         </div>
     </div>
@@ -555,70 +737,91 @@ document.addEventListener('DOMContentLoaded', function(){
         if(running) frame = requestAnimationFrame(draw);
     }
 })();
-</script>
 
-<!-- PSGC API -->
-<script>
-var API = 'https://psgc.gitlab.io/api';
-var $p = document.getElementById('province');
-var $c = document.getElementById('city');
-var $b = document.getElementById('barangay');
+/* ── Stepper Logic ── */
+(function(){
+    var step1 = document.getElementById('step1');
+    var step2 = document.getElementById('step2');
+    var item1 = document.getElementById('stepItem1');
+    var item2 = document.getElementById('stepItem2');
+    var line1 = document.getElementById('stepLine1');
+    var toStep2 = document.getElementById('toStep2');
+    var backToStep1 = document.getElementById('backToStep1');
 
-fetch(API+'/provinces/').then(function(r){return r.json()}).then(function(data){
-    data.sort(function(a,b){return a.name.localeCompare(b.name)});
-    $p.innerHTML = '<option value="">— Select Province —</option>';
-    data.forEach(function(p){
-        var o = document.createElement('option');
-        o.value = p.name; o.dataset.code = p.code; o.textContent = p.name;
-        if(p.name === 'South Cotabato') o.selected = true;
-        $p.appendChild(o);
+    function goToStep(n) {
+        if (n === 2) {
+            step1.classList.remove('active');
+            step2.classList.add('active');
+            item1.classList.remove('active');
+            item1.classList.add('done');
+            line1.classList.add('done');
+            item2.classList.add('active');
+        } else {
+            step2.classList.remove('active');
+            step1.classList.add('active');
+            item2.classList.remove('active');
+            line1.classList.remove('done');
+            item1.classList.remove('done');
+            item1.classList.add('active');
+        }
+    }
+
+    toStep2.addEventListener('click', function() {
+        var fields = [
+            { el: document.getElementById('lastname'), name: 'Lastname' },
+            { el: document.getElementById('firstname'), name: 'Firstname' },
+            { el: document.getElementById('middlename'), name: 'Middlename' },
+            { el: document.getElementById('birthdate'), name: 'Birthdate' },
+            { el: document.getElementById('barangay'), name: 'Barangay' },
+            { el: document.getElementById('contact_number'), name: 'Contact Number' }
+        ];
+        for (var i = 0; i < fields.length; i++) {
+            if (!fields[i].el.value.trim()) {
+                fields[i].el.focus();
+                fields[i].el.style.borderColor = '#ef4444';
+                setTimeout(function(){ fields[i].el.style.borderColor = ''; }.bind(fields[i]), 2000);
+                showToast('Please fill in ' + fields[i].name + '.', 'error');
+                return;
+            }
+        }
+        goToStep(2);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     });
-    if($p.value) loadCities($p.selectedOptions[0].dataset.code);
-}).catch(function(){ $p.innerHTML = '<option value="">Failed to load provinces</option>'; });
 
-function loadCities(code){
-    $c.innerHTML = '<option value="">Loading…</option>'; $c.disabled = true;
-    $b.innerHTML = '<option value="">Select city first</option>'; $b.disabled = true;
-    fetch(API+'/provinces/'+code+'/cities-municipalities/').then(function(r){return r.json()}).then(function(data){
-        data.sort(function(a,b){return a.name.localeCompare(b.name)});
-        $c.innerHTML = '<option value="">— Select City / Municipality —</option>';
-        data.forEach(function(c){
-            var o = document.createElement('option');
-            o.value = c.name; o.dataset.code = c.code; o.textContent = c.name;
-            if(c.name === 'Koronadal') o.selected = true;
-            $c.appendChild(o);
+    backToStep1.addEventListener('click', function() {
+        goToStep(1);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+
+    /* ── File Drop Zones ── */
+    function setupDrop(dropId, inputId, nameId) {
+        var drop = document.getElementById(dropId);
+        var input = document.getElementById(inputId);
+        var nameEl = document.getElementById(nameId);
+        if (!drop || !input) return;
+
+        drop.addEventListener('click', function() { input.click(); });
+        drop.addEventListener('dragover', function(e) { e.preventDefault(); drop.classList.add('dragover'); });
+        drop.addEventListener('dragleave', function() { drop.classList.remove('dragover'); });
+        drop.addEventListener('drop', function(e) {
+            e.preventDefault();
+            drop.classList.remove('dragover');
+            if (e.dataTransfer.files.length) {
+                input.files = e.dataTransfer.files;
+                nameEl.textContent = e.dataTransfer.files[0].name;
+            }
         });
-        $c.disabled = false;
-        if($c.value) loadBarangays($c.selectedOptions[0].dataset.code);
-    }).catch(function(){ $c.innerHTML = '<option value="">Failed to load cities</option>'; });
-}
-
-function loadBarangays(code){
-    $b.innerHTML = '<option value="">Loading…</option>'; $b.disabled = true;
-    fetch(API+'/cities-municipalities/'+code+'/barangays/').then(function(r){return r.json()}).then(function(data){
-        data.sort(function(a,b){return a.name.localeCompare(b.name)});
-        $b.innerHTML = '<option value="">— Select Barangay —</option>';
-        data.forEach(function(b){
-            var o = document.createElement('option');
-            o.value = b.name; o.textContent = b.name; $b.appendChild(o);
+        input.addEventListener('change', function() {
+            nameEl.textContent = input.files.length ? input.files[0].name : '';
         });
-        $b.disabled = false;
-    }).catch(function(){ $b.innerHTML = '<option value="">Failed to load barangays</option>'; });
-}
+    }
+    setupDrop('photoDrop', 'photo_data', 'photoFileName');
+    setupDrop('attachDrop', 'registration_attachment', 'attachFileName');
 
-$p.addEventListener('change', function(){
-    var code = this.selectedOptions[0]?.dataset.code;
-    if(code){ loadCities(code); } else {
-        $c.innerHTML = '<option value="">Select province first</option>'; $c.disabled = true;
-        $b.innerHTML = '<option value="">Select city first</option>'; $b.disabled = true;
-    }
-});
-$c.addEventListener('change', function(){
-    var code = this.selectedOptions[0]?.dataset.code;
-    if(code){ loadBarangays(code); } else {
-        $b.innerHTML = '<option value="">Select city first</option>'; $b.disabled = true;
-    }
-});
+    <?php if ($error && $error_step === 2): ?>
+    goToStep(2);
+    <?php endif; ?>
+})();
 </script>
 
 </body>

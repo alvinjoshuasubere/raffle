@@ -40,7 +40,7 @@ $page = isset($_GET['page']) ? $_GET['page'] : 'events';
         <a href="admin.php?page=wheel" class="<?php echo $page === 'wheel' ? 'active' : ''; ?>">Wheel</a>
         <a href="admin.php?page=winners" class="<?php echo $page === 'winners' ? 'active' : ''; ?>">Winners</a>
     </nav>
-    <div class="user-info"><span><?php echo htmlspecialchars($_SESSION['display_name']); ?></span><a href="logout.php">Logout</a></div>
+    <div class="user-info"><span><?php echo htmlspecialchars($_SESSION['display_name'] ?? ''); ?></span><a href="logout.php">Logout</a></div>
 </div>
 <div class="container"><div class="content <?php echo in_array($page,['draw','wheel'])?'fullscreen':''; ?>">
 <?php

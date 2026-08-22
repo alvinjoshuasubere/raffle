@@ -1,4 +1,16 @@
 <?php
+// Handle Remove Participant (mark as removed)
+if (isset($_POST['remove_participant'])) {
+    $remove_id = intval($_POST['participant_id']);
+    $upd = $conn->prepare("UPDATE participants SET status = 'removed' WHERE id = ? AND event_id = ?");
+    $upd->bind_param("ii", $remove_id, $current_event_id);
+    $upd->execute();
+    $upd->close();
+    set_message('success', 'Participant has been removed from the draw list.');
+    header('Location: admin.php?page=upload');
+    exit;
+}
+
 // Handle CSV Upload
 if (isset($_POST['upload_csv'])) {
     // Ensure DB connection is UTF-8
@@ -219,15 +231,35 @@ if (isset($_SESSION['upload_errors'])) {
                 <th style="padding:8px; border:1px solid #ddd;">Name</th>
                 <th style="padding:8px; border:1px solid #ddd;">Barangay</th>
                 <th style="padding:8px; border:1px solid #ddd;">Contact Number</th>
+                <th style="padding:8px; border:1px solid #ddd;">Status</th>
+                <th style="padding:8px; border:1px solid #ddd;">Action</th>
             </tr>
         </thead>
         <tbody>
             <?php while ($row = $participants->fetch_assoc()): ?>
-            <tr>
+            <tr style="<?php echo ($row['status'] === 'winner' || $row['status'] === 'removed') ? 'opacity:0.5;' : ''; ?>">
                 <td style="padding:8px; border:1px solid #ddd;"><?php echo htmlspecialchars($row['number']); ?></td>
                 <td style="padding:8px; border:1px solid #ddd;"><?php echo htmlspecialchars($row['name']); ?></td>
                 <td style="padding:8px; border:1px solid #ddd;"><?php echo htmlspecialchars($row['barangay']); ?></td>
-                <td style="padding:8px; border:1px solid #ddd;"><?php echo htmlspecialchars($row['contact_number']); ?>
+                <td style="padding:8px; border:1px solid #ddd;"><?php echo htmlspecialchars($row['contact_number']); ?></td>
+                <td style="padding:8px; border:1px solid #ddd;">
+                    <?php if ($row['status'] === 'winner'): ?>
+                        <span style="color:#10b981; font-weight:700;">Winner</span>
+                    <?php elseif ($row['status'] === 'removed'): ?>
+                        <span style="color:#ef4444; font-weight:700;">Removed</span>
+                    <?php else: ?>
+                        <span style="color:#6b7280;">Active</span>
+                    <?php endif; ?>
+                </td>
+                <td style="padding:8px; border:1px solid #ddd; text-align:center;">
+                    <?php if ($row['status'] !== 'winner' && $row['status'] !== 'removed'): ?>
+                    <form method="POST" style="display:inline;" onsubmit="return confirm('Remove this participant from the draw list?');">
+                        <input type="hidden" name="participant_id" value="<?php echo $row['id']; ?>">
+                        <button type="submit" name="remove_participant" style="background:#ef4444; color:#fff; border:none; padding:4px 12px; border-radius:6px; cursor:pointer; font-size:12px; font-weight:600;">Remove</button>
+                    </form>
+                    <?php else: ?>
+                        <span style="color:#c4b5c0; font-size:12px;">—</span>
+                    <?php endif; ?>
                 </td>
             </tr>
             <?php endwhile; ?>

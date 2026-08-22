@@ -13,7 +13,7 @@ $page = isset($_GET['page']) ? $_GET['page'] : 'events';
     <?php if ($page === 'wheel'): ?>
     <link rel="stylesheet" href="wheel-modern.css?v=3">
     <link rel="stylesheet" href="wheel-clean.css?v=1">
-    <link rel="stylesheet" href="wheel-showcase.css?v=1">
+    <link rel="stylesheet" href="wheel-showcase.css?v=2">
     <?php endif; ?>
     <style>
         .toast-container{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:99999;display:flex;flex-direction:column-reverse;gap:10px;pointer-events:none;align-items:center}
@@ -48,6 +48,6 @@ $page = isset($_GET['page']) ? $_GET['page'] : 'events';
 switch($page){case 'events':include 'events.php';break;case 'upload':include 'upload.php';break;case 'prizes':include 'prizes.php';break;case 'draw':include 'draw.php';break;case 'wheel':include 'wheel.php';break;case 'winners':include 'winners.php';break;default:include 'events.php';}
 ?>
 </div></div>
-<canvas id="confetti-canvas"></canvas><script src="confetti.js"></script><div class="toast-container" id="toastContainer"></div>
+<canvas id="confetti-canvas"></canvas><script src="confetti.js"></script><?php if ($page === 'wheel'): ?><script src="wheel-interactions.js?v=1"></script><?php endif; ?><div class="toast-container" id="toastContainer"></div>
 <script>function showToast(message,type){type=type||'info';var c=document.getElementById('toastContainer'),t=document.createElement('div');t.className='toast toast-'+type;var i={success:'✓',error:'✕',info:'ℹ'};t.innerHTML='<span style="font-size:18px;font-weight:900;line-height:1">'+(i[type]||'ℹ')+'</span> '+message;c.appendChild(t);setTimeout(function(){t.classList.add('toast-out');setTimeout(function(){t.remove()},300)},4000)}</script>
 </body></html>

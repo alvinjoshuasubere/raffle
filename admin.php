@@ -13,6 +13,7 @@ $page = isset($_GET['page']) ? $_GET['page'] : 'events';
     <?php if ($page === 'wheel'): ?>
     <link rel="stylesheet" href="wheel-modern.css?v=3">
     <link rel="stylesheet" href="wheel-clean.css?v=1">
+    <link rel="stylesheet" href="wheel-showcase.css?v=1">
     <?php endif; ?>
     <style>
         .toast-container{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:99999;display:flex;flex-direction:column-reverse;gap:10px;pointer-events:none;align-items:center}

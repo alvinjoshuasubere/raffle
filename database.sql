@@ -38,15 +38,23 @@ CREATE TABLE IF NOT EXISTS participants (
     lastname VARCHAR(255) NOT NULL DEFAULT '',
     firstname VARCHAR(255) NOT NULL DEFAULT '',
     middlename VARCHAR(255) NOT NULL DEFAULT '',
+    suffix VARCHAR(20) NOT NULL DEFAULT '',
     name VARCHAR(255) NOT NULL,
     birthdate DATE DEFAULT NULL,
+    sex VARCHAR(10) NOT NULL DEFAULT '',
+    nationality VARCHAR(50) NOT NULL DEFAULT 'FILIPINO',
     province VARCHAR(255) NOT NULL DEFAULT 'South Cotabato',
     city VARCHAR(255) NOT NULL DEFAULT 'Koronadal',
     barangay VARCHAR(255) NOT NULL,
     purok VARCHAR(255) NOT NULL DEFAULT '',
     contact_number VARCHAR(50) NOT NULL,
+    email VARCHAR(255) NOT NULL DEFAULT '',
+    dp_consent TINYINT(1) NOT NULL DEFAULT 0,
+    receive_updates TINYINT(1) NOT NULL DEFAULT 0,
+    parental_consent TINYINT(1) NOT NULL DEFAULT 0,
     photo_data LONGBLOB DEFAULT NULL,
     registration_attachment LONGBLOB DEFAULT NULL,
+    consent_form LONGBLOB DEFAULT NULL,
     status VARCHAR(20) DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE KEY unique_event_number (event_id, number),
@@ -89,3 +97,16 @@ CREATE INDEX idx_winner_number ON winners(number);
 CREATE INDEX idx_event_participants ON participants(event_id);
 CREATE INDEX idx_event_winners ON winners(event_id);
 CREATE INDEX idx_event_prizes ON prizes(event_id);
+
+-- ============================================================
+-- Migration for existing databases:
+-- adds the registration wizard columns (run each statement once)
+-- ============================================================
+-- ALTER TABLE participants ADD COLUMN IF NOT EXISTS suffix VARCHAR(20) NOT NULL DEFAULT '' AFTER middlename;
+-- ALTER TABLE participants ADD COLUMN IF NOT EXISTS sex VARCHAR(10) NOT NULL DEFAULT '' AFTER birthdate;
+-- ALTER TABLE participants ADD COLUMN IF NOT EXISTS nationality VARCHAR(50) NOT NULL DEFAULT 'FILIPINO' AFTER sex;
+-- ALTER TABLE participants ADD COLUMN IF NOT EXISTS email VARCHAR(255) NOT NULL DEFAULT '' AFTER contact_number;
+-- ALTER TABLE participants ADD COLUMN IF NOT EXISTS dp_consent TINYINT(1) NOT NULL DEFAULT 0 AFTER email;
+-- ALTER TABLE participants ADD COLUMN IF NOT EXISTS receive_updates TINYINT(1) NOT NULL DEFAULT 0 AFTER dp_consent;
+-- ALTER TABLE participants ADD COLUMN IF NOT EXISTS parental_consent TINYINT(1) NOT NULL DEFAULT 0 AFTER receive_updates;
+-- ALTER TABLE participants ADD COLUMN IF NOT EXISTS consent_form LONGBLOB NULL AFTER registration_attachment;

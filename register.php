@@ -54,18 +54,25 @@ $error_step = 1;
 $submitted = [];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
-    foreach (['lastname','firstname','middlename','birthdate','barangay','purok','contact_number'] as $f) {
+    foreach (['lastname','firstname','middlename','suffix','sex','nationality','barangay','purok','contact_number'] as $f) {
         $submitted[$f] = strtoupper(trim($_POST[$f] ?? ''));
     }
-    $lastname = $submitted['lastname'];
-    $firstname = $submitted['firstname'];
-    $middlename = $submitted['middlename'];
-    $birthdate = $submitted['birthdate'];
-    $province = 'South Cotabato';
-    $city = 'City of Koronadal';
-    $barangay = $submitted['barangay'];
-    $purok = $submitted['purok'];
-    $contact = $submitted['contact_number'];
+    $submitted['birthdate'] = trim($_POST['birthdate'] ?? '');
+    $submitted['email']     = strtolower(trim($_POST['email'] ?? ''));
+
+    $lastname    = $submitted['lastname'];
+    $firstname   = $submitted['firstname'];
+    $middlename  = $submitted['middlename'];
+    $suffix      = $submitted['suffix'];
+    $sex         = $submitted['sex'];
+    $nationality = $submitted['nationality'] !== '' ? $submitted['nationality'] : 'FILIPINO';
+    $email       = $submitted['email'];
+    $birthdate   = $submitted['birthdate'];
+    $province    = 'South Cotabato';
+    $city        = 'City of Koronadal';
+    $barangay    = $submitted['barangay'];
+    $purok       = $submitted['purok'];
+    $contact     = $submitted['contact_number'];
 
     $photo_data = null;
     $reg_attachment = null;
@@ -75,20 +82,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
             $photo_data = file_get_contents($_FILES['photo_data']['tmp_name']);
         } else {
             $error = 'Profile image must be 5MB or less.';
-            $error_step = 2;
-        }
-    }
-    if (!$error && !empty($_FILES['registration_attachment']['tmp_name'])) {
-        if ($_FILES['registration_attachment']['size'] <= 10 * 1024 * 1024) {
-            $reg_attachment = file_get_contents($_FILES['registration_attachment']['tmp_name']);
-        } else {
-            $error = 'Attachment must be 10MB or less.';
-            $error_step = 2;
+            $error_step = 3;
         }
     }
 
-    if (!$error && (empty($lastname) || empty($firstname) || empty($middlename) || empty($birthdate) || empty($barangay))) {
-        $error = 'Please fill in all required fields.';
+    if (!$error && !empty($_FILES['registration_attachment']['tmp_name'])) {
+        if ($_FILES['registration_attachment']['size'] <= 5 * 1024 * 1024) {
+            $reg_attachment = file_get_contents($_FILES['registration_attachment']['tmp_name']);
+        } else {
+            $error = 'Supporting document must be 5MB or less.';
+            $error_step = 3;
+        }
+    }
+
+    if (!$error && (empty($lastname) || empty($firstname) || empty($birthdate) || empty($sex))) {
+        $error = 'Please fill in all required personal details.';
+        $error_step = 1;
+    } elseif (!$error && (empty($barangay) || empty($contact))) {
+        $error = 'Please complete your residency and contact details.';
+        $error_step = 2;
     } elseif (!$error) {
         // Load JSON data for duplicate check
         $fp = fopen($json_file, 'c+');
@@ -125,20 +137,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
                 $max_q->close();
                 $number = max($max, $db_max) + 1;
 
-                $fullname = $firstname . ' ' . $middlename . ' ' . $lastname;
+                $fullname = trim($firstname . ' ' . $middlename . ' ' . $lastname . ($suffix !== '' ? ' ' . $suffix : ''));
                 $jdata['participants'][] = [
                     'id' => $number,
                     'number' => (string)$number,
                     'lastname' => $lastname,
                     'firstname' => $firstname,
                     'middlename' => $middlename,
+                    'suffix' => $suffix,
                     'name' => $fullname,
                     'birthdate' => $birthdate,
+                    'sex' => $sex,
+                    'nationality' => $nationality,
                     'province' => $province,
                     'city' => $city,
                     'barangay' => $barangay,
                     'purok' => $purok,
                     'contact_number' => $contact,
+                    'email' => $email,
                     'created_at' => date('Y-m-d H:i:s'),
                 ];
 
@@ -146,8 +162,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
                 rewind($fp);
                 fwrite($fp, json_encode($jdata, JSON_PRETTY_PRINT));
 
-                $ins = $conn->prepare("INSERT INTO participants (event_id, number, lastname, firstname, middlename, name, birthdate, province, city, barangay, purok, contact_number, photo_data, registration_attachment) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-                $ins->bind_param("isssssssssssss", $current_event_id, $number, $lastname, $firstname, $middlename, $fullname, $birthdate, $province, $city, $barangay, $purok, $contact, $photo_data, $reg_attachment);
+                $ins = $conn->prepare("INSERT INTO participants (event_id, number, lastname, firstname, middlename, suffix, name, birthdate, province, city, barangay, purok, contact_number, sex, nationality, email, photo_data, registration_attachment) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                $ins->bind_param("isssssssssssssssss", $current_event_id, $number, $lastname, $firstname, $middlename, $suffix, $fullname, $birthdate, $province, $city, $barangay, $purok, $contact, $sex, $nationality, $email, $photo_data, $reg_attachment);
                 $ins->execute();
                 $ins->close();
 
@@ -174,15 +190,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Register — Raffle System</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <style>
         :root {
-            --pink-300: #f9a8d4;
-            --pink-400: #f472b6;
-            --pink-500: #ec4899;
-            --purple-500: #8b5cf6;
-            --gray-50: #fafbfe;
-            --gray-100: #f1f4f9;
-            --gray-200: #e5eaf2;
+            --brand: #c2175b;
+            --brand-dark: #a3124c;
+            --brand-soft: rgba(194, 23, 91, 0.08);
+            --brand-ring: rgba(194, 23, 91, 0.16);
+            --emerald-text: #047857;
+            --emerald-bg: rgba(16, 185, 129, 0.1);
+            --emerald-border: rgba(16, 185, 129, 0.35);
+            --red-text: #dc2626;
+            --gray-50: #f8fafc;
+            --gray-100: #f1f5f9;
+            --gray-200: #e2e8f0;
             --gray-300: #cbd5e1;
             --gray-400: #94a3b8;
             --gray-500: #64748b;
@@ -196,8 +217,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
             font-family: 'Inter', system-ui, sans-serif;
             min-height: 100vh;
             background:
-                radial-gradient(900px at 88% -12%, rgba(236,73,153,.10), transparent 60%),
-                radial-gradient(800px at -10% 110%, rgba(139,92,246,.09), transparent 60%),
+                radial-gradient(900px at 88% -12%, rgba(194,23,91,.08), transparent 60%),
+                radial-gradient(800px at -10% 110%, rgba(14,165,233,.06), transparent 60%),
                 var(--gray-50);
             color: var(--gray-900);
             -webkit-font-smoothing: antialiased;
@@ -206,7 +227,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
         /* ── Toast ── */
         .toast {
             position:fixed; left:50%; bottom:-80px; transform:translateX(-50%);
-            z-index:2000; padding:13px 22px; border-radius:14px;
+            z-index:3000; padding:13px 22px; border-radius:14px;
             background:#111827; color:#fff;
             font-size:13.5px; font-weight:600;
             box-shadow:0 14px 40px rgba(0,0,0,.25);
@@ -216,26 +237,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
         .toast.show { bottom:28px; opacity:1; }
         .toast.error { background:#dc2626; }
 
-        .ambient { position:fixed; inset:0; z-index:0; overflow:hidden; pointer-events:none; }
-        .ambient .orb { position:absolute; border-radius:50%; }
-        .ambient .orb:nth-child(1) {
-            width:600px; height:600px;
-            background:radial-gradient(circle at 30% 30%, rgba(236,73,153,.1), transparent 70%);
-            top:-240px; right:-180px;
-        }
-        .ambient .orb:nth-child(2) {
-            width:420px; height:420px;
-            background:radial-gradient(circle at 70% 70%, rgba(244,114,182,.07), transparent 70%);
-            bottom:-140px; left:-100px;
-        }
-
         /* ── Top bar ── */
         .top {
-            position:relative; z-index:2;
             display:flex; align-items:center; justify-content:space-between;
             padding:0 32px; height:64px;
             background:rgba(255,255,255,.7); backdrop-filter:blur(20px);
-            border-bottom:1px solid rgba(0,0,0,.04);
+            border-bottom:1px solid rgba(0,0,0,.05);
         }
         .top .brand { display:flex; align-items:center; gap:10px; }
         .top .brand img { height:34px; }
@@ -244,38 +251,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
         .top .badge {
             padding:5px 14px; border-radius:100px;
             font-size:11px; font-weight:700; letter-spacing:.3px;
-            background:var(--pink-50,#fdf2f8); color:var(--pink-500);
-            border:1px solid var(--pink-200,#fbcfe8);
+            background:var(--brand-soft); color:var(--brand);
+            border:1px solid var(--brand-ring);
         }
         .top .admin {
-            font-size:13px; font-weight:600; color:var(--pink-400);
-            text-decoration:none;
-            display:flex; align-items:center; gap:4px;
+            font-size:13px; font-weight:600; color:var(--brand);
+            text-decoration:none; display:flex; align-items:center; gap:4px;
         }
-        .top .admin:hover { color:var(--pink-500); }
-        .top .back {
-            font-size:13px; font-weight:600; color:var(--gray-400);
-            text-decoration:none;
-        }
+        .top .admin:hover { color:var(--brand-dark); }
+        .top .back { font-size:13px; font-weight:600; color:var(--gray-400); text-decoration:none; }
         .top .back:hover { color:var(--gray-600); }
 
         /* ── Hero ── */
-        .hero {
-            position:relative; z-index:1;
-            text-align:center; padding:52px 24px 10px;
-        }
+        .hero { text-align:center; padding:48px 24px 10px; }
         .pill {
             display:inline-flex; align-items:center; gap:8px;
             font-size:11px; font-weight:800; letter-spacing:.12em; text-transform:uppercase;
-            color:var(--pink-500); background:#fff;
-            border:1px solid var(--pink-200,#fbcfe8);
+            color:var(--brand); background:#fff;
+            border:1px solid var(--brand-ring);
             padding:7px 16px; border-radius:100px;
-            box-shadow:0 2px 10px rgba(236,73,153,.08);
+            box-shadow:0 2px 10px rgba(194,23,91,.08);
         }
         .pill::before {
             content:''; width:7px; height:7px; border-radius:50%;
-            background:linear-gradient(135deg, var(--pink-500), var(--purple-500));
-            box-shadow:0 0 0 3px rgba(236,73,153,.15);
+            background:linear-gradient(135deg, var(--brand), #e0559b);
+            box-shadow:0 0 0 3px var(--brand-ring);
         }
         .hero h1 {
             margin-top:18px;
@@ -284,359 +284,283 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
         }
         .hero h1 em {
             font-style:normal;
-            background:linear-gradient(120deg, var(--pink-500), var(--purple-500));
+            background:linear-gradient(120deg, var(--brand), #e0559b);
             -webkit-background-clip:text; background-clip:text;
             -webkit-text-fill-color:transparent;
         }
-        .hero p { font-size:15px; color:var(--gray-400); margin-top:10px; }
+        .hero p { font-size:15px; color:var(--gray-500); margin-top:10px; }
         .hero p strong { color:var(--gray-600); }
 
         /* ── Card ── */
-        .wrap {
-            position:relative; z-index:1;
-            max-width:720px; margin:24px auto 48px; padding:0 20px;
-        }
+        .wrap { position:relative; z-index:1; max-width:880px; margin:24px auto 48px; padding:0 20px; }
         .card {
-            position:relative; overflow:hidden;
-            background:#fff; border-radius:24px; padding:44px 44px 36px;
+            background:#fff; border-radius:24px; padding:40px 44px 36px;
             border:1px solid rgba(0,0,0,.05);
             box-shadow:0 2px 6px rgba(15,23,42,.03), 0 24px 60px rgba(15,23,42,.06);
             animation:rise .5s cubic-bezier(.22,1,.36,1);
-        }
-        .card::before {
-            content:''; position:absolute; top:0; left:0; right:0; height:4px;
-            background:linear-gradient(90deg, var(--pink-500), var(--purple-500));
         }
         @keyframes rise {
             from { opacity:0; transform:translateY(16px); }
             to   { opacity:1; transform:none; }
         }
-        @media (max-width:640px) {
-            .card { padding:28px 18px; border-radius:20px; }
-            .top { padding:0 16px; }
-            .hero { padding-top:36px; }
-            .hero h1 { font-size:24px; }
-            .wrap { padding:0 14px; }
-        }
+        @media (max-width:640px) { .card { padding:26px 18px; border-radius:20px; } }
 
-        /* ── Form grid ── */
-        .grid {
-            display:grid; grid-template-columns:1fr 1fr; gap:18px 24px;
-        }
-        .grid .span2 { grid-column:1/-1; }
-        @media (max-width:640px) { .grid { grid-template-columns:1fr; gap:14px; } }
-
-        /* ── Section titles ── */
-        .sec-title {
-            display:flex; align-items:center; gap:10px;
-            font-size:11px; font-weight:800; letter-spacing:1.4px;
-            text-transform:uppercase; color:var(--gray-400);
-            margin-top:8px;
-        }
-        .sec-title::before {
-            content:''; width:22px; height:3px; border-radius:99px;
-            background:linear-gradient(90deg, var(--pink-500), var(--purple-500));
-            flex:none;
-        }
-
-        /* ── Registration window chip ── */
-        .regwin {
-            display:flex; justify-content:center; gap:10px; flex-wrap:wrap;
-            margin-bottom:28px;
-        }
-        .regwin span {
-            font-size:12px; font-weight:600;
-            padding:7px 15px; border-radius:100px;
-            background:var(--gray-100); color:var(--gray-500);
-        }
+        /* ── Registration window chips ── */
+        .regwin { display:flex; justify-content:center; gap:10px; flex-wrap:wrap; margin-bottom:26px; }
+        .regwin span { font-size:12px; font-weight:600; padding:7px 15px; border-radius:100px; background:var(--gray-100); color:var(--gray-500); }
         .regwin .rw-open  { color:#059669; background:#ecfdf5; }
         .regwin .rw-close { color:#dc2626; background:#fef2f2; }
 
+        /* ── Error banner ── */
+        .callout {
+            display:flex; align-items:flex-start; gap:10px;
+            border-radius:14px; padding:14px 16px; font-size:12.5px; line-height:1.55;
+            margin-bottom:22px;
+        }
+        .callout i { margin-top:2px; flex-shrink:0; }
+        .callout-red { background:rgba(220,38,38,.08); border:1px solid rgba(220,38,38,.25); color:var(--red-text); }
+
+        /* ── Stepper ── */
+        .stepper { display:flex; align-items:center; justify-content:center; margin:0 0 34px; }
+        .step-item { display:flex; flex-direction:column; align-items:center; gap:7px; min-width:74px; }
+        .step-circle {
+            width:36px; height:36px; border-radius:50%;
+            display:flex; align-items:center; justify-content:center;
+            font-size:13px; font-weight:800;
+            background:var(--gray-100); color:var(--gray-400);
+            border:2px solid var(--gray-200); transition:all .3s ease;
+        }
+        .step-item.active .step-circle {
+            background:var(--brand); color:#fff; border-color:var(--brand);
+            box-shadow:0 4px 14px rgba(194,23,91,.35);
+        }
+        .step-item.done .step-circle {
+            background:#10b981; color:#fff; border-color:#10b981; font-size:0;
+            box-shadow:0 4px 14px rgba(16,185,129,.3);
+        }
+        .step-item.done .step-circle::after { content:'\2713'; font-size:14px; }
+        .step-label { font-size:11px; font-weight:600; color:var(--gray-400); text-align:center; }
+        .step-item.active .step-label { color:var(--brand); }
+        .step-line { flex:1; max-width:90px; height:2px; background:var(--gray-200); margin:0 6px 20px; border-radius:99px; transition:background .3s ease; }
+        .step-line.done { background:#10b981; }
+        @media (max-width:640px) { .step-label { display:none; } .stepper { margin-bottom:26px; } .step-line { margin-bottom:0; } }
+
+        /* ── Steps ── */
+        .step-content { display:none; animation:fadeIn .35s ease; }
+        .step-content.active { display:block; }
+        @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+
+        .sec-head { border-bottom:1px solid var(--gray-100); padding-bottom:14px; margin-bottom:22px; }
+        .sec-head h2 {
+            font-size:15px; font-weight:700; color:var(--gray-900);
+            display:flex; align-items:center; gap:9px;
+        }
+        .sec-head h2 i { color:var(--brand); font-size:14px; }
+        .sec-head p { font-size:12px; color:var(--gray-500); margin-top:4px; padding-left:23px; }
+
+        .grid { display:grid; grid-template-columns:repeat(2, 1fr); gap:16px; }
+        .grid.g3 { grid-template-columns:repeat(3, 1fr); }
+        .grid.g4 { grid-template-columns:repeat(4, 1fr); }
+        .span2 { grid-column:1/-1; }
+        @media (max-width:720px) {
+            .grid, .grid.g3, .grid.g4 { grid-template-columns:1fr; gap:14px; }
+        }
+        @media (min-width:721px) and (max-width:860px) {
+            .grid.g4 { grid-template-columns:repeat(2, 1fr); }
+        }
+
         .fld label {
             display:flex; align-items:center; gap:4px;
-            font-size:11px; font-weight:700; letter-spacing:.8px;
-            text-transform:uppercase; color:var(--gray-500);
-            margin-bottom:6px;
+            font-size:12px; font-weight:600; color:var(--gray-600);
+            margin-bottom:6px; letter-spacing:.2px;
         }
-        .fld label .star { color:#ef4444; font-size:12px; }
+        .fld label .star { color:var(--brand); font-weight:800; }
+        .fld label .opt { color:var(--gray-400); font-weight:400; font-size:11px; }
 
-        .fld .ctrl { position:relative; }
-
-        .fld input, .fld select {
-            width:100%;
-            padding:13px 14px;
-            border:1.5px solid var(--gray-200);
-            border-radius:10px;
-            font-size:14px; font-weight:500;
-            font-family:inherit; color:var(--gray-900);
-            background:#fff;
-            transition:all .2s ease;
-            outline:none;
+        input[type=text], input[type=date], input[type=tel], input[type=email], select {
+            width:100%; padding:10px 13px;
+            border:1.5px solid var(--gray-200); border-radius:10px;
+            font-family:inherit; font-size:13.5px; font-weight:500; color:var(--gray-900);
+            background:#fff; outline:none;
+            transition:border-color .2s ease, box-shadow .2s ease;
         }
+        select:disabled { background:var(--gray-100); color:var(--gray-500); cursor:not-allowed; }
+        input:focus, select:focus { border-color:var(--brand); box-shadow:0 0 0 3px var(--brand-ring); }
+        ::placeholder { color:var(--gray-400); font-weight:400; }
 
-        .fld input:hover, .fld select:hover { border-color:var(--gray-300); }
-        .fld input:focus, .fld select:focus {
-            border-color:var(--pink-400);
-            box-shadow:0 0 0 3px rgba(244,114,182,.1);
+        /* ── Brand buttons ── */
+        .btn-brand {
+            display:inline-flex; align-items:center; justify-content:center; gap:7px;
+            background:var(--brand); color:#fff; border:none; cursor:pointer;
+            padding:10px 18px; border-radius:10px;
+            font-family:inherit; font-size:12px; font-weight:600;
+            box-shadow:0 4px 14px rgba(194,23,91,.22);
+            transition:all .2s ease; white-space:nowrap;
         }
-        .fld input::placeholder { color:var(--gray-300); font-weight:400; }
-        .fld input[type="file"] {
-            padding:10px 14px;
-            font-size:13px;
-            font-weight:500;
-            color:var(--gray-500);
-        }
-        .fld select:disabled { opacity:.4; cursor:not-allowed; background:var(--gray-50); }
+        .btn-brand:hover { background:var(--brand-dark); transform:translateY(-1px); }
+        .btn-brand:active { transform:none; }
 
-        /* ── Button ── */
-        .btn {
-            width:100%; margin-top:10px; padding:16px 24px;
-            border:none; border-radius:12px;
-            font-size:15px; font-weight:700; font-family:inherit;
-            cursor:pointer; color:#fff;
-            background:linear-gradient(135deg, var(--pink-500), var(--purple-500));
-            transition:all .25s ease;
-            box-shadow:0 4px 18px rgba(236,73,153,.22);
+        /* ── Verification cards (step 3) ── */
+        .vgrid { display:grid; grid-template-columns:1fr; gap:20px; }
+        @media (min-width:820px) { .vgrid { grid-template-columns:1fr 1fr; } }
+        .vcards {
+            border:1px solid var(--gray-200); background:rgba(248,250,252,.6);
+            border-radius:14px; padding:16px;
+            display:flex; flex-direction:column;
         }
-        .btn:hover { transform:translateY(-2px); box-shadow:0 8px 28px rgba(139,92,246,.3); }
-        .btn:active { transform:none; }
+        .vcards > label.vhead { font-size:12px; font-weight:700; color:var(--gray-800,#1e293b); display:block; margin-bottom:8px; }
+        .vcards > label.vhead .star { color:var(--brand); }
+        .vcards .vhint { font-size:11px; color:var(--gray-500); line-height:1.5; }
+        .spacer { flex:1; }
 
-        /* ── Messages ── */
-        .msg {
-            padding:13px 18px; border-radius:12px;
-            font-size:14px; font-weight:500; text-align:center;
-            margin-bottom:24px;
+        /* ── File dropzones ── */
+        .file-drop {
+            border:2px dashed var(--gray-300); border-radius:12px;
+            padding:22px 16px; text-align:center; cursor:pointer;
+            transition:all .25s ease; background:#fff;
         }
-        .msg-ok { background:#ecfdf5; border:1px solid #a7f3d0; color:#065f46; }
-        .msg-err { background:#fef2f2; border:1px solid #fecaca; color:#dc2626; }
+        .file-drop:hover, .file-drop.dragover { border-color:var(--brand); box-shadow:0 6px 20px rgba(194,23,91,.08); transform:translateY(-1px); }
+        .file-drop input[type=file] { display:none; }
+        .file-drop .drop-icon { font-size:22px; color:var(--gray-400); margin-bottom:6px; }
+        .file-drop .drop-label { font-size:12px; font-weight:600; color:var(--gray-600); word-break:break-all; }
+        .file-drop .browse-btn {
+            display:inline-block; margin-top:10px; cursor:pointer;
+            background:var(--brand); color:#fff;
+            padding:8px 16px; border-radius:9px;
+            font-size:11.5px; font-weight:600;
+            box-shadow:0 2px 8px rgba(194,23,91,.2);
+        }
+        .file-chip {
+            display:none; margin-top:12px;
+            align-items:center; justify-content:space-between; gap:10px;
+            background:var(--emerald-bg); border:1px solid var(--emerald-border);
+            border-radius:9px; padding:8px 12px; font-size:11.5px; color:var(--emerald-text);
+        }
+        .file-chip.show { display:flex; }
+        .file-chip .fname { display:flex; align-items:center; gap:6px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .file-chip button { background:none; border:none; color:#e11d48; font-family:inherit; font-size:11.5px; font-weight:700; cursor:pointer; white-space:nowrap; }
+        .file-chip button:hover { text-decoration:underline; }
 
-        /* ── Success overlay ── */
+        /* ── Camera button under photo drop ── */
+        .cam-btn {
+            margin-top:10px; width:100%; padding:11px;
+            border:1.5px solid var(--gray-200); border-radius:10px;
+            background:#fff; font-family:inherit;
+            font-size:12.5px; font-weight:600; color:var(--gray-600);
+            cursor:pointer; transition:all .2s ease;
+            display:flex; align-items:center; justify-content:center; gap:8px;
+        }
+        .cam-btn:hover { border-color:var(--brand); color:var(--brand); }
+        .cam-note { margin-top:10px; font-size:11px; color:var(--gray-500); text-align:center; }
+
+        /* ── Wizard navigation ── */
+        .wiznav {
+            margin-top:30px; padding-top:22px;
+            border-top:1px solid var(--gray-100);
+            display:flex; align-items:center; justify-content:space-between; gap:12px;
+        }
+        .wiznav .ghost {
+            visibility:hidden;
+            display:inline-flex; align-items:center; gap:8px;
+            padding:11px 20px; border-radius:10px;
+            border:1.5px solid var(--gray-300); background:#fff;
+            font-family:inherit; font-size:12px; font-weight:600; color:var(--gray-600);
+            cursor:pointer; transition:all .2s ease;
+        }
+        .wiznav .ghost.visible { visibility:visible; }
+        .wiznav .ghost:hover { background:var(--gray-100); }
+        .wiznav .next-btn { min-width:170px; }
+        .wiznav .next-btn[disabled] { opacity:.55; cursor:not-allowed; transform:none; }
+        .wiznav .next-btn i.fa-arrow-right { font-size:10px; }
+
+        /* ── Buttons shared ── */
+        .btn-secondary {
+            display:inline-flex; align-items:center; justify-content:center; gap:7px;
+            background:#fff; color:var(--gray-600);
+            border:1.5px solid var(--gray-300); cursor:pointer;
+            padding:10px 18px; border-radius:10px;
+            font-family:inherit; font-size:12px; font-weight:600;
+            transition:all .2s ease; text-decoration:none;
+        }
+        .btn-secondary:hover { background:var(--gray-100); }
+
+        /* ── Overlays ── */
         .overlay {
-            display:none; position:fixed; inset:0; z-index:999;
-            background:rgba(0,0,0,.5); backdrop-filter:blur(10px);
-            align-items:center; justify-content:center; padding:20px;
+            position:fixed; inset:0; z-index:1500;
+            background:rgba(15,23,42,.72); backdrop-filter:blur(6px);
+            display:flex; align-items:center; justify-content:center; padding:20px;
+            opacity:0; pointer-events:none; transition:opacity .3s ease;
         }
-        .overlay.show { display:flex; animation:fadeIn .3s ease; }
+        .overlay.show { opacity:1; pointer-events:auto; }
 
-        .overlay .sheet {
-            background:linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-            border-radius:24px; padding:48px 36px 36px;
-            max-width:380px; width:100%; text-align:center;
-            box-shadow:0 30px 80px rgba(0,0,0,.3), 0 0 0 1px rgba(255,255,255,.06);
-            position:relative; overflow:hidden;
+        .sheet {
+            background:linear-gradient(145deg, #1e293b, #0f172a);
+            border-radius:24px; padding:42px 46px; text-align:center;
+            max-width:420px; width:100%;
+            box-shadow:0 30px 80px rgba(0,0,0,.4);
+            transform:scale(.95); transition:transform .3s cubic-bezier(.22,1,.36,1);
         }
-        .overlay .sheet::before {
-            content:''; position:absolute; top:0; left:0; right:0; height:2px;
-            background:linear-gradient(90deg, transparent, rgba(244,114,182,.6), rgba(236,73,153,.8), rgba(244,114,182,.6), transparent);
-        }
-
-        .overlay .sheet .check {
-            width:56px; height:56px; border-radius:50%;
-            background:linear-gradient(135deg, #ec4899, #f472b6);
-            display:flex; align-items:center; justify-content:center;
-            margin:0 auto 16px; font-size:26px; color:#fff;
-            box-shadow:0 8px 24px rgba(236,73,153,.3);
+        .overlay.show .sheet { transform:scale(1); }
+        .sheet .check {
+            width:64px; height:64px; margin:0 auto 18px;
+            border-radius:50%; background:#10b981; color:#fff;
+            display:flex; align-items:center; justify-content:center; font-size:28px;
+            box-shadow:0 8px 30px rgba(16,185,129,.45);
             animation:popIn .5s cubic-bezier(.17,.67,.35,1.2);
         }
-        @keyframes popIn {
-            0% { transform:scale(0); opacity:0; }
-            100% { transform:scale(1); opacity:1; }
-        }
-        @keyframes fadeIn {
-            from { opacity:0; }
-            to { opacity:1; }
-        }
-
-        .overlay .sheet .success-badge {
-            display:inline-block;
-            font-size:10px; font-weight:700; text-transform:uppercase;
-            letter-spacing:1.5px; color:rgba(244,114,182,.8);
+        @keyframes popIn { from{transform:scale(0)} to{transform:scale(1)} }
+        .success-badge {
+            display:inline-block; font-size:10px; font-weight:700; text-transform:uppercase;
+            letter-spacing:1.5px; color:rgba(244,114,182,.85);
             background:rgba(244,114,182,.12);
             padding:5px 14px; border-radius:100px; margin-bottom:20px;
         }
-
-        .overlay .sheet .tlabel {
-            font-size:10.5px; font-weight:700; letter-spacing:2.5px;
-            text-transform:uppercase; color:rgba(255,255,255,.4);
-            margin-bottom:4px;
-        }
-        .overlay .sheet .tnum {
-            font-size:60px; font-weight:900; line-height:1;
-            letter-spacing:-1px; margin-bottom:18px;
+        .sheet .tlabel { font-size:10.5px; font-weight:700; letter-spacing:2.5px; text-transform:uppercase; color:rgba(255,255,255,.4); margin-bottom:4px; }
+        .sheet .tnum {
+            font-size:60px; font-weight:900; line-height:1; letter-spacing:-1px; margin-bottom:18px;
             background:linear-gradient(135deg, #f9a8d4, #c4b5fd);
             -webkit-background-clip:text; background-clip:text;
             -webkit-text-fill-color:transparent;
             animation:popIn .55s .1s cubic-bezier(.17,.67,.35,1.2) backwards;
         }
-
-        .overlay .sheet .name {
-            font-size:22px; font-weight:700; color:#fff;
-            margin-bottom:6px; letter-spacing:-.3px;
-        }
-        .overlay .sheet .label {
-            font-size:14px; color:rgba(255,255,255,.45); margin-bottom:30px;
-        }
-        .overlay .sheet .ok {
+        .sheet .name { font-size:22px; font-weight:700; color:#fff; margin-bottom:6px; letter-spacing:-.3px; }
+        .sheet .sub { font-size:14px; color:rgba(255,255,255,.45); margin-bottom:30px; }
+        .sheet .ok {
             padding:13px 36px; display:inline-block;
-            border:none; border-radius:100px;
-            font-size:13px; font-weight:600; font-family:inherit;
-            cursor:pointer;
-            background:linear-gradient(135deg, #ec4899, #f472b6);
-            color:#fff; text-decoration:none;
-            transition:all .3s ease;
-            box-shadow:0 4px 16px rgba(236,73,153,.25);
-        }
-        .overlay .sheet .ok:hover {
-            transform:translateY(-2px);
-            box-shadow:0 8px 28px rgba(236,73,153,.4);
-        }
-
-        .ftr {
-            text-align:center; padding:0 20px 40px;
-            font-size:12px; color:var(--gray-300); letter-spacing:.3px;
-            position:relative; z-index:1;
-        }
-
-        /* ── Stepper ── */
-        .stepper {
-            display:flex; align-items:center; justify-content:center;
-            gap:0; margin-bottom:28px; padding:0 10px;
-        }
-        .step-item {
-            display:flex; align-items:center; gap:8px;
-        }
-        .step-circle {
-            width:32px; height:32px; border-radius:50%;
-            display:flex; align-items:center; justify-content:center;
+            background:linear-gradient(135deg, var(--brand), #e0559b);
+            color:#fff; text-decoration:none; border-radius:12px;
             font-size:13px; font-weight:700;
-            background:var(--gray-200); color:var(--gray-400);
-            transition:all .3s ease;
-        }
-        .step-item.active .step-circle {
-            background:linear-gradient(135deg, var(--pink-500), var(--pink-400));
-            color:#fff;
-            box-shadow:0 4px 14px rgba(236,73,153,.3);
-        }
-        .step-item.done .step-circle {
-            background:#10b981; color:#fff; font-size:0;
-            box-shadow:0 4px 14px rgba(16,185,129,.3);
-        }
-        .step-item.done .step-circle::after {
-            content:'\2713'; font-size:14px;
-        }
-        .step-label {
-            font-size:12px; font-weight:600; color:var(--gray-400);
-            transition:color .3s ease;
-        }
-        .step-item.active .step-label,
-        .step-item.done .step-label { color:var(--gray-900); }
-        .step-line {
-            width:60px; height:2px; margin:0 8px;
-            background:var(--gray-200);
-            transition:background .3s ease;
-        }
-        .step-line.done { background:#10b981; }
-
-        .step-content { display:none; }
-        .step-content.active { display:block; animation:fadeIn .3s ease; }
-
-        .btn-row {
-            display:flex; gap:12px; margin-top:10px;
-        }
-        .btn-row .btn { flex:1; }
-        .btn-secondary {
-            background:var(--gray-200); color:var(--gray-600);
-            box-shadow:none;
-        }
-        .btn-secondary:hover {
-            background:var(--gray-300); transform:translateY(-2px);
-            box-shadow:none;
+            box-shadow:0 8px 26px rgba(194,23,91,.4);
         }
 
-        .file-drop {
-            border:2px dashed var(--gray-200); border-radius:16px;
-            padding:26px 20px; text-align:center;
-            cursor:pointer; transition:all .25s ease;
-            background:var(--gray-50);
-        }
-        .file-drop:hover,
-        .file-drop.dragover {
-            border-color:var(--pink-400);
-            background:#fff;
-            box-shadow:0 6px 20px rgba(236,73,153,.08);
-            transform:translateY(-1px);
-        }
-        .file-drop input[type="file"] { display:none; }
-        .file-drop .drop-icon {
-            width:48px; height:48px; margin:0 auto 10px;
-            border-radius:14px;
-            background:linear-gradient(135deg, rgba(236,73,153,.09), rgba(139,92,246,.09));
-            display:flex; align-items:center; justify-content:center;
-            color:var(--pink-500);
-        }
-        .file-drop .drop-icon svg { width:21px; height:21px; }
-        .file-drop .drop-label {
-            font-size:14px; font-weight:600; color:var(--gray-600);
-        }
-        .file-drop .drop-hint {
-            font-size:12px; color:var(--gray-400); margin-top:4px;
-        }
-        .file-drop .file-name {
-            display:none;
-            font-size:12.5px; font-weight:600; color:var(--pink-500);
-            margin:10px auto 0; max-width:90%;
-            background:rgba(236,73,153,.07); border-radius:100px;
-            padding:5px 14px; word-break:break-all;
-        }
-        .file-drop.has-file .file-name { display:inline-block; }
-
-        /* ── Camera ── */
-        .cam-btn {
-            margin-top:10px; width:100%; padding:12px;
-            border:1.5px solid var(--gray-200); border-radius:12px;
-            background:#fff; font-family:inherit;
-            font-size:13px; font-weight:600; color:var(--gray-600);
-            cursor:pointer; transition:all .2s ease;
-            display:flex; align-items:center; justify-content:center; gap:8px;
-        }
-        .cam-btn svg { width:16px; height:16px; }
-        .cam-btn:hover { border-color:var(--pink-400); color:var(--pink-500); }
-
-        .overlay .cam-sheet {
-            background:#fff; border-radius:24px; padding:20px;
+        /* ── Camera modal ── */
+        .cam-sheet {
+            background:#fff; border-radius:20px; padding:20px;
             max-width:420px; width:100%;
             box-shadow:0 30px 80px rgba(0,0,0,.35);
         }
-        .cam-sheet h3 {
-            font-size:14px; font-weight:800; letter-spacing:.2px;
-            color:var(--gray-900); text-align:center; margin-bottom:14px;
-        }
-        .cam-view {
-            border-radius:16px; overflow:hidden;
-            background:#0f172a; aspect-ratio:4/3;
-        }
-        .cam-view video {
-            width:100%; height:100%; object-fit:cover; display:block;
-            transform:scaleX(-1);
-        }
+        .cam-sheet h3 { font-size:14px; font-weight:800; color:var(--gray-900); text-align:center; margin-bottom:14px; }
+        .cam-view { border-radius:14px; overflow:hidden; background:var(--gray-900); aspect-ratio:4/3; }
+        .cam-view video { width:100%; height:100%; object-fit:cover; display:block; transform:scaleX(-1); }
+        .btn-row { display:flex; gap:10px; margin-top:14px; }
+        .btn-row .btn-brand, .btn-row .btn-secondary { flex:1; }
 
-        #confetti { position:fixed; inset:0; pointer-events:none; z-index:1000; }
+        #confetti { position:fixed; inset:0; pointer-events:none; z-index:1200; }
+        .ftr { text-align:center; font-size:11px; color:var(--gray-400); padding:0 20px 30px; }
     </style>
 </head>
 <body>
 
-<div class="ambient"><div class="orb"></div><div class="orb"></div><div class="orb"></div></div>
-
 <!-- Top bar -->
 <div class="top">
     <div class="brand">
-        <img src="Logo.png" alt="">
+        <img src="Logo.png" alt="Logo">
         <span>Raffle System</span>
     </div>
     <div class="right">
-        <span class="badge"><?php echo htmlspecialchars($current_event_name); ?></span>
-        <a href="index.php" class="back">Back to Home</a>
-        <a href="login.php" class="admin">Admin</a>
+        <span class="badge">Registration Open</span>
+        <a class="admin" href="login.php"><i class="fas fa-right-to-bracket"></i> Admin Login</a>
+        <a class="back" href="index.php">Back to Home</a>
     </div>
 </div>
 
@@ -648,206 +572,266 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
 </div>
 
 <!-- Form card -->
-    <div class="wrap">
-        <div class="card">
+<div class="wrap">
+    <div class="card">
 
-            <?php if ($reg_start || $reg_end): ?>
-            <div class="regwin">
-                <?php if ($reg_start): ?><span class="rw-open">Opens <?php echo date('M j, Y g:i A', strtotime($reg_start)); ?></span><?php endif; ?>
-                <?php if ($reg_end): ?><span class="rw-close">Closes <?php echo date('M j, Y g:i A', strtotime($reg_end)); ?></span><?php endif; ?>
-            </div>
-            <?php endif; ?>
-
-            <?php if ($error): ?>
-                <div class="msg msg-err"><?php echo htmlspecialchars($error); ?></div>
-            <?php endif; ?>
-
-            <form id="regForm" method="POST" autocomplete="off" novalidate enctype="multipart/form-data">
-
-                <!-- Stepper -->
-                <div class="stepper">
-                    <div class="step-item active" id="stepItem1">
-                        <div class="step-circle">1</div>
-                        <span class="step-label">Personal Info</span>
-                    </div>
-                    <div class="step-line" id="stepLine1"></div>
-                    <div class="step-item" id="stepItem2">
-                        <div class="step-circle">2</div>
-                        <span class="step-label">Documents</span>
-                    </div>
-                </div>
-
-                <!-- Step 1: Personal Info -->
-                <div class="step-content active" id="step1">
-                    <div class="grid">
-
-                        <div class="sec-title span2">Personal Information</div>
-
-                        <div class="fld">
-                            <label for="lastname">Lastname <span class="star">*</span></label>
-                            <div class="ctrl">
-                                <input type="text" name="lastname" id="lastname" placeholder="e.g. Santos" value="<?php echo htmlspecialchars($submitted['lastname'] ?? ''); ?>" required>
-                            </div>
-                        </div>
-
-                        <div class="fld">
-                            <label for="firstname">Firstname <span class="star">*</span></label>
-                            <div class="ctrl">
-                                <input type="text" name="firstname" id="firstname" placeholder="e.g. Maria" value="<?php echo htmlspecialchars($submitted['firstname'] ?? ''); ?>" required>
-                            </div>
-                        </div>
-
-                        <div class="fld">
-                            <label for="middlename">Middlename <span class="star">*</span></label>
-                            <div class="ctrl">
-                                <input type="text" name="middlename" id="middlename" placeholder="e.g. Reyes" value="<?php echo htmlspecialchars($submitted['middlename'] ?? ''); ?>" required>
-                            </div>
-                        </div>
-
-                        <div class="fld">
-                            <label for="birthdate">Birthdate <span class="star">*</span></label>
-                            <div class="ctrl">
-                                <input type="date" name="birthdate" id="birthdate" value="<?php echo htmlspecialchars($submitted['birthdate'] ?? ''); ?>" required>
-                            </div>
-                        </div>
-
-                        <div class="sec-title span2">Address</div>
-
-                        <div class="fld">
-                            <label for="province">Province</label>
-                            <select name="province" id="province" disabled>
-                                <option value="South Cotabato" selected>South Cotabato</option>
-                            </select>
-                        </div>
-
-                        <div class="fld">
-                            <label for="city">City / Municipality</label>
-                            <select name="city" id="city" disabled>
-                                <option value="City of Koronadal" selected>City of Koronadal</option>
-                            </select>
-                        </div>
-
-                        <div class="fld">
-                            <label for="barangay">Barangay <span class="star">*</span></label>
-                            <select name="barangay" id="barangay" required>
-                                <option value="">— Select Barangay —</option>
-                                <option value="Assumption">Assumption</option>
-                                <option value="Avanceña">Avanceña</option>
-                                <option value="Cacub">Cacub</option>
-                                <option value="Caloocan">Caloocan</option>
-                                <option value="Carpenter Hill">Carpenter Hill</option>
-                                <option value="Concepcion">Concepcion</option>
-                                <option value="Esperanza">Esperanza</option>
-                                <option value="General Paulino Santos">General Paulino Santos</option>
-                                <option value="Mabini">Mabini</option>
-                                <option value="Magsaysay">Magsaysay</option>
-                                <option value="Mambucal">Mambucal</option>
-                                <option value="Morales">Morales</option>
-                                <option value="Namnama">Namnama</option>
-                                <option value="New Pangasinan">New Pangasinan</option>
-                                <option value="Paraiso">Paraiso</option>
-                                <option value="Rotonda">Rotonda</option>
-                                <option value="San Isidro">San Isidro</option>
-                                <option value="San Jose">San Jose</option>
-                                <option value="San Roque">San Roque</option>
-                                <option value="Santa Cruz">Santa Cruz</option>
-                                <option value="Santo Niño">Santo Niño</option>
-                                <option value="Saravia">Saravia</option>
-                                <option value="Topland">Topland</option>
-                                <option value="Zone I (Pob.)">Zone I (Pob.)</option>
-                                <option value="Zone II (Pob.)">Zone II (Pob.)</option>
-                                <option value="Zone III (Pob.)">Zone III (Pob.)</option>
-                                <option value="Zone IV (Pob.)">Zone IV (Pob.)</option>
-                            </select>
-                        </div>
-
-                        <div class="fld">
-                            <label for="purok">Purok <span style="color:var(--gray-300);font-size:11px;font-weight:400;">(optional)</span></label>
-                            <div class="ctrl">
-                                <input type="text" name="purok" id="purok" placeholder="e.g. Purok 3" value="<?php echo htmlspecialchars($submitted['purok'] ?? ''); ?>">
-                            </div>
-                        </div>
-
-                        <div class="fld span2">
-                            <label for="contact_number">Contact Number <span style="color:var(--gray-300);font-size:11px;font-weight:400;">(optional)</span></label>
-                            <div class="ctrl">
-                                <input type="text" name="contact_number" id="contact_number" placeholder="e.g. 0917 123 4567" value="<?php echo htmlspecialchars($submitted['contact_number'] ?? ''); ?>" required>
-                            </div>
-                        </div>
-
-                    </div>
-                    <div class="btn-row">
-                        <button type="button" id="toStep2" class="btn">Next &rarr;</button>
-                    </div>
-                </div>
-
-                <!-- Step 2: Documents -->
-                <div class="step-content" id="step2">
-                    <div class="grid">
-                        <div class="fld span2">
-                            <label for="photo_data">Profile Image <span style="color:var(--gray-300);font-size:11px;font-weight:400;">(optional)</span></label>
-                            <div class="file-drop" id="photoDrop">
-                                <input type="file" name="photo_data" id="photo_data" accept="image/*">
-                                <div class="drop-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></div>
-                                <div class="drop-label">Tap to upload profile image</div>
-                                <div class="drop-hint">JPG, PNG &mdash; max 5MB</div>
-                                <div class="file-name" id="photoFileName"></div>
-                            </div>
-                            <button type="button" id="useCamera" class="cam-btn">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
-                                or use camera
-                            </button>
-                        </div>
-
-                        <div class="fld span2">
-                            <label for="registration_attachment">Registration Attachment <span style="color:var(--gray-300);font-size:11px;font-weight:400;">(optional)</span></label>
-                            <div class="file-drop" id="attachDrop">
-                                <input type="file" name="registration_attachment" id="registration_attachment" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
-                                <div class="drop-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg></div>
-                                <div class="drop-label">Tap to upload attachment</div>
-                                <div class="drop-hint">PDF, DOC, DOCX, JPG, PNG &mdash; max 10MB</div>
-                                <div class="file-name" id="attachFileName"></div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="btn-row">
-                        <button type="button" id="backToStep1" class="btn btn-secondary">&larr; Back</button>
-                        <button type="submit" name="register" class="btn">Register Now</button>
-                    </div>
-                </div>
-
-            </form>
+        <?php if ($reg_start || $reg_end): ?>
+        <div class="regwin">
+            <?php if ($reg_start): ?><span class="rw-open">Opens <?php echo date('M j, Y g:i A', strtotime($reg_start)); ?></span><?php endif; ?>
+            <?php if ($reg_end): ?><span class="rw-close">Closes <?php echo date('M j, Y g:i A', strtotime($reg_end)); ?></span><?php endif; ?>
         </div>
+        <?php endif; ?>
+
+        <?php if ($error): ?>
+            <div class="callout callout-red"><i class="fas fa-circle-exclamation"></i><span><?php echo htmlspecialchars($error); ?></span></div>
+        <?php endif; ?>
+
+        <form id="regForm" method="POST" autocomplete="off" novalidate enctype="multipart/form-data">
+            <input type="hidden" name="register" value="1">
+
+            <!-- Stepper -->
+            <div class="stepper">
+                <div class="step-item active" id="stepItem1">
+                    <div class="step-circle">1</div>
+                    <span class="step-label">Personal Identity</span>
+                </div>
+                <div class="step-line" id="stepLine1"></div>
+                <div class="step-item" id="stepItem2">
+                    <div class="step-circle">2</div>
+                    <span class="step-label">Residency &amp; Contact</span>
+                </div>
+                <div class="step-line" id="stepLine2"></div>
+                <div class="step-item" id="stepItem3">
+                    <div class="step-circle">3</div>
+                    <span class="step-label">Verification</span>
+                </div>
+            </div>
+
+            <!-- ══════════ STEP 1: Personal Identity ══════════ -->
+            <div class="step-content active" id="step1">
+
+                <div class="sec-head">
+                    <h2><i class="fas fa-user"></i> Personal Identity</h2>
+                    <p>Enter your official name as shown on government IDs.</p>
+                </div>
+
+                <div class="grid g3">
+                    <div class="fld">
+                        <label for="firstname">First Name <span class="star">*</span></label>
+                        <input type="text" name="firstname" id="firstname" data-upper placeholder="Juan" value="<?php echo htmlspecialchars($submitted['firstname'] ?? ''); ?>" required>
+                    </div>
+                    <div class="fld">
+                        <label for="middlename">Middle Name <span class="opt">(Optional)</span></label>
+                        <input type="text" name="middlename" id="middlename" data-upper placeholder="Dela Cruz" value="<?php echo htmlspecialchars($submitted['middlename'] ?? ''); ?>">
+                    </div>
+                    <div class="fld">
+                        <label for="lastname">Last Name <span class="star">*</span></label>
+                        <input type="text" name="lastname" id="lastname" data-upper placeholder="Santos" value="<?php echo htmlspecialchars($submitted['lastname'] ?? ''); ?>" required>
+                    </div>
+                </div>
+
+                <div class="grid g4" style="margin-top:16px;">
+                    <div class="fld">
+                        <label for="suffix">Suffix</label>
+                        <select name="suffix" id="suffix">
+                            <option value="">None</option>
+                            <option value="JR.">Jr.</option>
+                            <option value="SR.">Sr.</option>
+                            <option value="I">I</option>
+                            <option value="II">II</option>
+                            <option value="III">III</option>
+                            <option value="IV">IV</option>
+                            <option value="V">V</option>
+                            <option value="VI">VI</option>
+                            <option value="VII">VII</option>
+                            <option value="VIII">VIII</option>
+                            <option value="IX">IX</option>
+                            <option value="X">X</option>
+                        </select>
+                    </div>
+                    <div class="fld">
+                        <label for="birthdate">Birthdate <span class="star">*</span></label>
+                        <input type="date" name="birthdate" id="birthdate" max="<?php echo date('Y-m-d'); ?>" value="<?php echo htmlspecialchars($submitted['birthdate'] ?? ''); ?>" required>
+                    </div>
+                    <div class="fld">
+                        <label for="sex">Sex <span class="star">*</span></label>
+                        <select name="sex" id="sex" required>
+                            <option value="" disabled selected>Select</option>
+                            <option value="MALE">Male</option>
+                            <option value="FEMALE">Female</option>
+                        </select>
+                    </div>
+                    <div class="fld">
+                        <label for="nationality">Nationality</label>
+                        <input type="text" name="nationality" id="nationality" data-upper placeholder="FILIPINO" value="<?php echo htmlspecialchars($submitted['nationality'] ?? 'FILIPINO'); ?>">
+                    </div>
+                </div>
+            </div>
+
+            <!-- ══════════ STEP 2: Residency & Contact ══════════ -->
+            <div class="step-content" id="step2">
+
+                <div class="sec-head">
+                    <h2><i class="fas fa-location-dot"></i> Residency &amp; Contact Details</h2>
+                    <p>Specify your residential address within South Cotabato.</p>
+                </div>
+
+                <div class="grid">
+                    <div class="fld">
+                        <label for="contact_number">Mobile Contact Number <span class="star">*</span></label>
+                        <input type="tel" name="contact_number" id="contact_number" placeholder="0917XXXXXXX" value="<?php echo htmlspecialchars($submitted['contact_number'] ?? ''); ?>" required>
+                    </div>
+                    <div class="fld">
+                        <label for="email">Email Address <span class="opt">(Optional)</span></label>
+                        <input type="email" name="email" id="email" placeholder="juan.delacruz@gmail.com" value="<?php echo htmlspecialchars($submitted['email'] ?? ''); ?>">
+                    </div>
+                </div>
+
+                <div class="grid" style="margin-top:16px;">
+                    <div class="fld">
+                        <label for="province">Province <span class="star">*</span></label>
+                        <select name="province" id="province" disabled>
+                            <option value="South Cotabato" selected>South Cotabato</option>
+                        </select>
+                    </div>
+                    <div class="fld">
+                        <label for="city">City / Municipality <span class="star">*</span></label>
+                        <select name="city" id="city" disabled>
+                            <option value="City of Koronadal" selected>City of Koronadal</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid" style="margin-top:16px;">
+                    <div class="fld">
+                        <label for="barangay">Barangay <span class="star">*</span></label>
+                        <select name="barangay" id="barangay" required>
+                            <option value="" disabled selected>Select barangay</option>
+                            <option value="Assumption">Assumption</option>
+                            <option value="Avanceña">Avanceña</option>
+                            <option value="Cacub">Cacub</option>
+                            <option value="Caloocan">Caloocan</option>
+                            <option value="Carpenter Hill">Carpenter Hill</option>
+                            <option value="Concepcion">Concepcion</option>
+                            <option value="Esperanza">Esperanza</option>
+                            <option value="General Paulino Santos">General Paulino Santos</option>
+                            <option value="Mabini">Mabini</option>
+                            <option value="Magsaysay">Magsaysay</option>
+                            <option value="Mambucal">Mambucal</option>
+                            <option value="Morales">Morales</option>
+                            <option value="Namnama">Namnama</option>
+                            <option value="New Pangasinan">New Pangasinan</option>
+                            <option value="Paraiso">Paraiso</option>
+                            <option value="Rotonda">Rotonda</option>
+                            <option value="San Isidro">San Isidro</option>
+                            <option value="San Jose">San Jose</option>
+                            <option value="San Roque">San Roque</option>
+                            <option value="Santa Cruz">Santa Cruz</option>
+                            <option value="Santo Niño">Santo Niño</option>
+                            <option value="Saravia">Saravia</option>
+                            <option value="Topland">Topland</option>
+                            <option value="Zone I (Pob.)">Zone I (Pob.)</option>
+                            <option value="Zone II (Pob.)">Zone II (Pob.)</option>
+                            <option value="Zone III (Pob.)">Zone III (Pob.)</option>
+                            <option value="Zone IV (Pob.)">Zone IV (Pob.)</option>
+                        </select>
+                    </div>
+                    <div class="fld">
+                        <label for="purok">Purok / Sitio <span class="opt">(Optional)</span></label>
+                        <input type="text" name="purok" id="purok" data-upper placeholder="e.g. Purok Magsaysay" value="<?php echo htmlspecialchars($submitted['purok'] ?? ''); ?>">
+                    </div>
+                </div>
+            </div>
+
+            <!-- ══════════ STEP 3: Identity Verification ══════════ -->
+            <div class="step-content" id="step3">
+
+                <div class="sec-head">
+                    <h2><i class="fas fa-camera"></i> Identity Verification</h2>
+                    <p>Capture your ID photo and upload a supporting document.</p>
+                </div>
+
+                <div class="vgrid">
+                    <!-- Citizen Facial Photo -->
+                    <div class="vcards">
+                        <label class="vhead">1. Citizen Facial Photo</label>
+                        <p class="vhint" style="margin-bottom:12px;">Upload a clear photo of your face, or capture one using your camera.</p>
+                        <div class="file-drop" id="photoDrop">
+                            <input type="file" name="photo_data" id="photo_data" accept="image/*">
+                            <div class="drop-icon"><i class="fas fa-camera-retro"></i></div>
+                            <div class="drop-label" id="photoFileName">Tap to upload photo</div>
+                        </div>
+                        <button type="button" id="useCamera" class="cam-btn">
+                            <i class="fas fa-video"></i> or use camera
+                        </button>
+                        <div class="spacer"></div>
+                        <p class="cam-note">Used for the participant record.</p>
+                    </div>
+
+                    <!-- Supporting Document -->
+                    <div class="vcards">
+                        <label class="vhead">2. Supporting Residency Document <span class="opt">(Optional)</span></label>
+                        <p class="vhint" style="margin-bottom:12px;">Upload a valid ID, Barangay Clearance, or Proof of Residency (PDF, JPG, PNG up to 5MB).</p>
+                        <div class="file-drop" id="attachDrop">
+                            <input type="file" name="registration_attachment" id="registration_attachment" accept=".pdf,.jpg,.jpeg,.png">
+                            <div class="drop-icon"><i class="fas fa-file-arrow-up"></i></div>
+                            <div class="drop-label" id="attachFileName">Click to upload document</div>
+                            <span class="browse-btn"><i class="fas fa-folder-open"></i> Browse File</span>
+                        </div>
+                        <div class="file-chip" id="attachChip">
+                            <span class="fname"><i class="fas fa-paperclip"></i> <span id="attachChipName"></span></span>
+                            <button type="button" id="removeAttach">Remove</button>
+                        </div>
+                        <div class="spacer"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Wizard Navigation -->
+            <div class="wiznav">
+                <button type="button" class="ghost" id="prevBtn"><i class="fas fa-arrow-left"></i> Previous</button>
+                <button type="submit" class="btn-brand next-btn" id="nextBtn">
+                    <span id="nextLabel">Next Step</span>
+                    <i class="fas fa-arrow-right" id="nextArrow"></i>
+                    <i class="fas fa-spinner fa-spin" id="nextSpinner" style="display:none;"></i>
+                </button>
+            </div>
+
+        </form>
     </div>
+</div>
 
 <div class="ftr">Raffle System &mdash; Raffle Draw Management</div>
 
 <!-- Success overlay -->
-        <div class="overlay" id="successOverlay">
-            <div class="sheet">
-                <div class="check">&#10003;</div>
-                <div class="success-badge">Registration Successful</div>
-                <div class="tlabel">Your Ticket No.</div>
-                <div class="tnum" id="sNumber"></div>
-                <div class="name" id="sName"></div>
-                <div class="label">is now registered &mdash; see you at the draw!</div>
-                <a href="register.php" class="ok">Register Another</a>
-            </div>
-        </div>
+<div class="overlay" id="successOverlay">
+    <div class="sheet">
+        <div class="check">&#10003;</div>
+        <div class="success-badge">Registration Successful</div>
+        <div class="tlabel">Your Ticket No.</div>
+        <div class="tnum" id="sNumber"></div>
+        <div class="name" id="sName"></div>
+        <div class="sub">is now registered &mdash; see you at the draw!</div>
+        <a href="register.php" class="ok">Register Another</a>
+    </div>
+</div>
 
 <!-- Camera modal -->
 <div class="overlay" id="cameraOverlay">
     <div class="cam-sheet">
-        <h3>Take Profile Photo</h3>
+        <h3><i class="fas fa-video" style="color:var(--brand);"></i> Take Profile Photo</h3>
         <div class="cam-view"><video id="camVideo" autoplay playsinline muted></video></div>
         <div class="btn-row">
-            <button type="button" id="camCancel" class="btn btn-secondary">Cancel</button>
-            <button type="button" id="camCapture" class="btn">Capture Photo</button>
+            <button type="button" id="camCancel" class="btn-secondary">Cancel</button>
+            <button type="button" id="camCapture" class="btn-brand">Capture Photo</button>
         </div>
     </div>
 </div>
 
+<!-- QR scanner overlay -->
 <div class="toast" id="toast"></div>
+
+<canvas id="confetti"></canvas>
 
 <?php if ($success): ?>
 <script>
@@ -860,13 +844,11 @@ document.addEventListener('DOMContentLoaded', function(){
 </script>
 <?php endif; ?>
 
-<!-- Confetti canvas -->
-<canvas id="confetti"></canvas>
 <script>
 (function(){
     var c = document.getElementById('confetti'), ctx = c.getContext('2d');
     var W, H, pieces = [], running = false, frame;
-    var colors = ['#ec4899','#f472b6','#f9a8d4','#34d399','#60a5fa','#fbbf24','#a78bfa'];
+    var colors = ['#c2175b','#e0559b','#f9a8d4','#34d399','#60a5fa','#fbbf24','#a78bfa'];
 
     function resize(){ W=c.width=window.innerWidth; H=c.height=window.innerHeight; }
     window.addEventListener('resize', resize); resize();
@@ -886,9 +868,6 @@ document.addEventListener('DOMContentLoaded', function(){
         frame = requestAnimationFrame(draw);
     }
     window.startConfetti = startConfetti;
-
-    function stopConfetti(){ running=false; cancelAnimationFrame(frame); ctx.clearRect(0,0,W,H); }
-    window.stopConfetti = stopConfetti;
 
     function draw(){
         ctx.clearRect(0,0,W,H);
@@ -913,154 +892,200 @@ function showToast(msg, type) {
     toastTimer = setTimeout(function(){ t.classList.remove('show'); }, 2600);
 }
 
+/* ── Uppercase inputs ── */
+document.querySelectorAll('input[data-upper]').forEach(function(inp){
+    inp.addEventListener('input', function(){ this.value = this.value.toUpperCase(); });
+});
+
 /* ── Stepper Logic ── */
-(function(){
-    var step1 = document.getElementById('step1');
-    var step2 = document.getElementById('step2');
-    var item1 = document.getElementById('stepItem1');
-    var item2 = document.getElementById('stepItem2');
-    var line1 = document.getElementById('stepLine1');
-    var toStep2 = document.getElementById('toStep2');
-    var backToStep1 = document.getElementById('backToStep1');
+var TOTAL_STEPS = 3;
+var currentStep = 1;
 
-    function goToStep(n) {
-        if (n === 2) {
-            step1.classList.remove('active');
-            step2.classList.add('active');
-            item1.classList.remove('active');
-            item1.classList.add('done');
-            line1.classList.add('done');
-            item2.classList.add('active');
-        } else {
-            step2.classList.remove('active');
-            step1.classList.add('active');
-            item2.classList.remove('active');
-            line1.classList.remove('done');
-            item1.classList.remove('done');
-            item1.classList.add('active');
+function el(id){ return document.getElementById(id); }
+
+function goToStep(n) {
+    currentStep = n;
+    for (var s = 1; s <= TOTAL_STEPS; s++) {
+        el('step' + s).classList.toggle('active', s === n);
+        var item = el('stepItem' + s);
+        item.classList.toggle('active', s === n);
+        item.classList.toggle('done', s < n);
+        if (s < TOTAL_STEPS) {
+            el('stepLine' + s).classList.toggle('done', s < n);
         }
     }
+    el('prevBtn').classList.toggle('visible', n > 1);
+    el('nextLabel').textContent = n === TOTAL_STEPS ? 'Submit Registration' : 'Next Step';
+    el('nextArrow').style.display = n === TOTAL_STEPS ? 'none' : '';
+}
 
-    toStep2.addEventListener('click', function() {
-        var fields = [
-            { el: document.getElementById('lastname'), name: 'Lastname' },
-            { el: document.getElementById('firstname'), name: 'Firstname' },
-            { el: document.getElementById('middlename'), name: 'Middlename' },
-            { el: document.getElementById('birthdate'), name: 'Birthdate' },
-            { el: document.getElementById('barangay'), name: 'Barangay' }
+function markInvalid(elm) {
+    elm.focus();
+    elm.style.borderColor = '#ef4444';
+    setTimeout(function(){ elm.style.borderColor = ''; }, 2000);
+}
+
+function validateStep(n) {
+    var checks = [];
+    if (n === 1) {
+        checks = [
+            { el: el('firstname'),  name: 'First Name' },
+            { el: el('lastname'),   name: 'Last Name' },
+            { el: el('sex'),        name: 'Sex' },
+            { el: el('birthdate'),  name: 'Birthdate' }
         ];
-        for (var i = 0; i < fields.length; i++) {
-            if (!fields[i].el.value.trim()) {
-                var el = fields[i].el;
-                el.focus();
-                el.style.borderColor = '#ef4444';
-                setTimeout(function(){ el.style.borderColor = ''; }, 2000);
-                showToast('Please fill in ' + fields[i].name + '.', 'error');
-                return;
-            }
-        }
-        goToStep(2);
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    });
-
-    backToStep1.addEventListener('click', function() {
-        goToStep(1);
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    });
-
-    /* ── File Drop Zones ── */
-    function setupDrop(dropId, inputId, nameId) {
-        var drop = document.getElementById(dropId);
-        var input = document.getElementById(inputId);
-        var nameEl = document.getElementById(nameId);
-        if (!drop || !input) return;
-
-        drop.addEventListener('click', function() { input.click(); });
-        drop.addEventListener('dragover', function(e) { e.preventDefault(); drop.classList.add('dragover'); });
-        drop.addEventListener('dragleave', function() { drop.classList.remove('dragover'); });
-        drop.addEventListener('drop', function(e) {
-            e.preventDefault();
-            drop.classList.remove('dragover');
-            if (e.dataTransfer.files.length) {
-                input.files = e.dataTransfer.files;
-                nameEl.textContent = e.dataTransfer.files[0].name;
-                drop.classList.add('has-file');
-            }
-        });
-        input.addEventListener('change', function() {
-            if (input.files.length) {
-                nameEl.textContent = input.files[0].name;
-                drop.classList.add('has-file');
-            } else {
-                nameEl.textContent = '';
-                drop.classList.remove('has-file');
-            }
-        });
+    } else if (n === 2) {
+        checks = [
+            { el: el('contact_number'), name: 'Mobile Contact Number' },
+            { el: el('barangay'),       name: 'Barangay' }
+        ];
+    } else if (n === 3) {
+        return true;
     }
-    setupDrop('photoDrop', 'photo_data', 'photoFileName');
-    setupDrop('attachDrop', 'registration_attachment', 'attachFileName');
-
-    /* ── Camera capture ── */
-    var camStream = null,
-        camOverlay = document.getElementById('cameraOverlay'),
-        camVideo = document.getElementById('camVideo'),
-        photoInput = document.getElementById('photo_data'),
-        photoDropEl = document.getElementById('photoDrop');
-
-    function stopCam() {
-        if (camStream) {
-            camStream.getTracks().forEach(function(t){ t.stop(); });
-            camStream = null;
+    for (var i = 0; i < checks.length; i++) {
+        if (!String(checks[i].el.value).trim()) {
+            markInvalid(checks[i].el);
+            showToast('Please fill in ' + checks[i].name + '.', 'error');
+            return false;
         }
-        camOverlay.classList.remove('show');
+    }
+    return true;
+}
+
+/* Next / Submit via form submit (Enter key + button) */
+var allowSubmit = false;
+document.getElementById('regForm').addEventListener('submit', function(e){
+    if (allowSubmit) return;
+    e.preventDefault();
+    if (validateStep(currentStep)) {
+        if (currentStep < TOTAL_STEPS) {
+            goToStep(currentStep + 1);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        } else {
+            allowSubmit = true;
+            el('nextBtn').disabled = true;
+            el('nextLabel').textContent = 'Submitting...';
+            el('nextSpinner').style.display = '';
+            e.target.submit();
+        }
+    }
+});
+
+document.getElementById('prevBtn').addEventListener('click', function() {
+    if (currentStep > 1) {
+        goToStep(currentStep - 1);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+});
+
+/* ── File Drop Zones ── */
+function setupDrop(dropId, inputId, opts) {
+    opts = opts || {};
+    var drop = el(dropId);
+    var input = el(inputId);
+    var labelEl = opts.labelEl ? el(opts.labelEl) : null;
+    var defaultLabel = labelEl ? labelEl.textContent : '';
+    var chip = opts.chipId ? el(opts.chipId) : null;
+    var chipName = opts.chipNameId ? el(opts.chipNameId) : null;
+    if (!drop || !input) return;
+
+    function apply(file) {
+        if (labelEl) labelEl.textContent = file ? file.name : defaultLabel;
+        if (chip && chipName) {
+            chip.classList.toggle('show', !!file);
+            chipName.textContent = file ? file.name : '';
+        }
     }
 
-    document.getElementById('useCamera').addEventListener('click', function() {
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-            showToast('Camera is not supported on this browser.', 'error');
-            return;
+    drop.addEventListener('click', function() {
+        input.click();
+    });
+    drop.addEventListener('dragover', function(e) { e.preventDefault(); drop.classList.add('dragover'); });
+    drop.addEventListener('dragleave', function() { drop.classList.remove('dragover'); });
+    drop.addEventListener('drop', function(e) {
+        e.preventDefault();
+        drop.classList.remove('dragover');
+        if (e.dataTransfer.files.length) {
+            input.files = e.dataTransfer.files;
+            apply(input.files[0]);
         }
-        navigator.mediaDevices.getUserMedia({
-            video: { facingMode: 'user', width: { ideal: 960 }, height: { ideal: 720 } },
-            audio: false
-        }).then(function(stream) {
-            camStream = stream;
-            camVideo.srcObject = stream;
-            camOverlay.classList.add('show');
-        }).catch(function() {
-            showToast('Unable to access camera. Please allow permission.', 'error');
+    });
+    input.addEventListener('change', function() {
+        apply(input.files.length ? input.files[0] : null);
+    });
+
+    if (opts.removeBtnId) {
+        el(opts.removeBtnId).addEventListener('click', function() {
+            input.value = '';
+            apply(null);
         });
+    }
+}
+setupDrop('photoDrop', 'photo_data', { labelEl: 'photoFileName' });
+setupDrop('attachDrop', 'registration_attachment', { labelEl: 'attachFileName', chipId: 'attachChip', chipNameId: 'attachChipName', removeBtnId: 'removeAttach' });
+
+/* ── Camera capture ── */
+var camStream = null,
+    camOverlay = el('cameraOverlay'),
+    camVideo = el('camVideo'),
+    photoInput = el('photo_data');
+
+function stopCam() {
+    if (camStream) {
+        camStream.getTracks().forEach(function(t){ t.stop(); });
+        camStream = null;
+    }
+    camOverlay.classList.remove('show');
+}
+
+el('useCamera').addEventListener('click', function() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        showToast('Camera is not supported on this browser.', 'error');
+        return;
+    }
+    navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'user', width: { ideal: 960 }, height: { ideal: 720 } },
+        audio: false
+    }).then(function(stream) {
+        camStream = stream;
+        camVideo.srcObject = stream;
+        camOverlay.classList.add('show');
+    }).catch(function() {
+        showToast('Unable to access camera. Please allow permission.', 'error');
     });
+});
 
-    document.getElementById('camCancel').addEventListener('click', stopCam);
+el('camCancel').addEventListener('click', stopCam);
 
-    document.getElementById('camCapture').addEventListener('click', function() {
-        var vw = camVideo.videoWidth, vh = camVideo.videoHeight;
-        if (!vw || !vh) { showToast('Camera is not ready yet.', 'error'); return; }
-        var size = Math.min(vw, vh);
-        var canvas = document.createElement('canvas');
-        canvas.width = size; canvas.height = size;
-        var ctx = canvas.getContext('2d');
-        ctx.translate(size, 0); ctx.scale(-1, 1); /* mirror to match preview */
-        ctx.drawImage(camVideo, (vw - size) / 2, (vh - size) / 2, size, size, 0, 0, size, size);
-        canvas.toBlob(function(blob) {
-            if (!blob) { showToast('Could not process the photo.', 'error'); stopCam(); return; }
-            try {
-                var dt = new DataTransfer();
-                dt.items.add(new File([blob], 'camera-photo.jpg', { type: 'image/jpeg' }));
-                photoInput.files = dt.files;
-            } catch (err) {}
-            document.getElementById('photoFileName').textContent = 'Captured photo \u2713';
-            photoDropEl.classList.add('has-file');
-            stopCam();
-            showToast('Photo captured!');
-        }, 'image/jpeg', 0.92);
-    });
+el('camCapture').addEventListener('click', function() {
+    var vw = camVideo.videoWidth, vh = camVideo.videoHeight;
+    if (!vw || !vh) { showToast('Camera is not ready yet.', 'error'); return; }
+    var size = Math.min(vw, vh);
+    var canvas = document.createElement('canvas');
+    canvas.width = size; canvas.height = size;
+    var cx = canvas.getContext('2d');
+    cx.translate(size, 0); cx.scale(-1, 1);
+    cx.drawImage(camVideo, (vw - size) / 2, (vh - size) / 2, size, size, 0, 0, size, size);
+    canvas.toBlob(function(blob) {
+        if (!blob) { showToast('Could not process the photo.', 'error'); stopCam(); return; }
+        try {
+            var dt = new DataTransfer();
+            dt.items.add(new File([blob], 'camera-photo.jpg', { type: 'image/jpeg' }));
+            photoInput.files = dt.files;
+            inputChanged(photoInput);
+        } catch (err) {}
+        stopCam();
+        showToast('Photo captured!');
+    }, 'image/jpeg', 0.92);
+});
+function inputChanged(input){ input.dispatchEvent(new Event('change')); }
 
-    <?php if ($error && $error_step === 2): ?>
-    goToStep(2);
-    <?php endif; ?>
-})();
+<?php if ($error): ?>
+goToStep(<?php echo (int)$error_step; ?>);
+window.scrollTo({ top: 0 });
+<?php endif; ?>
+
+goToStep(1);
 </script>
 
 </body>

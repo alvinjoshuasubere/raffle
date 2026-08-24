@@ -105,10 +105,20 @@ if (isset($_POST['upload_csv'])) {
                             continue;
                         }
 
-                        // Normalize birthdate to Y-m-d when parsable
+                        // Normalize birthdate (mm/dd/yyyy) to Y-m-d when valid
                         if ($birthdate !== '') {
-                            $ts = strtotime($birthdate);
-                            if ($ts) $birthdate = date('Y-m-d', $ts);
+                            $dt = false;
+                            if (preg_match('#^\d{1,2}/\d{1,2}/\d{4}$#', $birthdate)) {
+                                $dt = DateTime::createFromFormat('m/d/Y', $birthdate);
+                                $le = DateTime::getLastErrors();
+                                if ($dt && (($le['warning_count'] ?? 0) || ($le['error_count'] ?? 0))) {
+                                    $dt = false; // reject rollovers e.g. 13/45/2020
+                                }
+                            } else {
+                                $ts = strtotime($birthdate); // accepts Y-m-d and other formats
+                                $dt = $ts ? (new DateTime())->setTimestamp($ts) : false;
+                            }
+                            $birthdate = $dt ? $dt->format('Y-m-d') : '';
                         }
 
                         $name = strtoupper(trim($firstname . ' ' . $middlename . ' ' . $lastname));
@@ -574,7 +584,7 @@ if (isset($_SESSION['upload_errors'])) {
         <li><strong>Lastname</strong> <span style="color:#ef4444;">*</span> &mdash; Participant's last name</li>
         <li><strong>Firstname</strong> <span style="color:#ef4444;">*</span> &mdash; Participant's first name</li>
         <li><strong>Middlename</strong> &mdash; optional</li>
-        <li><strong>Birthdate</strong> &mdash; optional (e.g. 1990-05-14)</li>
+        <li><strong>Birthdate</strong> &mdash; optional, format <strong>mm/dd/yyyy</strong> (e.g. 05/14/1990)</li>
         <li><strong>Barangay</strong> <span style="color:#ef4444;">*</span> &mdash; Participant's barangay</li>
         <li><strong>Purok</strong> &mdash; optional</li>
         <li><strong>Contact Number</strong> &mdash; optional</li>

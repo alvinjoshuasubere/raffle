@@ -15,8 +15,8 @@ $out = fopen('php://output', 'w');
 fwrite($out, "\xEF\xBB\xBF");
 
 fputcsv($out, ['Lastname', 'Firstname', 'Middlename', 'Birthdate', 'Barangay', 'Purok', 'Contact Number']);
-fputcsv($out, ['SANTOS', 'MARIA', 'REYES', '1990-05-14', 'Assumption', 'Purok 3', '0917 123 4567']);
-fputcsv($out, ['DELA CRUZ', 'JUAN', '', '1985-11-02', 'Carpenter Hill', 'Purok 1', '0998 765 4321']);
+fputcsv($out, ['SANTOS', 'MARIA', 'REYES', '05/14/1990', 'Assumption', 'Purok 3', '0917 123 4567']);
+fputcsv($out, ['DELA CRUZ', 'JUAN', '', '11/02/1985', 'Carpenter Hill', 'Purok 1', '0998 765 4321']);
 
 fclose($out);
 exit;

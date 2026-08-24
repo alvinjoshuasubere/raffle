@@ -67,6 +67,32 @@ function sanitize_input($data) {
     return $conn->real_escape_string($data);
 }
 
+// Ensure key-value settings table exists
+$conn->query("CREATE TABLE IF NOT EXISTS settings (
+    skey VARCHAR(64) PRIMARY KEY,
+    svalue VARCHAR(255) NOT NULL DEFAULT ''
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+// Get a setting value (with default)
+function get_setting($conn, $key, $default = '') {
+    $stmt = $conn->prepare("SELECT svalue FROM settings WHERE skey = ?");
+    $stmt->bind_param("s", $key);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    return $row !== null ? $row['svalue'] : $default;
+}
+
+// Save a setting value
+function set_setting($conn, $key, $value) {
+    $stmt = $conn->prepare("INSERT INTO settings (skey, svalue) VALUES (?, ?)
+                            ON DUPLICATE KEY UPDATE svalue = VALUES(svalue)");
+    $stmt->bind_param("ss", $key, $value);
+    $ok = $stmt->execute();
+    $stmt->close();
+    return $ok;
+}
+
 // Function to set flash message
 function set_message($type, $message) {
     $_SESSION['message'] = $message;

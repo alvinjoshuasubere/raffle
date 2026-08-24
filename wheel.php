@@ -42,6 +42,20 @@ if (isset($_POST['remove_participant'])) {
     exit;
 }
 
+// Handle Slot Timing settings
+if (isset($_POST['save_slot_timing'])) {
+    $spin_secs  = max(1, min(60, intval($_POST['spin_seconds'] ?? 3)));
+    $delay_secs = max(0, min(120, intval($_POST['modal_delay_seconds'] ?? 0)));
+    set_setting($conn, 'slot_spin_seconds', (string)$spin_secs);
+    set_setting($conn, 'slot_modal_delay_seconds', (string)$delay_secs);
+    set_message('success', "Slot timing saved: {$spin_secs}s spin, {$delay_secs}s before modal.");
+    header('Location: admin.php?page=wheel');
+    exit;
+}
+
+$slot_spin_seconds  = max(1, min(60, intval(get_setting($conn, 'slot_spin_seconds', '3'))));
+$slot_delay_seconds = max(0, min(120, intval(get_setting($conn, 'slot_modal_delay_seconds', '0'))));
+
 // Fetch all participants for the slot machine
 $slot_stmt = $conn->prepare("SELECT id, number, name, purok FROM participants WHERE event_id = ? AND (status IS NULL OR status = '') ORDER BY CAST(number AS UNSIGNED) ASC");
 $slot_stmt->bind_param("i", $current_event_id);
@@ -101,6 +115,25 @@ $slot_participants = $slot_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
           </button>
         </div>
 
+        <form method="POST" class="slot-timing" id="slotTimingForm">
+          <input type="hidden" name="save_slot_timing" value="1">
+          <div class="slot-timing-title">Slot Timing</div>
+          <div class="slot-timing-row">
+            <label>Spin seconds
+              <input type="number" name="spin_seconds" min="1" max="60" step="1"
+                     value="<?php echo $slot_spin_seconds; ?>" required>
+            </label>
+            <label>Countdown
+              <input type="number" name="modal_delay_seconds" min="0" max="120" step="1"
+                     value="<?php echo $slot_delay_seconds; ?>" required>
+            </label>
+          </div>
+          <button type="submit" class="btn btn-primary slot-timing-save">Save Timing</button>
+          <div class="slot-timing-hint">Spin cannot be 0. Modal delay 0 = show immediately.</div>
+        </form>
+
+        <div class="slot-countdown" id="slotCountdown"></div>
+
         <!-- <div class="wheel-count">
           <span id="wheel_participant_count"><?php echo count($slot_participants); ?></span> ticket<?php echo count($slot_participants) === 1 ? '' : 's'; ?> in the machine
         </div>
@@ -112,6 +145,13 @@ $slot_participants = $slot_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 
     </div>
   </div>
+</div>
+
+<!-- Full-page intense countdown overlay -->
+<div class="page-count-overlay" id="slotCountOverlay">
+  <div class="pc-vignette"></div>
+  <span class="pc-num" id="slotCountNum"></span>
+  <span class="pc-label">SHOWING WINNER...</span>
 </div>
 
 <!-- Winner Modal -->
@@ -142,10 +182,11 @@ let slotSpinning = false;
 
 /* ===== SLOT MACHINE ===== */
 const REEL_PASSES = 20;         // heavy strip churn = real slot-machine speed
-const SPIN_DURATION = 3000;     // ms — fast roll for 3 seconds
+const SPIN_DURATION = <?php echo $slot_spin_seconds * 1000; ?>;   // admin-configurable spin seconds
 const FAST_PHASE = 0.90;        // sustained top speed until 90% of the spin
 const BOUNCE_MS = 240;          // mechanical kick-back after hitting the stop
 const OVERSHOOT_PX = 22;        // how far past the stop it kicks before settling
+const MODAL_DELAY_MS = <?php echo $slot_delay_seconds * 1000; ?>; // admin-configurable delay before modal
 
 function el(id){ return document.getElementById(id); }
 
@@ -275,7 +316,36 @@ function spinSlot() {
             setSlotStatus('\u{1F3C6}', 'Winner: ' + winner.name);
             const lastEl = el('wheel_last_winner');
             if (lastEl) lastEl.textContent = 'Last winner: ' + winner.name;
-            setTimeout(function(){ showWinnerModal(currentWinner); }, 700);
+
+            // Big intense countdown overlay on the machine before showing the winner modal
+            if (MODAL_DELAY_MS > 0) {
+                const ovEl = el('slotCountOverlay');
+                const numEl = el('slotCountNum');
+                let remaining = Math.round(MODAL_DELAY_MS / 1000);
+                const total = remaining;
+                ovEl.classList.remove('mid', 'final');
+                numEl.textContent = remaining;
+                ovEl.classList.add('show');
+                numEl.classList.remove('tick'); void numEl.offsetWidth; numEl.classList.add('tick');
+                const tick = setInterval(function(){
+                    remaining--;
+                    if (remaining > 0) {
+                        if (remaining <= Math.ceil(total / 2)) ovEl.classList.add('mid');
+                        numEl.textContent = remaining;
+                        numEl.classList.remove('tick'); void numEl.offsetWidth; numEl.classList.add('tick');
+                    } else {
+                        clearInterval(tick);
+                        ovEl.classList.add('final');
+                        numEl.textContent = '';
+                        setTimeout(function(){
+                            ovEl.classList.remove('show', 'mid', 'final');
+                            showWinnerModal(currentWinner);
+                        }, 650);
+                    }
+                }, 1000);
+            } else {
+                showWinnerModal(currentWinner);
+            }
         }
     }
     requestAnimationFrame(frame);

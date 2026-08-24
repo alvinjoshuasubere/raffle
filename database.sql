@@ -108,3 +108,13 @@ CREATE INDEX idx_event_prizes ON prizes(event_id);
 -- ALTER TABLE participants ADD COLUMN IF NOT EXISTS receive_updates TINYINT(1) NOT NULL DEFAULT 0 AFTER dp_consent;
 -- ALTER TABLE participants ADD COLUMN IF NOT EXISTS parental_consent TINYINT(1) NOT NULL DEFAULT 0 AFTER receive_updates;
 -- ALTER TABLE participants ADD COLUMN IF NOT EXISTS consent_form LONGBLOB NULL AFTER registration_attachment;
+-- ALTER TABLE events ADD COLUMN IF NOT EXISTS registration_start_at DATETIME NULL DEFAULT NULL AFTER description;
+-- ALTER TABLE events ADD COLUMN IF NOT EXISTS registration_end_at DATETIME NULL DEFAULT NULL AFTER registration_start_at;
+
+-- ============================================================
+-- Settings Table (key-value, e.g. slot timing)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS settings (
+    skey VARCHAR(64) PRIMARY KEY,
+    svalue VARCHAR(255) NOT NULL DEFAULT ''
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

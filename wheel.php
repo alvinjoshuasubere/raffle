@@ -88,10 +88,10 @@ $slot_participants = $slot_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
       </div>
 
       <div class="wheel-controls">
-        <div class="wheel-status-card">
+        <!-- <div class="wheel-status-card">
           <div class="wheel-status-icon" id="wheelStatusIcon">&#127904;</div>
           <div class="wheel-status-text" id="wheelStatusText">Ready to spin</div>
-        </div>
+        </div> -->
 
         <div class="spin-wrap">
           <button type="button" id="spin_btn" class="btn-spin-big">
@@ -101,13 +101,13 @@ $slot_participants = $slot_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
           </button>
         </div>
 
-        <div class="wheel-count">
+        <!-- <div class="wheel-count">
           <span id="wheel_participant_count"><?php echo count($slot_participants); ?></span> ticket<?php echo count($slot_participants) === 1 ? '' : 's'; ?> in the machine
         </div>
 
         <div class="wheel-last-wrap">
           <span class="wheel-last" id="wheel_last_winner">Last winner: &mdash;</span>
-        </div>
+        </div> -->
       </div>
 
     </div>

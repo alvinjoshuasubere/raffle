@@ -58,10 +58,27 @@ if (isset($_POST['upload_csv'])) {
                 $next_number = ($max_result['max_num'] ?? 0) + 1;
                 $max_q->close();
 
-                // Skip header row
+                // Read header row and map columns by name (order-independent)
                 $header = fgetcsv($handle, 1000, ',');
+                $map = [];
+                foreach ($header ?: [] as $i => $h) {
+                    $key = strtolower(preg_replace('/[^a-z0-9]/i', '', trim((string)$h)));
+                    switch ($key) {
+                        case 'lastname':   case 'surname':      $map['lastname']   = $i; break;
+                        case 'firstname':  case 'givenname':    $map['firstname']  = $i; break;
+                        case 'middlename': case 'middlenamemi': $map['middlename'] = $i; break;
+                        case 'birthdate':  case 'birthday':     case 'dateofbirth': $map['birthdate'] = $i; break;
+                        case 'barangay':   case 'brgy':         $map['barangay']   = $i; break;
+                        case 'purok':                            $map['purok']      = $i; break;
+                        case 'contactnumber': case 'contact': case 'phonenumber': case 'mobilenumber':
+                                                                 $map['contact']    = $i; break;
+                        case 'name':       case 'fullname':     $map['fullname']   = $i; break;
+                    }
+                }
 
-                $stmt = $conn->prepare("INSERT INTO participants (event_id, number, name, barangay, contact_number) VALUES (?, ?, ?, ?, ?)");
+                $has_split_names = isset($map['lastname'], $map['firstname']);
+
+                $stmt = $conn->prepare("INSERT INTO participants (event_id, number, lastname, firstname, middlename, name, birthdate, province, city, barangay, purok, contact_number) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
 
                 while (($data = fgetcsv($handle, 1000, ',')) !== FALSE) {
                     $row_count++;
@@ -69,22 +86,73 @@ if (isset($_POST['upload_csv'])) {
                     // Skip empty rows
                     if (empty(array_filter($data))) continue;
 
-                    if (count($data) < 3) {
-                        $errors[] = "Row {$row_count}: Incomplete data";
-                        continue;
+                    $get = function($key) use ($map, $data) {
+                        return isset($map[$key]) ? strtoupper(trim($data[$map[$key]] ?? '')) : '';
+                    };
+
+                    if ($has_split_names) {
+                        // New detailed format
+                        $lastname   = $get('lastname');
+                        $firstname  = $get('firstname');
+                        $middlename = $get('middlename');
+                        $birthdate  = $get('birthdate');
+                        $barangay   = $get('barangay');
+                        $purok      = $get('purok');
+                        $contact    = $get('contact');
+
+                        if (empty($lastname) || empty($firstname) || empty($barangay)) {
+                            $errors[] = "Row {$row_count}: Missing required fields (Lastname, Firstname, Barangay)";
+                            continue;
+                        }
+
+                        // Normalize birthdate to Y-m-d when parsable
+                        if ($birthdate !== '') {
+                            $ts = strtotime($birthdate);
+                            if ($ts) $birthdate = date('Y-m-d', $ts);
+                        }
+
+                        $name = strtoupper(trim($firstname . ' ' . $middlename . ' ' . $lastname));
+                    } elseif (isset($map['fullname'])) {
+                        // Full name single column format
+                        $name       = $get('fullname');
+                        $lastname   = '';
+                        $firstname  = '';
+                        $middlename = '';
+                        $birthdate  = $get('birthdate');
+                        $barangay   = $get('barangay');
+                        $purok      = $get('purok');
+                        $contact    = $get('contact');
+
+                        if (empty($name) || empty($barangay)) {
+                            $errors[] = "Row {$row_count}: Missing required fields (Name, Barangay)";
+                            continue;
+                        }
+                    } else {
+                        // Legacy positional format: Name, Barangay, Contact
+                        if (count($data) < 3) {
+                            $errors[] = "Row {$row_count}: Incomplete data";
+                            continue;
+                        }
+                        $name       = strtoupper(trim($data[0]));
+                        $lastname   = '';
+                        $firstname  = '';
+                        $middlename = '';
+                        $birthdate  = '';
+                        $barangay   = strtoupper(trim($data[1]));
+                        $purok      = '';
+                        $contact    = strtoupper(trim($data[2] ?? ''));
+
+                        if (empty($name) || empty($barangay)) {
+                            $errors[] = "Row {$row_count}: Missing required fields";
+                            continue;
+                        }
                     }
 
-                    $name = strtoupper(trim($data[0]));
-                    $barangay = strtoupper(trim($data[1]));
-                    $contact = strtoupper(trim($data[2] ?? ''));
+                    $province = 'South Cotabato';
+                    $city     = 'City of Koronadal';
+                    $number   = (string)$next_number++;
 
-                    if (empty($name) || empty($barangay)) {
-                        $errors[] = "Row {$row_count}: Missing required fields";
-                        continue;
-                    }
-
-                    $number = (string)$next_number++;
-                    $stmt->bind_param("issss", $current_event_id, $number, $name, $barangay, $contact);
+                    $stmt->bind_param("isssssssssss", $current_event_id, $number, $lastname, $firstname, $middlename, $name, $birthdate, $province, $city, $barangay, $purok, $contact);
 
                     if ($stmt->execute()) {
                         $success_count++;
@@ -190,16 +258,151 @@ $offset = ($page - 1) * $limit;
 // Get total pages
 $total_pages = ceil($participant_count / $limit);
 
-// Fetch participants for current page
+// Fetch participants for current page (blob columns excluded; flags only)
 $participants = $conn->prepare("
-    SELECT * FROM participants 
+    SELECT id, number, name, barangay, contact_number, status,
+           (photo_data IS NOT NULL AND photo_data <> '') AS has_photo,
+           (registration_attachment IS NOT NULL AND registration_attachment <> '') AS has_attachment
+    FROM participants 
     WHERE event_id = ?
     ORDER BY id ASC 
     LIMIT $limit OFFSET $offset
 ");
 $participants->bind_param("i", $current_event_id);
 $participants->execute();
-$participants = $participants->get_result();?>
+$participants = $participants->get_result();
+
+// Event name (for the printed backup list)
+$ev_stmt = $conn->prepare("SELECT name FROM events WHERE id = ?");
+$ev_stmt->bind_param("i", $current_event_id);
+$ev_stmt->execute();
+$event_name = $ev_stmt->get_result()->fetch_assoc()['name'] ?? 'Raffle Event';
+$ev_stmt->close();
+
+// Full eligible list for printing (excludes winners/removed)
+$print_stmt = $conn->prepare("
+    SELECT number, name, barangay
+    FROM participants
+    WHERE event_id = ? AND (status IS NULL OR status = '')
+    ORDER BY CAST(number AS UNSIGNED) ASC
+");
+$print_stmt->bind_param("i", $current_event_id);
+$print_stmt->execute();
+$print_list = $print_stmt->get_result();
+?>
+
+<style>
+    #printArea { display: none; }
+
+    .pavatar {
+        width: 42px; height: 42px; border-radius: 50%;
+        object-fit: cover; display: block; margin: 0 auto;
+        border: 2px solid #fbcfe8; cursor: zoom-in;
+        transition: transform .15s ease;
+    }
+    .pavatar:hover { transform: scale(1.1); }
+    .attach-link {
+        display: inline-flex; align-items: center; gap: 5px;
+        font-size: 12px; font-weight: 600; color: #ec4899;
+        text-decoration: none;
+    }
+    .attach-link:hover { text-decoration: underline; }
+
+    @media print {
+        body * {
+            visibility: hidden !important;
+        }
+        #printArea,
+        #printArea * {
+            visibility: visible !important;
+        }
+        #printArea {
+            display: block !important;
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            padding: 8mm 10mm;
+            color: #000;
+            font-family: Arial, Helvetica, sans-serif;
+        }
+        .print-head {
+            text-align: center;
+            margin-bottom: 6mm;
+            border-bottom: 2px solid #000;
+            padding-bottom: 4mm;
+        }
+        .print-head h1 {
+            font-size: 20pt;
+            margin-bottom: 2mm;
+            letter-spacing: 1px;
+        }
+        .print-head p {
+            font-size: 10pt;
+            margin: 1mm 0;
+        }
+        #printArea table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        #printArea th,
+        #printArea td {
+            border: 1px solid #000;
+            padding: 7px 10px;
+            font-size: 11pt;
+            text-align: left;
+            word-break: break-word;
+        }
+        #printArea th {
+            background: #eee;
+            font-weight: 700;
+        }
+        #printArea td.num {
+            width: 70px;
+            font-weight: 700;
+            text-align: center;
+        }
+        #printArea tr {
+            page-break-inside: avoid;
+        }
+        #printArea thead {
+            display: table-header-group;
+        }
+        .print-foot {
+            margin-top: 5mm;
+            font-size: 9pt;
+            text-align: center;
+        }
+    }
+</style>
+
+<!-- Printable backup list -->
+<div id="printArea">
+    <div class="print-head">
+        <h1><?php echo htmlspecialchars($event_name); ?></h1>
+        <p><strong>OFFICIAL PARTICIPANT LIST</strong></p>
+        <p>Generated: <?php echo date('F j, Y &\m\d\a\sh; g:i A'); ?> &nbsp;&bull;&nbsp; Total: <?php echo $print_list->num_rows; ?> participant(s)</p>
+    </div>
+    <table>
+        <thead>
+            <tr>
+                <th class="num">Ticket No.</th>
+                <th>Name</th>
+                <th>Barangay</th>
+            </tr>
+        </thead>
+        <tbody>
+            <?php while ($p = $print_list->fetch_assoc()): ?>
+            <tr>
+                <td class="num"><?php echo htmlspecialchars($p['number']); ?></td>
+                <td><?php echo strtoupper(htmlspecialchars($p['name'])); ?></td>
+                <td><?php echo strtoupper(htmlspecialchars($p['barangay'])); ?></td>
+            </tr>
+            <?php endwhile; ?>
+        </tbody>
+    </table>
+    <div class="print-foot">&mdash; End of List &mdash;</div>
+</div>
 
 <h1>Upload Participants</h1>
 
@@ -227,10 +430,12 @@ if (isset($_SESSION['upload_errors'])) {
     <table style="width:100%; border-collapse:collapse;">
         <thead>
             <tr style="background:#ec4899;">
+                <th style="padding:8px; border:1px solid #ddd;">Photo</th>
                 <th style="padding:8px; border:1px solid #ddd;">Number</th>
                 <th style="padding:8px; border:1px solid #ddd;">Name</th>
                 <th style="padding:8px; border:1px solid #ddd;">Barangay</th>
                 <th style="padding:8px; border:1px solid #ddd;">Contact Number</th>
+                <th style="padding:8px; border:1px solid #ddd;">Attachment</th>
                 <th style="padding:8px; border:1px solid #ddd;">Status</th>
                 <th style="padding:8px; border:1px solid #ddd;">Action</th>
             </tr>
@@ -238,10 +443,24 @@ if (isset($_SESSION['upload_errors'])) {
         <tbody>
             <?php while ($row = $participants->fetch_assoc()): ?>
             <tr style="<?php echo ($row['status'] === 'winner' || $row['status'] === 'removed') ? 'opacity:0.5;' : ''; ?>">
+                <td style="padding:8px; border:1px solid #ddd; text-align:center;">
+                    <?php if (!empty($row['has_photo'])): ?>
+                    <img src="media.php?id=<?php echo $row['id']; ?>&amp;type=photo" class="pavatar" alt="" onclick="viewPhoto(<?php echo $row['id']; ?>)">
+                    <?php else: ?>
+                    <span style="color:#c4b5c0;">&mdash;</span>
+                    <?php endif; ?>
+                </td>
                 <td style="padding:8px; border:1px solid #ddd;"><?php echo htmlspecialchars($row['number']); ?></td>
                 <td style="padding:8px; border:1px solid #ddd;"><?php echo htmlspecialchars($row['name']); ?></td>
                 <td style="padding:8px; border:1px solid #ddd;"><?php echo htmlspecialchars($row['barangay']); ?></td>
                 <td style="padding:8px; border:1px solid #ddd;"><?php echo htmlspecialchars($row['contact_number']); ?></td>
+                <td style="padding:8px; border:1px solid #ddd; text-align:center;">
+                    <?php if (!empty($row['has_attachment'])): ?>
+                    <a class="attach-link" href="media.php?id=<?php echo $row['id']; ?>&amp;type=attachment">&#128206; Download</a>
+                    <?php else: ?>
+                    <span style="color:#c4b5c0;">&mdash;</span>
+                    <?php endif; ?>
+                </td>
                 <td style="padding:8px; border:1px solid #ddd;">
                     <?php if ($row['status'] === 'winner'): ?>
                         <span style="color:#10b981; font-weight:700;">Winner</span>
@@ -334,8 +553,10 @@ if (isset($_SESSION['upload_errors'])) {
             <div class="form-group">
                 <input type="file" name="csv_file" accept=".csv" required>
             </div>
-            <div style="display:flex; gap:12px; justify-content:center;">
+            <div style="display:flex; gap:12px; justify-content:center; flex-wrap:wrap;">
                 <button type="submit" name="upload_csv" class="btn btn-primary">Upload CSV</button>
+                <a href="csv_template.php" class="btn btn-secondary" style="text-decoration:none; display:inline-flex; align-items:center;">&#11015; Download CSV Template</a>
+                <button type="button" class="btn btn-secondary" onclick="window.print()" <?php echo $print_list->num_rows === 0 ? 'disabled' : ''; ?>>&#128424; Print Participant List</button>
                 <button type="button" id="showDeleteModalBtn" class="btn btn-secondary">Delete All Participants</button>
             </div>
         </div>
@@ -348,13 +569,18 @@ if (isset($_SESSION['upload_errors'])) {
 
 <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin-top: 30px;">
     <h3 style="color: #f472b6; margin-bottom: 15px;">CSV File Format</h3>
-    <p style="margin-bottom: 10px;"><strong>Required Columns (in order):</strong></p>
+    <p style="margin-bottom: 10px;"><strong>Columns (order doesn't matter &mdash; matched by header name):</strong></p>
     <ol style="padding-left: 25px; line-height: 1.8;">
-        <li><strong>Name</strong> - Participant's full name</li>
-        <li><strong>Barangay</strong> - Participant's barangay</li>
-        <li><strong>Contact Number</strong> - Participant's contact number</li>
+        <li><strong>Lastname</strong> <span style="color:#ef4444;">*</span> &mdash; Participant's last name</li>
+        <li><strong>Firstname</strong> <span style="color:#ef4444;">*</span> &mdash; Participant's first name</li>
+        <li><strong>Middlename</strong> &mdash; optional</li>
+        <li><strong>Birthdate</strong> &mdash; optional (e.g. 1990-05-14)</li>
+        <li><strong>Barangay</strong> <span style="color:#ef4444;">*</span> &mdash; Participant's barangay</li>
+        <li><strong>Purok</strong> &mdash; optional</li>
+        <li><strong>Contact Number</strong> &mdash; optional</li>
     </ol>
-    <p style="margin-top: 15px; color: #666;"><em>Note: Numbers are auto-generated sequentially. First row should contain headers. Uploading new CSV will replace all existing participants.</em></p>
+    <p style="margin-top: 10px; color: #666;">Province and City are set automatically (South Cotabato, City of Koronadal). Old 3-column files (<em>Name, Barangay, Contact</em>) are still accepted.</p>
+    <p style="margin-top: 15px; color: #666;"><em>Note: Numbers are auto-generated sequentially. First row must contain headers. Uploading a new CSV will replace all existing participants.</em></p>
 </div>
 
 <!-- Modal for delete confirmation -->
@@ -387,6 +613,24 @@ window.onclick = function(event) {
         modal.style.display = "none";
     }
 };
+</script>
+
+<!-- Photo lightbox -->
+<div id="photoModal" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100vw; height:100vh; background:rgba(15,23,42,0.75);">
+    <div style="position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); background:#fff; border-radius:20px; padding:16px; width:min(92vw,420px); text-align:center;">
+        <img id="photoModalImg" src="" alt="" style="width:100%; max-height:70vh; object-fit:contain; border-radius:14px;">
+        <button class="btn btn-secondary" style="margin-top:12px;" onclick="document.getElementById('photoModal').style.display='none'">Close</button>
+    </div>
+</div>
+
+<script>
+function viewPhoto(id) {
+    document.getElementById('photoModalImg').src = 'media.php?id=' + id + '&type=photo';
+    document.getElementById('photoModal').style.display = 'block';
+}
+document.getElementById('photoModal').addEventListener('click', function(e) {
+    if (e.target === this) this.style.display = 'none';
+});
 </script>
 
 <!-- Background Management -->

@@ -46,7 +46,6 @@ if (isset($_POST['login'])) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - <?php echo htmlspecialchars($event_name); ?> Raffle System</title>
-    <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
         * {
@@ -61,371 +60,455 @@ if (isset($_POST['login'])) {
             display: flex;
             align-items: center;
             justify-content: center;
-            background: #faf5f7;
-            position: relative;
-            overflow: hidden;
-        }
-
-        /* Animated gradient background */
-        body::before {
-            content: '';
-            position: fixed;
-            inset: 0;
             background:
-                radial-gradient(ellipse at 20% 50%, rgba(236, 73, 153, 0.08) 0%, transparent 60%),
-                radial-gradient(ellipse at 80% 20%, rgba(244, 114, 182, 0.06) 0%, transparent 50%),
-                radial-gradient(ellipse at 50% 80%, rgba(249, 168, 212, 0.05) 0%, transparent 50%),
-                radial-gradient(ellipse at 80% 80%, rgba(236, 73, 153, 0.04) 0%, transparent 50%);
-            z-index: 0;
+                radial-gradient(900px at 85% -10%, rgba(236, 73, 153, 0.10), transparent 60%),
+                radial-gradient(800px at -10% 110%, rgba(139, 92, 246, 0.10), transparent 60%),
+                #f6f7fb;
+            padding: 24px;
+            color: #1e293b;
         }
 
-        /* Floating particles */
-        .particle {
-            position: fixed;
-            border-radius: 50%;
-            pointer-events: none;
-            z-index: 0;
-            opacity: 0.3;
-        }
-
-        .particle:nth-child(1) {
-            width: 300px;
-            height: 300px;
-            background: radial-gradient(circle, rgba(236, 73, 153, 0.08), transparent);
-            top: -100px;
-            left: -100px;
-            animation: float1 8s ease-in-out infinite;
-        }
-
-        .particle:nth-child(2) {
-            width: 200px;
-            height: 200px;
-            background: radial-gradient(circle, rgba(244, 114, 182, 0.06), transparent);
-            bottom: -50px;
-            right: -50px;
-            animation: float2 10s ease-in-out infinite;
-        }
-
-        .particle:nth-child(3) {
-            width: 150px;
-            height: 150px;
-            background: radial-gradient(circle, rgba(59, 130, 246, 0.05), transparent);
-            top: 40%;
-            right: 10%;
-            animation: float3 12s ease-in-out infinite;
-        }
-
-        .particle:nth-child(4) {
-            width: 100px;
-            height: 100px;
-            background: radial-gradient(circle, rgba(236, 73, 153, 0.05), transparent);
-            bottom: 20%;
-            left: 5%;
-            animation: float1 9s ease-in-out infinite reverse;
-        }
-
-        @keyframes float1 {
-            0%, 100% { transform: translate(0, 0) scale(1); }
-            33% { transform: translate(30px, -30px) scale(1.1); }
-            66% { transform: translate(-20px, 20px) scale(0.9); }
-        }
-
-        @keyframes float2 {
-            0%, 100% { transform: translate(0, 0) scale(1); }
-            50% { transform: translate(-40px, -20px) scale(1.15); }
-        }
-
-        @keyframes float3 {
-            0%, 100% { transform: translate(0, 0) scale(1); }
-            50% { transform: translate(20px, 30px) scale(1.05); }
-        }
-
-        .login-wrapper {
-            position: relative;
-            z-index: 1;
+        .shell {
             width: 100%;
-            max-width: 440px;
-            padding: 20px;
-            animation: fadeIn 0.8s ease;
+            max-width: 920px;
+            min-height: 560px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            background: #ffffff;
+            border-radius: 28px;
+            overflow: hidden;
+            box-shadow:
+                0 30px 90px rgba(15, 23, 42, 0.10),
+                0 4px 18px rgba(15, 23, 42, 0.05);
+            animation: riseIn 0.7s cubic-bezier(0.22, 1, 0.36, 1);
         }
 
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
+        @keyframes riseIn {
+            from { opacity: 0; transform: translateY(26px); }
             to { opacity: 1; transform: translateY(0); }
         }
 
-        .login-card {
-            background: #ffffff;
-            border-radius: 28px;
-            padding: 50px 44px;
-            border: 1px solid rgba(0, 0, 0, 0.04);
-            box-shadow:
-                0 24px 80px rgba(0, 0, 0, 0.05),
-                0 4px 20px rgba(0, 0, 0, 0.02);
-            text-align: center;
+        /* ── Brand panel ── */
+        .brand {
             position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 46px 44px;
+            background: linear-gradient(150deg, #ec4899 0%, #d946ef 55%, #8b5cf6 100%);
+            color: #fff;
             overflow: hidden;
         }
 
-        .login-card::before {
+        .brand::before,
+        .brand::after {
             content: '';
             position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 2px;
-            background: linear-gradient(90deg, transparent, rgba(244, 114, 182, 0.5), rgba(236, 73, 153, 0.7), rgba(244, 114, 182, 0.5), transparent);
-            animation: shimmer 3s ease-in-out infinite;
+            border-radius: 50%;
+            pointer-events: none;
         }
 
-        @keyframes shimmer {
-            0%, 100% { opacity: 0.4; }
-            50% { opacity: 0.8; }
+        .brand::before {
+            width: 340px;
+            height: 340px;
+            border: 1.5px solid rgba(255, 255, 255, 0.18);
+            top: -130px;
+            right: -120px;
         }
 
-        .login-card .logo {
-            max-height: 72px;
-            margin-bottom: 6px;
+        .brand::after {
+            width: 260px;
+            height: 260px;
+            background: rgba(255, 255, 255, 0.08);
+            bottom: -110px;
+            left: -80px;
         }
 
-        .login-card h1 {
-            font-size: 26px;
-            font-weight: 800;
-            color: #1a1a2e;
-            margin-bottom: 6px;
-            letter-spacing: -0.5px;
+        .brand-logo {
+            width: 76px;
+            height: 76px;
+            object-fit: contain;
+            background: rgba(255, 255, 255, 0.92);
+            border-radius: 20px;
+            padding: 10px;
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
         }
 
-        .login-card .subtitle {
-            color: #9ca3af;
-            font-size: 14px;
-            font-weight: 400;
-            margin-bottom: 36px;
-        }
-
-        .input-group {
+        .brand-main {
             position: relative;
-            margin-bottom: 16px;
-            text-align: left;
+            z-index: 1;
         }
 
-        .input-group label {
-            display: block;
-            color: #6b7280;
+        .brand-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            padding: 7px 14px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.16);
+            backdrop-filter: blur(6px);
             font-size: 11px;
-            font-weight: 600;
+            font-weight: 700;
+            letter-spacing: 1.6px;
             text-transform: uppercase;
-            letter-spacing: 1.2px;
+            margin-bottom: 20px;
+        }
+
+        .brand h2 {
+            font-size: 34px;
+            font-weight: 800;
+            letter-spacing: -0.8px;
+            line-height: 1.15;
+            margin-bottom: 12px;
+        }
+
+        .brand p {
+            font-size: 14.5px;
+            line-height: 1.65;
+            color: rgba(255, 255, 255, 0.82);
+            max-width: 300px;
+        }
+
+        .brand-points {
+            position: relative;
+            z-index: 1;
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 13px;
+        }
+
+        .brand-points li {
+            display: flex;
+            align-items: center;
+            gap: 11px;
+            font-size: 13.5px;
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.94);
+        }
+
+        .brand-points .dot {
+            width: 22px;
+            height: 22px;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.18);
+        }
+
+        /* ── Form panel ── */
+        .form-side {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 52px 54px;
+        }
+
+        .form-head h1 {
+            font-size: 27px;
+            font-weight: 800;
+            letter-spacing: -0.6px;
+            color: #0f172a;
             margin-bottom: 8px;
         }
 
-        .input-group .input-wrap {
-            position: relative;
-        }
-
-        .input-group .input-wrap .icon {
-            position: absolute;
-            left: 16px;
-            top: 50%;
-            transform: translateY(-50%);
-            color: #c4b5c0;
-            font-size: 18px;
-            pointer-events: none;
-            transition: color 0.3s;
-        }
-
-        .input-group input:focus ~ .icon {
-            color: #f472b6;
-        }
-
-        .input-group input {
-            width: 100%;
-            padding: 16px 18px 16px 48px;
-            border: 2px solid #f0eef0;
-            border-radius: 14px;
-            font-size: 15px;
-            font-family: inherit;
-            font-weight: 500;
-            background: #fafafa;
-            color: #1a1a2e;
-            transition: all 0.3s ease;
-            outline: none;
-        }
-
-        .input-group input::placeholder {
-            color: #c4b5c0;
-            font-weight: 400;
-        }
-
-        .input-group input:hover {
-            border-color: #e5dce0;
-            background: #fff;
-        }
-
-        .input-group input:focus {
-            border-color: #f472b6;
-            background: #ffffff;
-            box-shadow: 0 0 0 4px rgba(244, 114, 182, 0.1);
-        }
-
-        .input-group input:-webkit-autofill {
-            -webkit-box-shadow: 0 0 0 1000px #fafafa inset !important;
-            -webkit-text-fill-color: #1a1a2e !important;
-            border-color: #f0eef0;
-        }
-
-        .login-card .btn {
-            width: 100%;
-            padding: 16px;
-            border: none;
-            border-radius: 14px;
-            font-size: 16px;
-            font-weight: 700;
-            font-family: inherit;
-            cursor: pointer;
-            margin-top: 8px;
-            background: linear-gradient(135deg, #ec4899, #f472b6);
-            color: #fff;
-            letter-spacing: 0.3px;
-            position: relative;
-            overflow: hidden;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 24px rgba(236, 73, 153, 0.2);
-        }
-
-        .login-card .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 32px rgba(236, 73, 153, 0.35);
-        }
-
-        .login-card .btn:active {
-            transform: translateY(0);
-        }
-
-        .login-card .btn::after {
-            content: '';
-            position: absolute;
-            inset: 0;
-            background: linear-gradient(135deg, transparent, rgba(255, 255, 255, 0.1), transparent);
-            transform: translateX(-100%);
-            transition: transform 0.6s ease;
-        }
-
-        .login-card .btn:hover::after {
-            transform: translateX(100%);
-        }
-
-        .login-card .btn:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        .btn-register {
-            display: block;
-            margin-top: 16px;
-            padding: 14px;
-            border: 2px solid rgba(244,114,182,0.25);
-            border-radius: 14px;
-            font-size: 14px;
-            font-weight: 700;
-            font-family: inherit;
-            background: transparent;
-            color: #f9a8d4;
-            text-decoration: none;
-            text-align: center;
-            transition: all 0.3s ease;
-            letter-spacing: 0.5px;
-        }
-
-        .btn-register:hover {
-            border-color: #f472b6;
-            color: #ffffff;
-            background: rgba(244,114,182,0.12);
+        .form-head p {
+            font-size: 14.5px;
+            color: #94a3b8;
+            margin-bottom: 34px;
         }
 
         .error-msg {
+            display: flex;
+            align-items: center;
+            gap: 10px;
             background: #fef2f2;
             border: 1px solid #fecaca;
             color: #dc2626;
             padding: 12px 16px;
-            border-radius: 12px;
+            border-radius: 13px;
             font-size: 13px;
             font-weight: 500;
-            margin-bottom: 20px;
-            animation: shake 0.4s ease;
+            margin-bottom: 22px;
+            animation: shake 0.45s ease;
         }
 
         @keyframes shake {
             0%, 100% { transform: translateX(0); }
-            20% { transform: translateX(-6px); }
-            40% { transform: translateX(6px); }
+            20% { transform: translateX(-7px); }
+            40% { transform: translateX(7px); }
             60% { transform: translateX(-4px); }
             80% { transform: translateX(4px); }
         }
 
-        .login-footer {
-            margin-top: 24px;
-            color: #d1d5db;
-            font-size: 12px;
-            letter-spacing: 0.5px;
+        .field {
+            margin-bottom: 18px;
         }
 
-        .login-footer a {
-            color: #f472b6;
-            text-decoration: none;
-            transition: color 0.3s;
+        .field label {
+            display: block;
+            font-size: 12.5px;
+            font-weight: 600;
+            color: #475569;
+            margin-bottom: 8px;
         }
 
-        .login-footer a:hover {
+        .control {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .control > svg.lead {
+            position: absolute;
+            left: 16px;
+            width: 19px;
+            height: 19px;
+            color: #cbd5e1;
+            pointer-events: none;
+            transition: color 0.25s ease;
+        }
+
+        .control:focus-within > svg.lead {
             color: #ec4899;
         }
 
-        @media (max-width: 480px) {
-            .login-card {
-                padding: 40px 28px;
-                border-radius: 20px;
+        .control input {
+            width: 100%;
+            padding: 14.5px 48px;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 14px;
+            font-size: 15px;
+            font-family: inherit;
+            font-weight: 500;
+            background: #f8fafc;
+            color: #0f172a;
+            outline: none;
+            transition: border-color 0.25s ease, background 0.25s ease, box-shadow 0.25s ease;
+        }
+
+        .control input::placeholder {
+            color: #b6c2d2;
+            font-weight: 400;
+        }
+
+        .control input:hover {
+            border-color: #cbd5e1;
+        }
+
+        .control input:focus {
+            border-color: #ec4899;
+            background: #ffffff;
+            box-shadow: 0 0 0 4px rgba(236, 73, 153, 0.10);
+        }
+
+        .control input:-webkit-autofill {
+            -webkit-box-shadow: 0 0 0 1000px #ffffff inset !important;
+            -webkit-text-fill-color: #0f172a !important;
+            caret-color: #0f172a;
+        }
+
+        .toggle-pass {
+            position: absolute;
+            right: 8px;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: transparent;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            color: #b6c2d2;
+            transition: color 0.2s ease, background 0.2s ease;
+        }
+
+        .toggle-pass:hover {
+            color: #ec4899;
+            background: #fdf2f8;
+        }
+
+        .btn-login {
+            width: 100%;
+            margin-top: 10px;
+            padding: 15.5px;
+            border: none;
+            border-radius: 14px;
+            font-size: 15.5px;
+            font-weight: 700;
+            font-family: inherit;
+            letter-spacing: 0.3px;
+            cursor: pointer;
+            color: #fff;
+            background: linear-gradient(135deg, #ec4899, #8b5cf6);
+            box-shadow: 0 10px 28px rgba(236, 73, 153, 0.30);
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.25s ease, box-shadow 0.25s ease;
+        }
+
+        .btn-login:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 14px 36px rgba(236, 73, 153, 0.42);
+        }
+
+        .btn-login:active { transform: translateY(0); }
+
+        .divider {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin: 24px 0 16px;
+            color: #cbd5e1;
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+        }
+
+        .divider::before,
+        .divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: #e8edf4;
+        }
+
+        .btn-register {
+            display: block;
+            padding: 13.5px;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 14px;
+            font-size: 14px;
+            font-weight: 600;
+            font-family: inherit;
+            background: #ffffff;
+            color: #475569;
+            text-decoration: none;
+            text-align: center;
+            transition: all 0.25s ease;
+        }
+
+        .btn-register:hover {
+            border-color: rgba(236, 73, 153, 0.55);
+            background: #fdf2f8;
+            color: #db2777;
+        }
+
+        .login-footer {
+            margin-top: 28px;
+            text-align: center;
+            color: #b6c2d2;
+            font-size: 12px;
+            letter-spacing: 0.4px;
+        }
+
+        @media (max-width: 820px) {
+            .shell {
+                grid-template-columns: 1fr;
+                max-width: 460px;
+                min-height: 0;
             }
-            .login-card h1 {
-                font-size: 22px;
+            .brand {
+                padding: 30px 32px;
+                gap: 22px;
             }
+            .brand h2 { font-size: 24px; }
+            .brand p { display: none; }
+            .brand-points { display: none; }
+            .brand-logo { width: 58px; height: 58px; border-radius: 16px; padding: 8px; }
+            .form-side { padding: 36px 32px 40px; }
         }
     </style>
 </head>
 <body>
-    <div class="particle"></div>
-    <div class="particle"></div>
-    <div class="particle"></div>
-    <div class="particle"></div>
+    <div class="shell">
+        <aside class="brand">
+            <img src="Logo.png" alt="Logo" class="brand-logo">
+            <div class="brand-main">
+                <span class="brand-badge">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" width="12" height="12"><path d="M12 2l2.4 7.2H22l-6 4.6 2.3 7.2-6.3-4.5L5.7 21 8 13.8 2 9.2h7.6z"/></svg>
+                    Live Raffle
+                </span>
+                <h2><?php echo htmlspecialchars($event_name); ?></h2>
+                <p>Draw winners instantly, track prizes live, and keep every ticket accounted for.</p>
+            </div>
+            <ul class="brand-points">
+                <li>
+                    <span class="dot"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" width="11" height="11"><polyline points="20 6 9 17 4 12"/></svg></span>
+                    Instant winner draws
+                </li>
+                <li>
+                    <span class="dot"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" width="11" height="11"><polyline points="20 6 9 17 4 12"/></svg></span>
+                    Live prize tracking
+                </li>
+                <li>
+                    <span class="dot"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" width="11" height="11"><polyline points="20 6 9 17 4 12"/></svg></span>
+                    Complete participant records
+                </li>
+            </ul>
+        </aside>
 
-    <div class="login-wrapper">
-        <div class="login-card">
-            <img src="Logo.png" alt="Logo" class="logo">
-            <h1><?php echo htmlspecialchars($event_name); ?></h1>
-            <p class="subtitle">Raffle System &mdash; Admin Access</p>
+        <main class="form-side">
+            <div class="form-head">
+                <h1>Welcome back</h1>
+                <p>Sign in to manage the raffle event.</p>
+            </div>
+
             <?php if (isset($error)): ?>
-                <div class="error-msg"><?php echo htmlspecialchars($error); ?></div>
+                <div class="error-msg">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="17" height="17"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    <?php echo htmlspecialchars($error); ?>
+                </div>
             <?php endif; ?>
+
             <form method="POST" autocomplete="off">
-                <div class="input-group">
+                <div class="field">
                     <label for="username">Username</label>
-                    <div class="input-wrap">
-                        <span class="icon">&#9993;</span>
+                    <div class="control">
+                        <svg class="lead" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                         <input type="text" id="username" name="username" placeholder="Enter your username" required autofocus>
                     </div>
                 </div>
-                <div class="input-group">
+
+                <div class="field">
                     <label for="password">Password</label>
-                    <div class="input-wrap">
-                        <span class="icon">&#128274;</span>
+                    <div class="control">
+                        <svg class="lead" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
                         <input type="password" id="password" name="password" placeholder="Enter your password" required>
+                        <button type="button" class="toggle-pass" id="togglePass" aria-label="Show password">
+                            <svg id="eyeOpen" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="19" height="19"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                            <svg id="eyeClosed" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="19" height="19" style="display:none"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                        </button>
                     </div>
                 </div>
-                <button type="submit" name="login" class="btn">Sign In</button>
+
+                <button type="submit" name="login" class="btn-login">Sign In</button>
+
+                <div class="divider">or</div>
+
                 <a href="register.php" class="btn-register">Register as Participant</a>
             </form>
-            <div class="login-footer"><?php echo htmlspecialchars($event_name); ?> &mdash; Raffle Draw Management</div>
-        </div>
+
+        </main>
     </div>
+
+    <script>
+        const passInput = document.getElementById('password');
+        const toggleBtn = document.getElementById('togglePass');
+        const eyeOpen = document.getElementById('eyeOpen');
+        const eyeClosed = document.getElementById('eyeClosed');
+
+        toggleBtn.addEventListener('click', function() {
+            const show = passInput.type === 'password';
+            passInput.type = show ? 'text' : 'password';
+            eyeOpen.style.display = show ? 'none' : '';
+            eyeClosed.style.display = show ? '' : 'none';
+            passInput.focus();
+        });
+    </script>
 </body>
 </html>

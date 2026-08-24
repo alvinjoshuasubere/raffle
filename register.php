@@ -87,7 +87,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
         }
     }
 
-    if (!$error && (empty($lastname) || empty($firstname) || empty($middlename) || empty($birthdate) || empty($barangay) || empty($contact))) {
+    if (!$error && (empty($lastname) || empty($firstname) || empty($middlename) || empty($birthdate) || empty($barangay))) {
         $error = 'Please fill in all required fields.';
     } elseif (!$error) {
         // Load JSON data for duplicate check
@@ -147,7 +147,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
                 fwrite($fp, json_encode($jdata, JSON_PRETTY_PRINT));
 
                 $ins = $conn->prepare("INSERT INTO participants (event_id, number, lastname, firstname, middlename, name, birthdate, province, city, barangay, purok, contact_number, photo_data, registration_attachment) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-                $ins->bind_param("isssssssssssbb", $current_event_id, $number, $lastname, $firstname, $middlename, $fullname, $birthdate, $province, $city, $barangay, $purok, $contact, $photo_data, $reg_attachment);
+                $ins->bind_param("isssssssssssss", $current_event_id, $number, $lastname, $firstname, $middlename, $fullname, $birthdate, $province, $city, $barangay, $purok, $contact, $photo_data, $reg_attachment);
                 $ins->execute();
                 $ins->close();
 
@@ -176,16 +176,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
         :root {
+            --pink-300: #f9a8d4;
             --pink-400: #f472b6;
             --pink-500: #ec4899;
-            --gray-50: #faf5f7;
-            --gray-100: #f5f0f2;
-            --gray-200: #e5dce0;
-            --gray-300: #c4b5c0;
-            --gray-400: #9ca3af;
-            --gray-500: #6b7280;
-            --gray-600: #4a4a6a;
-            --gray-900: #1a1a2e;
+            --purple-500: #8b5cf6;
+            --gray-50: #fafbfe;
+            --gray-100: #f1f4f9;
+            --gray-200: #e5eaf2;
+            --gray-300: #cbd5e1;
+            --gray-400: #94a3b8;
+            --gray-500: #64748b;
+            --gray-600: #475569;
+            --gray-900: #0f172a;
         }
 
         *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
@@ -193,10 +195,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
         body {
             font-family: 'Inter', system-ui, sans-serif;
             min-height: 100vh;
-            background: var(--gray-50);
+            background:
+                radial-gradient(900px at 88% -12%, rgba(236,73,153,.10), transparent 60%),
+                radial-gradient(800px at -10% 110%, rgba(139,92,246,.09), transparent 60%),
+                var(--gray-50);
             color: var(--gray-900);
             -webkit-font-smoothing: antialiased;
         }
+
+        /* ── Toast ── */
+        .toast {
+            position:fixed; left:50%; bottom:-80px; transform:translateX(-50%);
+            z-index:2000; padding:13px 22px; border-radius:14px;
+            background:#111827; color:#fff;
+            font-size:13.5px; font-weight:600;
+            box-shadow:0 14px 40px rgba(0,0,0,.25);
+            opacity:0; pointer-events:none;
+            transition:bottom .35s cubic-bezier(.22,1,.36,1), opacity .3s ease;
+        }
+        .toast.show { bottom:28px; opacity:1; }
+        .toast.error { background:#dc2626; }
 
         .ambient { position:fixed; inset:0; z-index:0; overflow:hidden; pointer-events:none; }
         .ambient .orb { position:absolute; border-radius:50%; }
@@ -244,10 +262,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
         /* ── Hero ── */
         .hero {
             position:relative; z-index:1;
-            text-align:center; padding:52px 24px 8px;
+            text-align:center; padding:52px 24px 10px;
         }
-        .hero h1 { font-size:28px; font-weight:900; letter-spacing:-.5px; color:var(--gray-900); }
-        .hero p { font-size:15px; color:var(--gray-400); margin-top:6px; }
+        .pill {
+            display:inline-flex; align-items:center; gap:8px;
+            font-size:11px; font-weight:800; letter-spacing:.12em; text-transform:uppercase;
+            color:var(--pink-500); background:#fff;
+            border:1px solid var(--pink-200,#fbcfe8);
+            padding:7px 16px; border-radius:100px;
+            box-shadow:0 2px 10px rgba(236,73,153,.08);
+        }
+        .pill::before {
+            content:''; width:7px; height:7px; border-radius:50%;
+            background:linear-gradient(135deg, var(--pink-500), var(--purple-500));
+            box-shadow:0 0 0 3px rgba(236,73,153,.15);
+        }
+        .hero h1 {
+            margin-top:18px;
+            font-size:clamp(28px, 5vw, 40px);
+            font-weight:900; letter-spacing:-1px; line-height:1.08; color:var(--gray-900);
+        }
+        .hero h1 em {
+            font-style:normal;
+            background:linear-gradient(120deg, var(--pink-500), var(--purple-500));
+            -webkit-background-clip:text; background-clip:text;
+            -webkit-text-fill-color:transparent;
+        }
+        .hero p { font-size:15px; color:var(--gray-400); margin-top:10px; }
+        .hero p strong { color:var(--gray-600); }
 
         /* ── Card ── */
         .wrap {
@@ -255,9 +297,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
             max-width:720px; margin:24px auto 48px; padding:0 20px;
         }
         .card {
+            position:relative; overflow:hidden;
             background:#fff; border-radius:24px; padding:44px 44px 36px;
-            border:1px solid rgba(0,0,0,.04);
-            box-shadow:0 20px 60px rgba(0,0,0,.04);
+            border:1px solid rgba(0,0,0,.05);
+            box-shadow:0 2px 6px rgba(15,23,42,.03), 0 24px 60px rgba(15,23,42,.06);
+            animation:rise .5s cubic-bezier(.22,1,.36,1);
+        }
+        .card::before {
+            content:''; position:absolute; top:0; left:0; right:0; height:4px;
+            background:linear-gradient(90deg, var(--pink-500), var(--purple-500));
+        }
+        @keyframes rise {
+            from { opacity:0; transform:translateY(16px); }
+            to   { opacity:1; transform:none; }
         }
         @media (max-width:640px) {
             .card { padding:28px 18px; border-radius:20px; }
@@ -273,6 +325,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
         }
         .grid .span2 { grid-column:1/-1; }
         @media (max-width:640px) { .grid { grid-template-columns:1fr; gap:14px; } }
+
+        /* ── Section titles ── */
+        .sec-title {
+            display:flex; align-items:center; gap:10px;
+            font-size:11px; font-weight:800; letter-spacing:1.4px;
+            text-transform:uppercase; color:var(--gray-400);
+            margin-top:8px;
+        }
+        .sec-title::before {
+            content:''; width:22px; height:3px; border-radius:99px;
+            background:linear-gradient(90deg, var(--pink-500), var(--purple-500));
+            flex:none;
+        }
+
+        /* ── Registration window chip ── */
+        .regwin {
+            display:flex; justify-content:center; gap:10px; flex-wrap:wrap;
+            margin-bottom:28px;
+        }
+        .regwin span {
+            font-size:12px; font-weight:600;
+            padding:7px 15px; border-radius:100px;
+            background:var(--gray-100); color:var(--gray-500);
+        }
+        .regwin .rw-open  { color:#059669; background:#ecfdf5; }
+        .regwin .rw-close { color:#dc2626; background:#fef2f2; }
 
         .fld label {
             display:flex; align-items:center; gap:4px;
@@ -316,11 +394,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
             border:none; border-radius:12px;
             font-size:15px; font-weight:700; font-family:inherit;
             cursor:pointer; color:#fff;
-            background:linear-gradient(135deg, var(--pink-500), var(--pink-400));
+            background:linear-gradient(135deg, var(--pink-500), var(--purple-500));
             transition:all .25s ease;
-            box-shadow:0 4px 18px rgba(236,73,153,.2);
+            box-shadow:0 4px 18px rgba(236,73,153,.22);
         }
-        .btn:hover { transform:translateY(-2px); box-shadow:0 8px 28px rgba(236,73,153,.3); }
+        .btn:hover { transform:translateY(-2px); box-shadow:0 8px 28px rgba(139,92,246,.3); }
+        .btn:active { transform:none; }
 
         /* ── Messages ── */
         .msg {
@@ -373,15 +452,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
             font-size:10px; font-weight:700; text-transform:uppercase;
             letter-spacing:1.5px; color:rgba(244,114,182,.8);
             background:rgba(244,114,182,.12);
-            padding:5px 14px; border-radius:100px; margin-bottom:12px;
+            padding:5px 14px; border-radius:100px; margin-bottom:20px;
+        }
+
+        .overlay .sheet .tlabel {
+            font-size:10.5px; font-weight:700; letter-spacing:2.5px;
+            text-transform:uppercase; color:rgba(255,255,255,.4);
+            margin-bottom:4px;
+        }
+        .overlay .sheet .tnum {
+            font-size:60px; font-weight:900; line-height:1;
+            letter-spacing:-1px; margin-bottom:18px;
+            background:linear-gradient(135deg, #f9a8d4, #c4b5fd);
+            -webkit-background-clip:text; background-clip:text;
+            -webkit-text-fill-color:transparent;
+            animation:popIn .55s .1s cubic-bezier(.17,.67,.35,1.2) backwards;
         }
 
         .overlay .sheet .name {
-            font-size:24px; font-weight:700; color:#fff;
+            font-size:22px; font-weight:700; color:#fff;
             margin-bottom:6px; letter-spacing:-.3px;
         }
         .overlay .sheet .label {
-            font-size:14px; color:rgba(255,255,255,.45); margin-bottom:32px;
+            font-size:14px; color:rgba(255,255,255,.45); margin-bottom:30px;
         }
         .overlay .sheet .ok {
             padding:13px 36px; display:inline-block;
@@ -425,7 +518,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
             box-shadow:0 4px 14px rgba(236,73,153,.3);
         }
         .step-item.done .step-circle {
-            background:#10b981; color:#fff;
+            background:#10b981; color:#fff; font-size:0;
+            box-shadow:0 4px 14px rgba(16,185,129,.3);
+        }
+        .step-item.done .step-circle::after {
+            content:'\2713'; font-size:14px;
         }
         .step-label {
             font-size:12px; font-weight:600; color:var(--gray-400);
@@ -457,19 +554,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
         }
 
         .file-drop {
-            border:2px dashed var(--gray-200); border-radius:14px;
-            padding:32px 20px; text-align:center;
+            border:2px dashed var(--gray-200); border-radius:16px;
+            padding:26px 20px; text-align:center;
             cursor:pointer; transition:all .25s ease;
+            background:var(--gray-50);
         }
         .file-drop:hover,
         .file-drop.dragover {
             border-color:var(--pink-400);
-            background:rgba(244,114,182,.03);
+            background:#fff;
+            box-shadow:0 6px 20px rgba(236,73,153,.08);
+            transform:translateY(-1px);
         }
         .file-drop input[type="file"] { display:none; }
         .file-drop .drop-icon {
-            font-size:36px; margin-bottom:8px;
+            width:48px; height:48px; margin:0 auto 10px;
+            border-radius:14px;
+            background:linear-gradient(135deg, rgba(236,73,153,.09), rgba(139,92,246,.09));
+            display:flex; align-items:center; justify-content:center;
+            color:var(--pink-500);
         }
+        .file-drop .drop-icon svg { width:21px; height:21px; }
         .file-drop .drop-label {
             font-size:14px; font-weight:600; color:var(--gray-600);
         }
@@ -477,8 +582,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
             font-size:12px; color:var(--gray-400); margin-top:4px;
         }
         .file-drop .file-name {
-            font-size:13px; font-weight:600; color:var(--pink-500);
-            margin-top:8px; word-break:break-all;
+            display:none;
+            font-size:12.5px; font-weight:600; color:var(--pink-500);
+            margin:10px auto 0; max-width:90%;
+            background:rgba(236,73,153,.07); border-radius:100px;
+            padding:5px 14px; word-break:break-all;
+        }
+        .file-drop.has-file .file-name { display:inline-block; }
+
+        /* ── Camera ── */
+        .cam-btn {
+            margin-top:10px; width:100%; padding:12px;
+            border:1.5px solid var(--gray-200); border-radius:12px;
+            background:#fff; font-family:inherit;
+            font-size:13px; font-weight:600; color:var(--gray-600);
+            cursor:pointer; transition:all .2s ease;
+            display:flex; align-items:center; justify-content:center; gap:8px;
+        }
+        .cam-btn svg { width:16px; height:16px; }
+        .cam-btn:hover { border-color:var(--pink-400); color:var(--pink-500); }
+
+        .overlay .cam-sheet {
+            background:#fff; border-radius:24px; padding:20px;
+            max-width:420px; width:100%;
+            box-shadow:0 30px 80px rgba(0,0,0,.35);
+        }
+        .cam-sheet h3 {
+            font-size:14px; font-weight:800; letter-spacing:.2px;
+            color:var(--gray-900); text-align:center; margin-bottom:14px;
+        }
+        .cam-view {
+            border-radius:16px; overflow:hidden;
+            background:#0f172a; aspect-ratio:4/3;
+        }
+        .cam-view video {
+            width:100%; height:100%; object-fit:cover; display:block;
+            transform:scaleX(-1);
         }
 
         #confetti { position:fixed; inset:0; pointer-events:none; z-index:1000; }
@@ -503,8 +642,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
 
 <!-- Hero -->
 <div class="hero">
-    <h1>Participant Registration</h1>
-    <p>Register for <strong style="color:var(--pink-500);"><?php echo htmlspecialchars($current_event_name); ?></strong></p>
+    <div class="pill">Registration Open</div>
+    <h1>Join the <em>Raffle Draw</em></h1>
+    <p>You are registering for <strong><?php echo htmlspecialchars($current_event_name); ?></strong></p>
 </div>
 
 <!-- Form card -->
@@ -512,9 +652,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
         <div class="card">
 
             <?php if ($reg_start || $reg_end): ?>
-            <div style="text-align:center; padding:10px 0 6px; font-size:12px; color:#6b7280;">
-                <?php if ($reg_start): ?><span style="color:#10b981;">Opens <?php echo date('M j, Y g:i A', strtotime($reg_start)); ?></span><?php endif; ?>
-                <?php if ($reg_end): ?><?php if ($reg_start): ?> &nbsp;|&nbsp; <?php endif; ?><span style="color:#dc2626;">Closes <?php echo date('M j, Y g:i A', strtotime($reg_end)); ?></span><?php endif; ?>
+            <div class="regwin">
+                <?php if ($reg_start): ?><span class="rw-open">Opens <?php echo date('M j, Y g:i A', strtotime($reg_start)); ?></span><?php endif; ?>
+                <?php if ($reg_end): ?><span class="rw-close">Closes <?php echo date('M j, Y g:i A', strtotime($reg_end)); ?></span><?php endif; ?>
             </div>
             <?php endif; ?>
 
@@ -540,6 +680,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
                 <!-- Step 1: Personal Info -->
                 <div class="step-content active" id="step1">
                     <div class="grid">
+
+                        <div class="sec-title span2">Personal Information</div>
 
                         <div class="fld">
                             <label for="lastname">Lastname <span class="star">*</span></label>
@@ -568,6 +710,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
                                 <input type="date" name="birthdate" id="birthdate" value="<?php echo htmlspecialchars($submitted['birthdate'] ?? ''); ?>" required>
                             </div>
                         </div>
+
+                        <div class="sec-title span2">Address</div>
 
                         <div class="fld">
                             <label for="province">Province</label>
@@ -625,7 +769,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
                         </div>
 
                         <div class="fld span2">
-                            <label for="contact_number">Contact Number <span class="star">*</span></label>
+                            <label for="contact_number">Contact Number <span style="color:var(--gray-300);font-size:11px;font-weight:400;">(optional)</span></label>
                             <div class="ctrl">
                                 <input type="text" name="contact_number" id="contact_number" placeholder="e.g. 0917 123 4567" value="<?php echo htmlspecialchars($submitted['contact_number'] ?? ''); ?>" required>
                             </div>
@@ -644,18 +788,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
                             <label for="photo_data">Profile Image <span style="color:var(--gray-300);font-size:11px;font-weight:400;">(optional)</span></label>
                             <div class="file-drop" id="photoDrop">
                                 <input type="file" name="photo_data" id="photo_data" accept="image/*">
-                                <div class="drop-icon">📷</div>
+                                <div class="drop-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></div>
                                 <div class="drop-label">Tap to upload profile image</div>
                                 <div class="drop-hint">JPG, PNG &mdash; max 5MB</div>
                                 <div class="file-name" id="photoFileName"></div>
                             </div>
+                            <button type="button" id="useCamera" class="cam-btn">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+                                or use camera
+                            </button>
                         </div>
 
                         <div class="fld span2">
                             <label for="registration_attachment">Registration Attachment <span style="color:var(--gray-300);font-size:11px;font-weight:400;">(optional)</span></label>
                             <div class="file-drop" id="attachDrop">
                                 <input type="file" name="registration_attachment" id="registration_attachment" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
-                                <div class="drop-icon">📎</div>
+                                <div class="drop-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg></div>
                                 <div class="drop-label">Tap to upload attachment</div>
                                 <div class="drop-hint">PDF, DOC, DOCX, JPG, PNG &mdash; max 10MB</div>
                                 <div class="file-name" id="attachFileName"></div>
@@ -679,16 +827,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
             <div class="sheet">
                 <div class="check">&#10003;</div>
                 <div class="success-badge">Registration Successful</div>
+                <div class="tlabel">Your Ticket No.</div>
+                <div class="tnum" id="sNumber"></div>
                 <div class="name" id="sName"></div>
-                <div class="label">is now registered</div>
+                <div class="label">is now registered &mdash; see you at the draw!</div>
                 <a href="register.php" class="ok">Register Another</a>
             </div>
         </div>
+
+<!-- Camera modal -->
+<div class="overlay" id="cameraOverlay">
+    <div class="cam-sheet">
+        <h3>Take Profile Photo</h3>
+        <div class="cam-view"><video id="camVideo" autoplay playsinline muted></video></div>
+        <div class="btn-row">
+            <button type="button" id="camCancel" class="btn btn-secondary">Cancel</button>
+            <button type="button" id="camCapture" class="btn">Capture Photo</button>
+        </div>
+    </div>
+</div>
+
+<div class="toast" id="toast"></div>
 
 <?php if ($success): ?>
 <script>
 document.addEventListener('DOMContentLoaded', function(){
     document.getElementById('sName').textContent = '<?php echo addslashes($success['name']); ?>';
+    document.getElementById('sNumber').textContent = '<?php echo addslashes($success['number']); ?>';
     document.getElementById('successOverlay').classList.add('show');
     startConfetti();
 });
@@ -738,6 +903,16 @@ document.addEventListener('DOMContentLoaded', function(){
     }
 })();
 
+/* ── Toast ── */
+var toastTimer;
+function showToast(msg, type) {
+    var t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = 'toast show' + (type === 'error' ? ' error' : '');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function(){ t.classList.remove('show'); }, 2600);
+}
+
 /* ── Stepper Logic ── */
 (function(){
     var step1 = document.getElementById('step1');
@@ -772,14 +947,14 @@ document.addEventListener('DOMContentLoaded', function(){
             { el: document.getElementById('firstname'), name: 'Firstname' },
             { el: document.getElementById('middlename'), name: 'Middlename' },
             { el: document.getElementById('birthdate'), name: 'Birthdate' },
-            { el: document.getElementById('barangay'), name: 'Barangay' },
-            { el: document.getElementById('contact_number'), name: 'Contact Number' }
+            { el: document.getElementById('barangay'), name: 'Barangay' }
         ];
         for (var i = 0; i < fields.length; i++) {
             if (!fields[i].el.value.trim()) {
-                fields[i].el.focus();
-                fields[i].el.style.borderColor = '#ef4444';
-                setTimeout(function(){ fields[i].el.style.borderColor = ''; }.bind(fields[i]), 2000);
+                var el = fields[i].el;
+                el.focus();
+                el.style.borderColor = '#ef4444';
+                setTimeout(function(){ el.style.borderColor = ''; }, 2000);
                 showToast('Please fill in ' + fields[i].name + '.', 'error');
                 return;
             }
@@ -809,14 +984,78 @@ document.addEventListener('DOMContentLoaded', function(){
             if (e.dataTransfer.files.length) {
                 input.files = e.dataTransfer.files;
                 nameEl.textContent = e.dataTransfer.files[0].name;
+                drop.classList.add('has-file');
             }
         });
         input.addEventListener('change', function() {
-            nameEl.textContent = input.files.length ? input.files[0].name : '';
+            if (input.files.length) {
+                nameEl.textContent = input.files[0].name;
+                drop.classList.add('has-file');
+            } else {
+                nameEl.textContent = '';
+                drop.classList.remove('has-file');
+            }
         });
     }
     setupDrop('photoDrop', 'photo_data', 'photoFileName');
     setupDrop('attachDrop', 'registration_attachment', 'attachFileName');
+
+    /* ── Camera capture ── */
+    var camStream = null,
+        camOverlay = document.getElementById('cameraOverlay'),
+        camVideo = document.getElementById('camVideo'),
+        photoInput = document.getElementById('photo_data'),
+        photoDropEl = document.getElementById('photoDrop');
+
+    function stopCam() {
+        if (camStream) {
+            camStream.getTracks().forEach(function(t){ t.stop(); });
+            camStream = null;
+        }
+        camOverlay.classList.remove('show');
+    }
+
+    document.getElementById('useCamera').addEventListener('click', function() {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            showToast('Camera is not supported on this browser.', 'error');
+            return;
+        }
+        navigator.mediaDevices.getUserMedia({
+            video: { facingMode: 'user', width: { ideal: 960 }, height: { ideal: 720 } },
+            audio: false
+        }).then(function(stream) {
+            camStream = stream;
+            camVideo.srcObject = stream;
+            camOverlay.classList.add('show');
+        }).catch(function() {
+            showToast('Unable to access camera. Please allow permission.', 'error');
+        });
+    });
+
+    document.getElementById('camCancel').addEventListener('click', stopCam);
+
+    document.getElementById('camCapture').addEventListener('click', function() {
+        var vw = camVideo.videoWidth, vh = camVideo.videoHeight;
+        if (!vw || !vh) { showToast('Camera is not ready yet.', 'error'); return; }
+        var size = Math.min(vw, vh);
+        var canvas = document.createElement('canvas');
+        canvas.width = size; canvas.height = size;
+        var ctx = canvas.getContext('2d');
+        ctx.translate(size, 0); ctx.scale(-1, 1); /* mirror to match preview */
+        ctx.drawImage(camVideo, (vw - size) / 2, (vh - size) / 2, size, size, 0, 0, size, size);
+        canvas.toBlob(function(blob) {
+            if (!blob) { showToast('Could not process the photo.', 'error'); stopCam(); return; }
+            try {
+                var dt = new DataTransfer();
+                dt.items.add(new File([blob], 'camera-photo.jpg', { type: 'image/jpeg' }));
+                photoInput.files = dt.files;
+            } catch (err) {}
+            document.getElementById('photoFileName').textContent = 'Captured photo \u2713';
+            photoDropEl.classList.add('has-file');
+            stopCam();
+            showToast('Photo captured!');
+        }, 'image/jpeg', 0.92);
+    });
 
     <?php if ($error && $error_step === 2): ?>
     goToStep(2);

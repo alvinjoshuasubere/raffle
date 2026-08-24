@@ -9,11 +9,9 @@ $page = isset($_GET['page']) ? $_GET['page'] : 'events';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Raffle System - <?php echo htmlspecialchars($current_event_name); ?></title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=8">
     <?php if ($page === 'wheel'): ?>
-    <link rel="stylesheet" href="wheel-modern.css?v=3">
-    <link rel="stylesheet" href="wheel-clean.css?v=1">
-    <link rel="stylesheet" href="wheel-showcase.css?v=2">
+    <link rel="stylesheet" href="wheel-page.css?v=4">
     <?php endif; ?>
     <style>
         .toast-container{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:99999;display:flex;flex-direction:column-reverse;gap:10px;pointer-events:none;align-items:center}
@@ -25,7 +23,7 @@ $page = isset($_GET['page']) ? $_GET['page'] : 'events';
         .user-info{display:flex;align-items:center;gap:12px;padding:0 20px;border-left:1px solid rgba(0,0,0,.06)}
         .user-info span{font-size:13px;color:#4a4a6a;font-weight:600}.user-info a{font-size:12px;color:#9ca3af;text-decoration:none;font-weight:600}.user-info a:hover{color:#ec4899}
     </style>
-    <?php if ($page === 'draw' && file_exists('uploads/bg/custom_bg.jpg')): ?>
+    <?php if (in_array($page, ['draw', 'wheel']) && file_exists('uploads/bg/custom_bg.jpg')): ?>
     <style>.container1::before{content:'';position:absolute;top:0;left:0;right:520px;height:100%;background-image:url('uploads/bg/custom_bg.jpg?v=<?php echo filemtime('uploads/bg/custom_bg.jpg'); ?>');background-size:contain;background-position:center;background-repeat:no-repeat;z-index:0}</style>
     <?php endif; ?>
 </head>

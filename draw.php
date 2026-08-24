@@ -215,21 +215,13 @@ $past_winners = $stmt_pw->get_result();
 
         <div class="wm-congrats">Congratulations!</div>
 
-        <div class="wm-ticket">
-            <span class="wm-ticket-label">Ticket No.</span>
-            <span class="wm-ticket-number" id="winner_number"></span>
-        </div>
+        <div class="winner-number" id="winner_number"></div>
 
         <div class="winner-name" id="winner_name"></div>
+
         <div class="winner-barangay" id="winner_barangay"></div>
 
-        <div id="wm_prize_card" class="wm-prize-card">
-            <div class="wm-prize-image" id="wm_prize_image">🎁</div>
-            <div class="wm-prize-info">
-                <div class="wm-prize-label">Prize</div>
-                <div class="wm-prize-name" id="wm_prize_name">No Prize Selected</div>
-            </div>
-        </div>
+        <div class="winner-prize" id="winner_prize"></div>
 
         <div class="winner-actions">
             <button type="button" id="confirm_btn" class="btn btn-confirm">Confirm Winner</button>
@@ -308,23 +300,18 @@ document.addEventListener('DOMContentLoaded', function() {
 
 function showWinnerModal(winner) {
     document.getElementById('winner_name').textContent = winner.name;
-    document.getElementById('winner_number').textContent = winner.number;
-    document.getElementById('winner_barangay').innerHTML = 'Barangay ' + winner.barangay;
+    document.getElementById('winner_number').textContent = 'Ticket No. ' + winner.number;
+    document.getElementById('winner_barangay').textContent = 'Barangay ' + winner.barangay;
 
     const prize = getSelectedPrize();
-    const imgEl = document.getElementById('wm_prize_image');
-    const nameEl = document.getElementById('wm_prize_name');
-
-    if (prize.id > 0 && prize.image) {
-        imgEl.innerHTML = '';
-        const img = document.createElement('img');
-        img.src = prize.image;
-        img.alt = prize.name;
-        imgEl.appendChild(img);
+    const prizeEl = document.getElementById('winner_prize');
+    if (prize.id > 0) {
+        prizeEl.textContent = 'Prize: ' + prize.name;
+        prizeEl.style.display = '';
     } else {
-        imgEl.innerHTML = '🎁';
+        prizeEl.textContent = '';
+        prizeEl.style.display = 'none';
     }
-    nameEl.textContent = prize.id > 0 ? prize.name : 'No Prize Selected';
 
     document.getElementById('winnerModal').classList.add('show');
     if (typeof startConfetti === 'function') startConfetti();

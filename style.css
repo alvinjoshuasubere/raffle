@@ -931,21 +931,6 @@ tbody tr:hover {
   text-align: center;
 }
 
-/* ===== SPIN WHEEL HERO ===== */
-/* Clean backdrop when wheel mode is active: hides the draw background image */
-body.wheel-active .container1 {
-  background-image: none;
-  background-color: transparent;
-  background: radial-gradient(circle at 28% 30%, rgba(236, 73, 153, 0.12), transparent 55%),
-              radial-gradient(circle at 72% 65%, rgba(139, 92, 246, 0.1), transparent 50%),
-              radial-gradient(circle at 50% 110%, rgba(245, 158, 11, 0.1), transparent 60%),
-              linear-gradient(160deg, #fdf6f9 0%, #f7edf4 100%);
-}
-
-body.wheel-active .container1::before {
-  display: none;
-}
-
 .wheel-hero {
   position: absolute;
   top: 0;
@@ -1506,13 +1491,13 @@ body.wheel-active .container1::before {
 
 .wm-congrats {
   font-family: Georgia, "Times New Roman", serif;
-  font-size: 22px;
-  font-weight: 600;
+  font-size: clamp(28px, 4vw, 40px);
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 8px;
+  letter-spacing: 10px;
   color: #a5b4fc;
-  margin-bottom: 20px;
-  opacity: 0.8;
+  margin-bottom: 26px;
+  opacity: 0.85;
 }
 
 .winner-modal .winner-name {
@@ -1520,7 +1505,7 @@ body.wheel-active .container1::before {
   font-size: clamp(60px, 10vw, 120px);
   font-weight: 900;
   letter-spacing: -1px;
-  margin: 16px 0 10px;
+  margin: 2px 0 10px;
   color: #ec4899;
   text-shadow:
     0 0 60px rgba(236, 73, 153, 0.5),
@@ -1528,97 +1513,27 @@ body.wheel-active .container1::before {
   line-height: 1.05;
 }
 
-.wm-ticket {
-  display: inline-flex;
-  align-items: center;
-  gap: 12px;
-  padding: 8px 24px;
-  border-radius: 100px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-}
-
-.wm-ticket-label {
-  font-size: 10px;
+.winner-modal .winner-number {
+  font-size: clamp(13px, 1.6vw, 17px);
   font-weight: 700;
+  letter-spacing: 3.5px;
   text-transform: uppercase;
-  letter-spacing: 2px;
-  color: rgba(255, 255, 255, 0.4);
-}
-
-.wm-ticket-number {
-  font-size: 20px;
-  font-weight: 800;
   color: #22d3ee;
+  margin: 0 0 8px;
 }
 
 .winner-modal .winner-barangay {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  margin: 12px 0 36px;
-  padding: 6px 20px;
-  border-radius: 100px;
-  background: rgba(139, 92, 246, 0.12);
-  border: 1px solid rgba(139, 92, 246, 0.3);
+  font-size: clamp(26px, 4.5vw, 46px);
+  font-weight: 800;
   color: #c4b5fd;
-  font-size: 14px;
-  font-weight: 600;
-  letter-spacing: 0.5px;
+  margin: 6px 0 34px;
 }
 
-.wm-prize-card {
-  display: inline-flex;
-  align-items: center;
-  gap: 14px;
-  margin-bottom: 40px;
-  padding: 10px 20px 10px 10px;
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  text-align: left;
-}
-
-.wm-prize-image {
-  width: 52px;
-  height: 52px;
-  border-radius: 14px;
-  background: linear-gradient(135deg, rgba(236, 73, 153, 0.2), rgba(139, 92, 246, 0.2));
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 24px;
-  flex-shrink: 0;
-  overflow: hidden;
-}
-
-.wm-prize-image img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.wm-prize-info {
-  min-width: 0;
-}
-
-.wm-prize-label {
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 2px;
-  color: rgba(255, 255, 255, 0.35);
-  margin-bottom: 2px;
-}
-
-.wm-prize-name {
-  font-size: 16px;
+.winner-modal .winner-prize {
+  font-size: clamp(18px, 2.5vw, 26px);
   font-weight: 700;
   color: #e2e8f0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  margin: 0 0 36px;
 }
 
 .winner-modal .winner-actions {

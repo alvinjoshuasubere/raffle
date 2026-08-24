@@ -74,12 +74,9 @@ $wheel_participants = $wheel_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 <?php display_message(); ?>
 
 <div class="container1">
-  <!-- WHEEL HERO STAGE -->
+  <!-- WHEEL STAGE -->
   <div class="wheel-hero">
     <div class="wheel-hero-inner">
-      <div class="wheel-hero-title">
-        <span class="wh-badge">🎯 Spin to Win</span>
-      </div>
       <div class="big-wheel-stage">
         <div class="wheel-lights" id="wheelLights"></div>
         <div class="big-wheel-pointer"></div>
@@ -88,14 +85,6 @@ $wheel_participants = $wheel_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
           <span class="hub-icon">🎡</span>
           <span class="hub-text">Raffle</span>
         </div>
-      </div>
-      <div class="wheel-hero-status" id="heroStatus">
-        <div class="whs-chip" id="heroStatusIcon">🎯</div>
-        <div class="whs-info">
-          <span class="whs-label">Live Status</span>
-          <span class="whs-main" id="heroStatusText">Ready to Spin</span>
-        </div>
-        <div class="hero-live" id="heroLiveDot"></div>
       </div>
     </div>
   </div>
@@ -169,26 +158,18 @@ $wheel_participants = $wheel_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 
         <div class="wm-congrats">Congratulations!</div>
 
-        <div class="wm-ticket">
-            <span class="wm-ticket-label">Ticket No.</span>
-            <span class="wm-ticket-number" id="winner_number"></span>
-        </div>
+        <div class="winner-number" id="winner_number"></div>
 
         <div class="winner-name" id="winner_name"></div>
+
         <div class="winner-barangay" id="winner_barangay"></div>
 
-        <div id="wm_prize_card" class="wm-prize-card">
-            <div class="wm-prize-image" id="wm_prize_image">🎁</div>
-            <div class="wm-prize-info">
-                <div class="wm-prize-label">Prize</div>
-                <div class="wm-prize-name" id="wm_prize_name">No Prize Selected</div>
-            </div>
-        </div>
+        <div class="winner-prize" id="winner_prize"></div>
 
         <div class="winner-actions">
             <button type="button" id="confirm_btn" class="btn btn-confirm">Confirm Winner</button>
             <button type="button" id="remove_btn" class="btn btn-remove">Remove from List</button>
-            <button type="button" class="btn btn-cancel close-modal">Redraw</button>
+            <button type="button" class="btn btn-cancel close-modal">Cancel</button>
         </div>
     </div>
 </div>
@@ -453,16 +434,8 @@ function mod2Pi(a) {
 function setWheelStatus(icon, text) {
     const iconEl = document.getElementById('wheelStatusIcon');
     const textEl = document.getElementById('wheelStatusText');
-    const heroStatus = document.getElementById('heroStatus');
-    const heroIcon = document.getElementById('heroStatusIcon');
-    const heroText = document.getElementById('heroStatusText');
-    const dot = document.getElementById('heroLiveDot');
     if (iconEl) iconEl.textContent = icon;
     if (textEl) textEl.textContent = text;
-    if (heroIcon) heroIcon.textContent = icon;
-    if (heroText) heroText.textContent = text;
-    if (heroStatus) heroStatus.classList.toggle('spinning', text.indexOf('Spinning') !== -1);
-    if (dot) dot.classList.toggle('live', text.indexOf('Spinning') !== -1);
 }
 
 function spinWheel() {
@@ -551,23 +524,18 @@ function spinWheel() {
 /* ===== WINNER MODAL ===== */
 function showWinnerModal(winner) {
     document.getElementById('winner_name').textContent = winner.name;
-    document.getElementById('winner_number').textContent = winner.number;
-    document.getElementById('winner_barangay').innerHTML = 'Barangay ' + winner.barangay;
+    document.getElementById('winner_number').textContent = 'Ticket No. ' + winner.number;
+    document.getElementById('winner_barangay').textContent = 'Barangay ' + winner.barangay;
 
     const prize = getSelectedPrize();
-    const imgEl = document.getElementById('wm_prize_image');
-    const nameEl = document.getElementById('wm_prize_name');
-
-    if (prize.id > 0 && prize.image) {
-        imgEl.innerHTML = '';
-        const img = document.createElement('img');
-        img.src = prize.image;
-        img.alt = prize.name;
-        imgEl.appendChild(img);
+    const prizeEl = document.getElementById('winner_prize');
+    if (prize.id > 0) {
+        prizeEl.textContent = 'Prize: ' + prize.name;
+        prizeEl.style.display = '';
     } else {
-        imgEl.innerHTML = '🎁';
+        prizeEl.textContent = '';
+        prizeEl.style.display = 'none';
     }
-    nameEl.textContent = prize.id > 0 ? prize.name : 'No Prize Selected';
 
     document.getElementById('winnerModal').classList.add('show');
     if (typeof startConfetti === 'function') startConfetti();

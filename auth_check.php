@@ -4,33 +4,13 @@ if (!isset($_SESSION['user_id'])) {
     exit;
 }
 
-// Get current event from session or default
-if (!isset($_SESSION['event_id'])) {
-    $default = $conn->query("SELECT id FROM events WHERE status='Active' ORDER BY id ASC LIMIT 1");
-    if ($default && $default->num_rows > 0) {
-        $_SESSION['event_id'] = $default->fetch_assoc()['id'];
-    } else {
-        $_SESSION['event_id'] = 1;
-    }
-}
-
-$current_event_id = intval($_SESSION['event_id']);
-
-// Switch event if requested
-if (isset($_GET['set_event'])) {
-    $eid = intval($_GET['set_event']);
-    $check = $conn->query("SELECT id FROM events WHERE id = $eid");
-    if ($check && $check->num_rows > 0) {
-        $_SESSION['event_id'] = $eid;
-        $current_event_id = $eid;
-    }
-    $page_clean = isset($_GET['page']) ? $_GET['page'] : 'upload';
-    header("Location: admin.php?page=$page_clean");
-    exit;
-}
+// The current event is ALWAYS the one marked Active in the events table,
+// so the raffle (draw, wheel, prizes, winners, uploads) follows the active event.
+$current_event_id = get_active_event_id($conn);
+$_SESSION['event_id'] = $current_event_id;
 
 // Get current event name
 $event_row = $conn->query("SELECT name FROM events WHERE id = $current_event_id");
-$current_event_name = ($event_row && $event_row->num_rows > 0) 
-    ? $event_row->fetch_assoc()['name'] 
+$current_event_name = ($event_row && $event_row->num_rows > 0)
+    ? $event_row->fetch_assoc()['name']
     : 'Unknown Event';

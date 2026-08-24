@@ -1,8 +1,6 @@
 <?php
 require_once __DIR__ . '/config.php';
 
-$json_file = __DIR__ . '/participants.json';
-
 // Get active event from DB
 $ev = $conn->query("SELECT id, name, registration_start_at, registration_end_at FROM events WHERE status='Active' ORDER BY id ASC LIMIT 1");
 $current_event_name = 'Raffle Event';
@@ -31,21 +29,6 @@ if ($ev && $ev->num_rows > 0) {
 if (!$registration_open) {
     header('Location: closed.php?reason=' . $reg_reason);
     exit;
-}
-
-// Sync JSON file with active event
-if (!file_exists($json_file)) {
-    file_put_contents($json_file, json_encode([
-        'event_name' => $current_event_name,
-        'participants' => [],
-    ], JSON_PRETTY_PRINT));
-} else {
-    $data = json_decode(file_get_contents($json_file), true) ?? ['event_name' => $current_event_name, 'participants' => []];
-    if ($data['event_name'] !== $current_event_name) {
-        // Different event selected — reset JSON
-        $data = ['event_name' => $current_event_name, 'participants' => []];
-        file_put_contents($json_file, json_encode($data, JSON_PRETTY_PRINT));
-    }
 }
 
 $success = null;
@@ -102,97 +85,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
         $error = 'Please complete your residency and contact details.';
         $error_step = 2;
     } elseif (!$error) {
-        // Load JSON data for duplicate check
-        $fp = fopen($json_file, 'c+');
-        if (flock($fp, LOCK_EX)) {
-            $raw = fread($fp, filesize($json_file) ?: 1);
-            $jdata = json_decode($raw, true) ?? ['event_name' => $current_event_name, 'participants' => []];
+        // Duplicate = SAME firstname + middlename + lastname + birthdate.
+        // If ANY one of the four is not the same => allowed to register.
+        // An empty submitted birthdate can never establish a duplicate.
+        $norm_bd = mb_strtolower(trim($birthdate));
+        $is_dup = false;
+        if ($norm_bd !== '') {
+            $dup = $conn->prepare("SELECT id FROM participants WHERE event_id=? AND LOWER(TRIM(lastname))=LOWER(?) AND LOWER(TRIM(firstname))=LOWER(?) AND LOWER(TRIM(middlename))=LOWER(?) AND birthdate = ? LIMIT 1");
+            $dup->bind_param("issss", $current_event_id, $lastname, $firstname, $middlename, $birthdate);
+            $dup->execute();
+            $is_dup = $dup->get_result()->num_rows > 0;
+            $dup->close();
+        }
 
-            // Duplicate = SAME firstname + middlename + lastname + birthdate.
-            // If ANY one of the four is not the same => allowed to register.
-            // An empty submitted birthdate can never establish a duplicate.
-            $norm = function ($s) { return mb_strtolower(trim((string)$s)); };
-            $norm_bd = $norm($birthdate);
-            $dup_js = false;
-            if ($norm_bd !== '') {
-                foreach (($jdata['participants'] ?? []) as $p) {
-                    if ($norm($p['lastname'] ?? '') === $norm($lastname)
-                        && $norm($p['firstname'] ?? '') === $norm($firstname)
-                        && $norm($p['middlename'] ?? '') === $norm($middlename)
-                        && $norm($p['birthdate'] ?? '') === $norm_bd) {
-                        $dup_js = true;
-                        break;
-                    }
-                }
-            }
-            if ($dup_js) {
-                $error = 'A participant with the same name and birthdate is already registered.';
-            }
-            // Also check MySQL
-            if (!$error && $norm_bd !== '') {
-                $dup = $conn->prepare("SELECT id FROM participants WHERE event_id=? AND LOWER(TRIM(lastname))=LOWER(?) AND LOWER(TRIM(firstname))=LOWER(?) AND LOWER(TRIM(middlename))=LOWER(?) AND birthdate = ? LIMIT 1");
-                $dup->bind_param("issss", $current_event_id, $lastname, $firstname, $middlename, $birthdate);
-                $dup->execute();
-                if ($dup->get_result()->num_rows > 0) {
-                    $error = 'A participant with the same name and birthdate is already registered.';
-                }
-                $dup->close();
-            }
+        if ($is_dup) {
+            $error = 'A participant with the same name and birthdate is already registered.';
+        } else {
+            // Next ticket number comes from the database only
+            $max_q = $conn->prepare("SELECT MAX(CAST(number AS UNSIGNED)) as max_num FROM participants WHERE event_id = ?");
+            $max_q->bind_param("i", $current_event_id);
+            $max_q->execute();
+            $db_max = (int)($max_q->get_result()->fetch_assoc()['max_num'] ?? 0);
+            $max_q->close();
+            $number = $db_max + 1;
 
-            if (!$error) {
-                $max = 0;
-                foreach ($jdata['participants'] as $p) {
-                    if ((int)$p['number'] > $max) $max = (int)$p['number'];
-                }
-                $max_q = $conn->prepare("SELECT MAX(CAST(number AS UNSIGNED)) as max_num FROM participants WHERE event_id = ?");
-                $max_q->bind_param("i", $current_event_id);
-                $max_q->execute();
-                $db_max = (int)($max_q->get_result()->fetch_assoc()['max_num'] ?? 0);
-                $max_q->close();
-                $number = max($max, $db_max) + 1;
+            $fullname = trim($firstname . ' ' . $middlename . ' ' . $lastname . ($suffix !== '' ? ' ' . $suffix : ''));
 
-                $fullname = trim($firstname . ' ' . $middlename . ' ' . $lastname . ($suffix !== '' ? ' ' . $suffix : ''));
-                $jdata['participants'][] = [
-                    'id' => $number,
-                    'number' => (string)$number,
-                    'lastname' => $lastname,
-                    'firstname' => $firstname,
-                    'middlename' => $middlename,
-                    'suffix' => $suffix,
-                    'name' => $fullname,
-                    'birthdate' => $birthdate,
-                    'sex' => $sex,
-                    'nationality' => $nationality,
-                    'province' => $province,
-                    'city' => $city,
-                    'barangay' => $barangay,
-                    'purok' => $purok,
-                    'contact_number' => $contact,
-                    'email' => $email,
-                    'created_at' => date('Y-m-d H:i:s'),
-                ];
-
-                ftruncate($fp, 0);
-                rewind($fp);
-                fwrite($fp, json_encode($jdata, JSON_PRETTY_PRINT));
-
-                $ins = $conn->prepare("INSERT INTO participants (event_id, number, lastname, firstname, middlename, suffix, name, birthdate, province, city, barangay, purok, contact_number, sex, nationality, email, photo_data, registration_attachment) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-                $birthdate_db = ($birthdate !== '') ? $birthdate : null; // optional field
-                $ins->bind_param("isssssssssssssssss", $current_event_id, $number, $lastname, $firstname, $middlename, $suffix, $fullname, $birthdate_db, $province, $city, $barangay, $purok, $contact, $sex, $nationality, $email, $photo_data, $reg_attachment);
-                $ins->execute();
-                $ins->close();
-
+            $ins = $conn->prepare("INSERT INTO participants (event_id, number, lastname, firstname, middlename, suffix, name, birthdate, province, city, barangay, purok, contact_number, sex, nationality, email, photo_data, registration_attachment) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $birthdate_db = ($birthdate !== '') ? $birthdate : null; // optional field
+            $ins->bind_param("isssssssssssssssss", $current_event_id, $number, $lastname, $firstname, $middlename, $suffix, $fullname, $birthdate_db, $province, $city, $barangay, $purok, $contact, $sex, $nationality, $email, $photo_data, $reg_attachment);
+            if ($ins->execute()) {
                 $success = [
                     'name' => $firstname,
                     'number' => $number,
                 ];
                 $submitted = [];
+            } else {
+                $error = 'Could not save registration. Please try again.';
             }
-            flock($fp, LOCK_UN);
-            fclose($fp);
-        } else {
-            $error = 'Could not save registration. Please try again.';
-            fclose($fp);
+            $ins->close();
         }
     }
 }

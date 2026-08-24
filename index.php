@@ -6,12 +6,10 @@ if (isset($_SESSION['user_id'])) {
 }
 require_once 'config.php';
 
-$json_file = __DIR__ . '/participants.json';
+// Participant total comes straight from the database for the ACTIVE event
 $total = 0;
-if (file_exists($json_file)) {
-    $d = json_decode(file_get_contents($json_file), true);
-    $total = count($d['participants'] ?? []);
-}
+$tc = $conn->query("SELECT COUNT(*) cnt FROM participants WHERE event_id = " . get_active_event_id($conn));
+if ($tc) $total = (int)$tc->fetch_assoc()['cnt'];
 
 $event_name = 'Charter Anniversary 2025';
 $ev = $conn->query("SELECT name FROM events WHERE status='Active' ORDER BY id ASC LIMIT 1");

@@ -73,6 +73,41 @@ if (isset($_GET['deactivate_event'])) {
     exit;
 }
 
+// Update an existing event
+if (isset($_POST['update_event'])) {
+    $eid = intval($_POST['event_id']);
+    $name = sanitize_input($_POST['name']);
+    $description = sanitize_input($_POST['description']);
+    $reg_start = !empty($_POST['registration_start_at']) ? $_POST['registration_start_at'] : null;
+    $reg_end = !empty($_POST['registration_end_at']) ? $_POST['registration_end_at'] : null;
+
+    if (empty($name)) {
+        set_message('error', 'Event name is required.');
+    } else {
+        $stmt = $conn->prepare("UPDATE events SET name=?, description=?, registration_start_at=?, registration_end_at=? WHERE id=?");
+        $stmt->bind_param("ssssi", $name, $description, $reg_start, $reg_end, $eid);
+        if ($stmt->execute()) {
+            set_message('success', 'Event updated successfully!');
+        } else {
+            set_message('error', 'Could not update event.');
+        }
+        $stmt->close();
+    }
+    header('Location: admin.php?page=events');
+    exit;
+}
+
+// Load event for editing (prefills the form)
+$editing = null;
+if (isset($_GET['edit_event'])) {
+    $eid = intval($_GET['edit_event']);
+    $stmt = $conn->prepare("SELECT * FROM events WHERE id = ?");
+    $stmt->bind_param("i", $eid);
+    $stmt->execute();
+    $editing = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+}
+
 $events = $conn->query("
     SELECT e.*,
         (SELECT COUNT(*) FROM participants p WHERE p.event_id = e.id) as participant_count,
@@ -85,6 +120,30 @@ $events = $conn->query("
 <h1>Events</h1>
 
 <?php display_message(); ?>
+
+<style>
+    .ev-actions { display:flex; gap:8px; align-items:center; flex-shrink:0; }
+    .ev-btn {
+        display:inline-flex; align-items:center; justify-content:center; gap:6px;
+        min-width:106px; padding:9px 18px; border-radius:22px;
+        font-size:12.5px; font-weight:700; letter-spacing:.2px; color:#fff;
+        text-decoration:none; border:none; cursor:pointer; text-align:center;
+        box-shadow:0 3px 10px rgba(0,0,0,.16);
+        transition:transform .15s ease, box-shadow .15s ease, filter .15s ease;
+    }
+    .ev-btn:hover { transform:translateY(-1px); filter:brightness(1.07); box-shadow:0 5px 14px rgba(0,0,0,.22); }
+    .ev-btn-green { background:#10b981; }
+    .ev-btn-amber { background:#f59e0b; }
+    .ev-btn-red   { background:#ef4444; }
+    .ev-btn-blue  { background:#6366f1; }
+    .ev-badge {
+        display:inline-flex; align-items:center; justify-content:center;
+        min-width:106px; padding:8px 14px; border-radius:22px;
+        font-size:12.5px; font-weight:700;
+    }
+    .ev-badge-active   { background:#ecfdf5; color:#059669; border:2px solid #10b981; }
+    .ev-badge-inactive { background:#f3f4f6; color:#9ca3af; border:2px solid #d1d5db; }
+</style>
 
 <div style="display:grid; grid-template-columns:1fr 1fr; gap:30px;">
     <div>
@@ -123,22 +182,32 @@ $events = $conn->query("
                             <span>Winners: <?php echo $event['winner_count']; ?></span>
                         </div>
                     </div>
-                    <div style="display:flex; gap:6px;">
+                    <div class="ev-actions">
                         <?php if ($event['status'] === 'Active'): ?>
-                        <span style="padding:6px 14px; border-radius:20px; background:#ecfdf5; color:#059669; font-size:12px; font-weight:700;">● Active</span>
+                        <span class="ev-badge ev-badge-active">&#9679; Active</span>
+                        <?php else: ?>
+                        <span class="ev-badge ev-badge-inactive">Inactive</span>
+                        <?php endif; ?>
+                        <a href="?page=events&edit_event=<?php echo $event['id']; ?>" class="ev-btn ev-btn-blue"><i class="fas fa-pen"></i> Edit</a>
+                        <?php if ($event['status'] === 'Active'): ?>
                         <a href="?page=events&deactivate_event=<?php echo $event['id']; ?>"
                            onclick="return confirm('Deactivate this event? The raffle will stop drawing from it.');"
-                           style="padding:6px 14px; border-radius:20px; background:#f9fafb; color:#9ca3af; text-decoration:none; font-size:12px; font-weight:600;">Deactivate</a>
+                           class="ev-btn ev-btn-amber"><i class="fas fa-power-off"></i> Deactivate</a>
                         <?php else: ?>
-                        <span style="padding:6px 14px; border-radius:20px; background:#f3f4f6; color:#9ca3af; font-size:12px; font-weight:600;">Inactive</span>
+                        <?php
+                        $activate_msg = 'Activate "' . htmlspecialchars($event['name']) . '"? The raffle (wheel, draw, prizes, winners) will use it.';
+                        if ($event['participant_count'] < 1) {
+                            $activate_msg .= '\n\nWARNING: This event has no participants yet. Upload or register participants after activating.';
+                        }
+                        ?>
                         <a href="?page=events&activate_event=<?php echo $event['id']; ?>"
-                           onclick="return confirm('Activate this event? The raffle (wheel, draw, prizes, winners) will use it.');"
-                           style="padding:6px 14px; border-radius:20px; background:#10b981; color:#fff; text-decoration:none; font-size:12px; font-weight:600;">Set Active</a>
+                           onclick="return confirm('<?php echo $activate_msg; ?>');"
+                           class="ev-btn ev-btn-green"><i class="fas fa-circle-check"></i> Set Active</a>
                         <?php endif; ?>
                         <?php if ($event['id'] > 1): ?>
                         <a href="?page=events&delete_event=<?php echo $event['id']; ?>"
                            onclick="return confirm('Delete this event and all its data?');"
-                           style="padding:6px 14px; border-radius:20px; background:#f9fafb; color:#9ca3af; text-decoration:none; font-size:12px; font-weight:600;">Delete</a>
+                           class="ev-btn ev-btn-red"><i class="fas fa-trash"></i> Delete</a>
                         <?php endif; ?>
                     </div>
                 </div>
@@ -149,29 +218,45 @@ $events = $conn->query("
         <?php endif; ?>
     </div>
 
-    <div style="background:#faf5f7; border-radius:16px; padding:30px; border:1px solid rgba(0,0,0,0.04);">
-        <h3 style="color:#ec4899; margin-bottom:20px;">Create New Event</h3>
+    <div style="background:#faf5f7; border-radius:16px; padding:30px; border:1px solid rgba(0,0,0,0.04); <?php echo $editing ? 'border-color:#6366f1;' : ''; ?>">
+        <h3 style="color:<?php echo $editing ? '#6366f1' : '#ec4899'; ?>; margin-bottom:20px;">
+            <?php echo $editing ? 'Edit Event: ' . htmlspecialchars($editing['name']) : 'Create New Event'; ?>
+        </h3>
         <form method="POST">
+            <?php if ($editing): ?>
+            <input type="hidden" name="event_id" value="<?php echo $editing['id']; ?>">
+            <?php endif; ?>
             <div class="form-group">
                 <label>Event Name *</label>
-                <input type="text" name="name" required placeholder="e.g., Mayors Night 2025">
+                <input type="text" name="name" required placeholder="e.g., Mayors Night 2025"
+                       value="<?php echo htmlspecialchars($editing['name'] ?? ''); ?>">
             </div>
             <div class="form-group">
                 <label>Description</label>
-                <textarea name="description" rows="3" style="width:100%; padding:12px 15px; border:2px solid rgba(0,0,0,0.08); border-radius:5px; font-size:15px; background:#fafafa; resize:vertical;" placeholder="Optional description"></textarea>
+                <textarea name="description" rows="3" style="width:100%; padding:12px 15px; border:2px solid rgba(0,0,0,0.08); border-radius:5px; font-size:15px; background:#fafafa; resize:vertical;" placeholder="Optional description"><?php echo htmlspecialchars($editing['description'] ?? ''); ?></textarea>
             </div>
             <div class="form-group">
                 <label>Registration Start</label>
                 <input type="datetime-local" name="registration_start_at"
+                       value="<?php echo !empty($editing['registration_start_at']) ? date('Y-m-d\TH:i', strtotime($editing['registration_start_at'])) : ''; ?>"
                        style="width:100%; padding:12px 15px; border:2px solid rgba(0,0,0,0.08); border-radius:5px; font-size:15px; background:#fafafa; font-family:inherit;">
             </div>
             <div class="form-group">
                 <label>Registration End</label>
                 <input type="datetime-local" name="registration_end_at"
+                       value="<?php echo !empty($editing['registration_end_at']) ? date('Y-m-d\TH:i', strtotime($editing['registration_end_at'])) : ''; ?>"
                        style="width:100%; padding:12px 15px; border:2px solid rgba(0,0,0,0.08); border-radius:5px; font-size:15px; background:#fafafa; font-family:inherit;">
                 <p style="color:#9ca3af; font-size:12px; margin-top:4px;">Leave both empty for no time restrictions</p>
             </div>
-            <button type="submit" name="add_event" class="btn btn-primary">Create Event</button>
+            <div style="display:flex; gap:10px; align-items:center;">
+                <button type="submit" name="<?php echo $editing ? 'update_event' : 'add_event'; ?>"
+                        class="btn btn-primary <?php echo $editing ? 'ev-btn ev-btn-blue' : ''; ?>" style="<?php echo $editing ? 'min-width:140px;' : ''; ?>">
+                    <?php echo $editing ? 'Update Event' : 'Create Event'; ?>
+                </button>
+                <?php if ($editing): ?>
+                <a href="admin.php?page=events" class="ev-btn ev-btn-red">Cancel</a>
+                <?php endif; ?>
+            </div>
         </form>
     </div>
 </div>

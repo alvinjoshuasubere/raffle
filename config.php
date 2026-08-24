@@ -32,6 +32,19 @@ function get_current_event_id() {
     return isset($_SESSION['event_id']) ? intval($_SESSION['event_id']) : 1;
 }
 
+// Function to resolve the ACTIVE event (status='Active'); falls back to newest, then id 1
+function get_active_event_id($conn) {
+    $r = $conn->query("SELECT id FROM events WHERE status='Active' ORDER BY id ASC LIMIT 1");
+    if ($r && $r->num_rows > 0) {
+        return (int)$r->fetch_assoc()['id'];
+    }
+    $r = $conn->query("SELECT id FROM events ORDER BY id DESC LIMIT 1");
+    if ($r && $r->num_rows > 0) {
+        return (int)$r->fetch_assoc()['id'];
+    }
+    return 1;
+}
+
 // Function to get event name
 function get_event_name($conn, $event_id) {
     $stmt = $conn->prepare("SELECT name FROM events WHERE id = ?");

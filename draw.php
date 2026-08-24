@@ -1,7 +1,7 @@
 <?php
 require_once 'config.php';
 if (!isset($current_event_id)) {
-    $current_event_id = isset($_SESSION['event_id']) ? intval($_SESSION['event_id']) : 1;
+    $current_event_id = get_active_event_id($conn);
 }
 
 // Handle Draw Winner (find by number)

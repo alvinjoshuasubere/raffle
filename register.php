@@ -108,16 +108,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
             $raw = fread($fp, filesize($json_file) ?: 1);
             $jdata = json_decode($raw, true) ?? ['event_name' => $current_event_name, 'participants' => []];
 
-            $dup_js = preg_grep("/^$lastname\|.*\|$barangay$/i", array_map(function($p) {
-                return $p['lastname'].'|'.$p['firstname'].'|'.$p['barangay'];
-            }, $jdata['participants'] ?? []));
+            // Duplicate = SAME firstname + middlename + lastname + barangay.
+            // Different middlename or barangay => allowed to register.
+            $norm = function ($s) { return mb_strtolower(trim((string)$s)); };
+            $dup_js = false;
+            foreach (($jdata['participants'] ?? []) as $p) {
+                if ($norm($p['lastname'] ?? '') === $norm($lastname)
+                    && $norm($p['firstname'] ?? '') === $norm($firstname)
+                    && $norm($p['middlename'] ?? '') === $norm($middlename)
+                    && $norm($p['barangay'] ?? '') === $norm($barangay)) {
+                    $dup_js = true;
+                    break;
+                }
+            }
             if ($dup_js) {
                 $error = 'A participant with the same name and barangay is already registered.';
             }
             // Also check MySQL
             if (!$error) {
-                $dup = $conn->prepare("SELECT id FROM participants WHERE event_id=? AND LOWER(lastname)=LOWER(?) AND LOWER(firstname)=LOWER(?) AND LOWER(barangay)=LOWER(?) LIMIT 1");
-                $dup->bind_param("isss", $current_event_id, $lastname, $firstname, $barangay);
+                $dup = $conn->prepare("SELECT id FROM participants WHERE event_id=? AND LOWER(TRIM(lastname))=LOWER(?) AND LOWER(TRIM(firstname))=LOWER(?) AND LOWER(TRIM(middlename))=LOWER(?) AND LOWER(TRIM(barangay))=LOWER(?) LIMIT 1");
+                $dup->bind_param("issss", $current_event_id, $lastname, $firstname, $middlename, $barangay);
                 $dup->execute();
                 if ($dup->get_result()->num_rows > 0) {
                     $error = 'A participant with the same name and barangay is already registered.';

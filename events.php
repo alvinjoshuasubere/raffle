@@ -26,12 +26,49 @@ if (isset($_GET['delete_event'])) {
     if ($eid <= 1) {
         set_message('error', 'Cannot delete the default event.');
     } else {
-        $conn->query("DELETE FROM events WHERE id = $eid");
+        $stmt = $conn->prepare("DELETE FROM events WHERE id = ?");
+        $stmt->bind_param("i", $eid);
+        $stmt->execute();
+        $stmt->close();
         set_message('success', 'Event deleted successfully.');
         if ($current_event_id == $eid) {
-            $_SESSION['event_id'] = 1;
+            $_SESSION['event_id'] = get_active_event_id($conn);
         }
     }
+    header('Location: admin.php?page=events');
+    exit;
+}
+
+// Activate an event (single-active model: all others become Inactive)
+if (isset($_GET['activate_event'])) {
+    $eid = intval($_GET['activate_event']);
+    $chk = $conn->prepare("SELECT id FROM events WHERE id = ?");
+    $chk->bind_param("i", $eid);
+    $chk->execute();
+    $exists = $chk->get_result()->num_rows > 0;
+    $chk->close();
+    if ($exists) {
+        $conn->query("UPDATE events SET status='Inactive' WHERE status='Active'");
+        $stmt = $conn->prepare("UPDATE events SET status='Active' WHERE id = ?");
+        $stmt->bind_param("i", $eid);
+        $stmt->execute();
+        $stmt->close();
+        set_message('success', 'Event activated. The raffle now draws from this event.');
+    } else {
+        set_message('error', 'Event not found.');
+    }
+    header('Location: admin.php?page=events');
+    exit;
+}
+
+// Deactivate an event (raffle falls back to the newest event until one is activated)
+if (isset($_GET['deactivate_event'])) {
+    $eid = intval($_GET['deactivate_event']);
+    $stmt = $conn->prepare("UPDATE events SET status='Inactive' WHERE id = ?");
+    $stmt->bind_param("i", $eid);
+    $stmt->execute();
+    $stmt->close();
+    set_message('success', 'Event deactivated. Activate another event to run the raffle on it.');
     header('Location: admin.php?page=events');
     exit;
 }
@@ -54,7 +91,7 @@ $events = $conn->query("
         <h3 style="color:#ec4899; margin-bottom:15px;">All Events</h3>
         <?php if ($events && $events->num_rows > 0): ?>
             <?php while ($event = $events->fetch_assoc()): ?>
-            <div style="background:#faf5f7; border-radius:12px; padding:20px; margin-bottom:12px; border:2px solid <?php echo $event['id'] == $current_event_id ? '#ec4899' : 'transparent'; ?>;">
+            <div style="background:#faf5f7; border-radius:12px; padding:20px; margin-bottom:12px; border:2px solid <?php echo $event['status'] === 'Active' ? '#10b981' : 'transparent'; ?>;">
                 <div style="display:flex; justify-content:space-between; align-items:start;">
                     <div>
                         <strong style="font-size:18px; color:#1a1a2e;"><?php echo htmlspecialchars($event['name']); ?></strong>
@@ -87,11 +124,16 @@ $events = $conn->query("
                         </div>
                     </div>
                     <div style="display:flex; gap:6px;">
-                        <?php if ($event['id'] != $current_event_id): ?>
-                        <a href="?page=events&set_event=<?php echo $event['id']; ?>"
-                           style="padding:6px 14px; border-radius:20px; background:#ec4899; color:#fff; text-decoration:none; font-size:12px; font-weight:600;">Switch</a>
+                        <?php if ($event['status'] === 'Active'): ?>
+                        <span style="padding:6px 14px; border-radius:20px; background:#ecfdf5; color:#059669; font-size:12px; font-weight:700;">● Active</span>
+                        <a href="?page=events&deactivate_event=<?php echo $event['id']; ?>"
+                           onclick="return confirm('Deactivate this event? The raffle will stop drawing from it.');"
+                           style="padding:6px 14px; border-radius:20px; background:#f9fafb; color:#9ca3af; text-decoration:none; font-size:12px; font-weight:600;">Deactivate</a>
                         <?php else: ?>
-                        <span style="padding:6px 14px; border-radius:20px; background:#fdf2f8; color:#ec4899; font-size:12px; font-weight:600;">Active</span>
+                        <span style="padding:6px 14px; border-radius:20px; background:#f3f4f6; color:#9ca3af; font-size:12px; font-weight:600;">Inactive</span>
+                        <a href="?page=events&activate_event=<?php echo $event['id']; ?>"
+                           onclick="return confirm('Activate this event? The raffle (wheel, draw, prizes, winners) will use it.');"
+                           style="padding:6px 14px; border-radius:20px; background:#10b981; color:#fff; text-decoration:none; font-size:12px; font-weight:600;">Set Active</a>
                         <?php endif; ?>
                         <?php if ($event['id'] > 1): ?>
                         <a href="?page=events&delete_event=<?php echo $event['id']; ?>"

@@ -108,29 +108,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
             $raw = fread($fp, filesize($json_file) ?: 1);
             $jdata = json_decode($raw, true) ?? ['event_name' => $current_event_name, 'participants' => []];
 
-            // Duplicate = SAME firstname + middlename + lastname + barangay.
-            // Different middlename or barangay => allowed to register.
+            // Duplicate = SAME firstname + middlename + lastname + birthdate.
+            // If ANY one of the four is not the same => allowed to register.
+            // An empty submitted birthdate can never establish a duplicate.
             $norm = function ($s) { return mb_strtolower(trim((string)$s)); };
+            $norm_bd = $norm($birthdate);
             $dup_js = false;
-            foreach (($jdata['participants'] ?? []) as $p) {
-                if ($norm($p['lastname'] ?? '') === $norm($lastname)
-                    && $norm($p['firstname'] ?? '') === $norm($firstname)
-                    && $norm($p['middlename'] ?? '') === $norm($middlename)
-                    && $norm($p['barangay'] ?? '') === $norm($barangay)) {
-                    $dup_js = true;
-                    break;
+            if ($norm_bd !== '') {
+                foreach (($jdata['participants'] ?? []) as $p) {
+                    if ($norm($p['lastname'] ?? '') === $norm($lastname)
+                        && $norm($p['firstname'] ?? '') === $norm($firstname)
+                        && $norm($p['middlename'] ?? '') === $norm($middlename)
+                        && $norm($p['birthdate'] ?? '') === $norm_bd) {
+                        $dup_js = true;
+                        break;
+                    }
                 }
             }
             if ($dup_js) {
-                $error = 'A participant with the same name and barangay is already registered.';
+                $error = 'A participant with the same name and birthdate is already registered.';
             }
             // Also check MySQL
-            if (!$error) {
-                $dup = $conn->prepare("SELECT id FROM participants WHERE event_id=? AND LOWER(TRIM(lastname))=LOWER(?) AND LOWER(TRIM(firstname))=LOWER(?) AND LOWER(TRIM(middlename))=LOWER(?) AND LOWER(TRIM(barangay))=LOWER(?) LIMIT 1");
-                $dup->bind_param("issss", $current_event_id, $lastname, $firstname, $middlename, $barangay);
+            if (!$error && $norm_bd !== '') {
+                $dup = $conn->prepare("SELECT id FROM participants WHERE event_id=? AND LOWER(TRIM(lastname))=LOWER(?) AND LOWER(TRIM(firstname))=LOWER(?) AND LOWER(TRIM(middlename))=LOWER(?) AND birthdate = ? LIMIT 1");
+                $dup->bind_param("issss", $current_event_id, $lastname, $firstname, $middlename, $birthdate);
                 $dup->execute();
                 if ($dup->get_result()->num_rows > 0) {
-                    $error = 'A participant with the same name and barangay is already registered.';
+                    $error = 'A participant with the same name and birthdate is already registered.';
                 }
                 $dup->close();
             }

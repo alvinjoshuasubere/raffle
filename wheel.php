@@ -9,20 +9,10 @@ if (isset($_POST['confirm_winner'])) {
     $participant_id = intval($_POST['participant_id']);
     $number = intval($_POST['number']);
     $name = sanitize_input($_POST['name']);
-    $barangay = sanitize_input($_POST['barangay']);
-    $prize_id = intval($_POST['prize_id'] ?? 0);
-    $prize_name = isset($_POST['prize_name']) ? sanitize_input($_POST['prize_name']) : '';
-    $prize_type = isset($_POST['prize_type']) ? sanitize_input($_POST['prize_type']) : '';
+    $purok = sanitize_input($_POST['purok'] ?? '');
 
-    if ($prize_id > 0) {
-        $upd = $conn->prepare("UPDATE prizes SET claimed = claimed + 1, enabled = IF(claimed + 1 >= quantity, 0, 1) WHERE id = ? AND event_id = ?");
-        $upd->bind_param("ii", $prize_id, $current_event_id);
-        $upd->execute();
-        $upd->close();
-    }
-
-    $stmt = $conn->prepare("INSERT INTO winners (event_id, participant_id, prize_id, number, name, barangay, prize_name, prize_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-    $stmt->bind_param("iiisssss", $current_event_id, $participant_id, $prize_id, $number, $name, $barangay, $prize_name, $prize_type);
+    $stmt = $conn->prepare("INSERT INTO winners (event_id, participant_id, number, name, barangay) VALUES (?, ?, ?, ?, ?)");
+    $stmt->bind_param("iisss", $current_event_id, $participant_id, $number, $name, $purok);
 
     if ($stmt->execute()) {
         $upd_status = $conn->prepare("UPDATE participants SET status = 'winner' WHERE id = ? AND event_id = ?");
@@ -52,40 +42,36 @@ if (isset($_POST['remove_participant'])) {
     exit;
 }
 
-// Fetch available prizes
-$prizes_stmt = $conn->prepare("SELECT * FROM prizes WHERE event_id = ? AND enabled = 1 AND claimed < quantity ORDER BY (type = 'Major') DESC, id ASC");
-$prizes_stmt->bind_param("i", $current_event_id);
-$prizes_stmt->execute();
-$prizes_result = $prizes_stmt->get_result();
-$prizes = [];
-while ($p = $prizes_result->fetch_assoc()) {
-    $prizes[] = $p;
-}
-
-$no_prizes = empty($prizes);
-
-// Fetch all participants for the wheel
-$wheel_stmt = $conn->prepare("SELECT id, number, name, barangay FROM participants WHERE event_id = ? AND (status IS NULL OR status = '') ORDER BY CAST(number AS UNSIGNED) ASC");
-$wheel_stmt->bind_param("i", $current_event_id);
-$wheel_stmt->execute();
-$wheel_participants = $wheel_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+// Fetch all participants for the slot machine
+$slot_stmt = $conn->prepare("SELECT id, number, name, purok FROM participants WHERE event_id = ? AND (status IS NULL OR status = '') ORDER BY CAST(number AS UNSIGNED) ASC");
+$slot_stmt->bind_param("i", $current_event_id);
+$slot_stmt->execute();
+$slot_participants = $slot_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 ?>
 
 <?php display_message(); ?>
 
 <div class="container1">
-  <!-- WHEEL STAGE -->
-  <div class="wheel-hero">
-    <div class="wheel-hero-inner">
-      <div class="big-wheel-stage">
-        <div class="wheel-lights" id="wheelLights"></div>
-        <div class="big-wheel-pointer"></div>
-        <canvas id="wheelCanvas" width="1000" height="1000"></canvas>
-        <div class="big-wheel-hub">
-          <span class="hub-icon">🎡</span>
-          <span class="hub-text">Raffle</span>
+  <!-- SLOT MACHINE STAGE -->
+  <div class="slot-hero">
+    <div class="slot-machine" id="slotMachine">
+
+      <div class="slot-topper">
+        <span class="star">&#9733;</span><span class="star">&#9733;</span><span class="star">&#9733;</span>
+        <span class="topper-text">RAFFLE</span>
+        <span class="star">&#9733;</span><span class="star">&#9733;</span><span class="star">&#9733;</span>
+      </div>
+
+      <div class="slot-cabinet">
+        <div class="slot-lights" id="slotLights"></div>
+        <div class="slot-window">
+          <div class="slot-reel" id="slotReel"><!-- cells injected by JS --></div>
+          <div class="slot-shade"></div>
+          <div class="slot-frame"></div>
         </div>
       </div>
+
+      <div class="slot-plate">LUCKY NUMBER</div>
     </div>
   </div>
 
@@ -94,55 +80,33 @@ $wheel_participants = $wheel_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     <div class="draw-panel-inner">
 
       <div class="draw-header-area">
-        <div class="draw-header-icon">🎡</div>
+        <div class="draw-header-icon">&#127904;</div>
         <div>
-          <h2 class="draw-heading">Spin the Wheel</h2>
-          <p class="draw-subtitle">Roll the lucky wheel to pick a winner</p>
+          <h2 class="draw-heading">Spin the Slot</h2>
+          <p class="draw-subtitle">Roll the numbers to pick a winner</p>
         </div>
-      </div>
-
-      <?php if ($no_prizes): ?>
-      <div class="no-prize-notice">
-        ⚠️ No prizes available yet. <a href="admin.php?page=prizes" style="color:#ec4899; font-weight:700; text-decoration:none;">Add prizes</a> before drawing.
-      </div>
-      <?php endif; ?>
-
-      <div class="draw-prize-select">
-        <label class="draw-label">Prize for this draw</label>
-        <select id="prize_select" class="prize-select" <?php echo $no_prizes ? 'disabled' : ''; ?>>
-          <option value="0">— No Prize Selected —</option>
-          <?php foreach ($prizes as $p): ?>
-          <?php $remaining = $p['quantity'] - $p['claimed']; ?>
-          <option value="<?php echo $p['id']; ?>"
-                  data-name="<?php echo htmlspecialchars($p['name']); ?>"
-                  data-type="<?php echo $p['type']; ?>"
-                  data-image="<?php echo htmlspecialchars($p['image']); ?>">
-            <?php echo htmlspecialchars($p['name']); ?> (<?php echo $remaining; ?> left)
-          </option>
-          <?php endforeach; ?>
-        </select>
       </div>
 
       <div class="wheel-controls">
         <div class="wheel-status-card">
-          <div class="wheel-status-icon" id="wheelStatusIcon">🎡</div>
-          <div class="wheel-status-text" id="wheelStatusText">Ready to spin the wheel</div>
+          <div class="wheel-status-icon" id="wheelStatusIcon">&#127904;</div>
+          <div class="wheel-status-text" id="wheelStatusText">Ready to spin</div>
         </div>
 
         <div class="spin-wrap">
           <button type="button" id="spin_btn" class="btn-spin-big">
-            <span class="spin-icon-chip">🎡</span>
-            <span class="spin-text">Spin the Wheel</span>
-            <span class="spin-arrow">→</span>
+            <span class="spin-icon-chip">&#127904;</span>
+            <span class="spin-text">SPIN</span>
+            <span class="spin-arrow">&rarr;</span>
           </button>
         </div>
 
         <div class="wheel-count">
-          <span id="wheel_participant_count"><?php echo count($wheel_participants); ?></span> ticket<?php echo count($wheel_participants) === 1 ? '' : 's'; ?> on the wheel
+          <span id="wheel_participant_count"><?php echo count($slot_participants); ?></span> ticket<?php echo count($slot_participants) === 1 ? '' : 's'; ?> in the machine
         </div>
 
         <div class="wheel-last-wrap">
-          <span class="wheel-last" id="wheel_last_winner">Last winner: —</span>
+          <span class="wheel-last" id="wheel_last_winner">Last winner: &mdash;</span>
         </div>
       </div>
 
@@ -158,13 +122,9 @@ $wheel_participants = $wheel_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 
         <div class="wm-congrats">Congratulations!</div>
 
-        <div class="winner-number" id="winner_number"></div>
-
         <div class="winner-name" id="winner_name"></div>
 
-        <div class="winner-barangay" id="winner_barangay"></div>
-
-        <div class="winner-prize" id="winner_prize"></div>
+        <div class="winner-barangay" id="winner_purok"></div>
 
         <div class="winner-actions">
             <button type="button" id="confirm_btn" class="btn btn-confirm">Confirm Winner</button>
@@ -175,383 +135,174 @@ $wheel_participants = $wheel_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 </div>
 
 <script>
-const WHEEL_DATA = <?php echo json_encode($wheel_participants); ?>;
+const SLOT_DATA = <?php echo json_encode($slot_participants); ?>;
 
 let currentWinner = null;
-let wheelAngle = 0;
-let wheelSpinning = false;
-let winningSegmentIndex = null;
+let slotSpinning = false;
 
-function getSelectedPrize() {
-    const sel = document.getElementById('prize_select');
-    const opt = sel.options[sel.selectedIndex];
-    return {
-        id: parseInt(opt.value || '0', 10),
-        name: opt.getAttribute('data-name') || '',
-        type: opt.getAttribute('data-type') || '',
-        image: opt.getAttribute('data-image') || ''
-    };
-}
+/* ===== SLOT MACHINE ===== */
+const REEL_PASSES = 20;         // heavy strip churn = real slot-machine speed
+const SPIN_DURATION = 3000;     // ms — fast roll for 3 seconds
+const FAST_PHASE = 0.90;        // sustained top speed until 90% of the spin
+const BOUNCE_MS = 240;          // mechanical kick-back after hitting the stop
+const OVERSHOOT_PX = 22;        // how far past the stop it kicks before settling
 
-document.addEventListener('DOMContentLoaded', function() {
-    const spinBtn = document.getElementById('spin_btn');
-    const prizeSelect = document.getElementById('prize_select');
+function el(id){ return document.getElementById(id); }
 
-    if (prizeSelect && prizeSelect.options.length > 1) {
-        prizeSelect.selectedIndex = 1;
-    }
-
-    if (spinBtn) {
-        spinBtn.addEventListener('click', spinWheel);
-    }
-    buildWheelLights();
-    drawWheel();
-});
-
-/* ===== WHEEL ===== */
-const WHEEL_COLORS = ['#ec4899', '#8b5cf6', '#6366f1', '#0ea5e9', '#14b8a6', '#22c55e', '#f59e0b', '#ef4444', '#a855f7', '#06b6d4', '#84cc16', '#f97316'];
-
-function shadeHex(hex, pct) {
-    const num = parseInt(hex.replace('#', ''), 16);
-    let r = (num >> 16) & 255, g = (num >> 8) & 255, b = num & 255;
-    r = Math.max(0, Math.min(255, Math.round(r * (1 + pct))));
-    g = Math.max(0, Math.min(255, Math.round(g * (1 + pct))));
-    b = Math.max(0, Math.min(255, Math.round(b * (1 + pct))));
-    return '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
-}
-
-function wheelFontSize(n) {
-    if (n <= 6) return 78;
-    if (n <= 12) return 62;
-    if (n <= 20) return 48;
-    if (n <= 36) return 34;
-    if (n <= 60) return 24;
-    return 17;
-}
-
-function buildWheelLights() {
-    const container = document.getElementById('wheelLights');
+function buildSlotLights() {
+    const container = el('slotLights');
     if (!container || container.childElementCount > 0) return;
-    const count = 30;
-    for (let i = 0; i < count; i++) {
+    for (let i = 0; i < 22; i++) {
         const dot = document.createElement('div');
-        dot.className = 'wheel-light-dot';
-        dot.style.transform = 'rotate(' + (((360 / count) * i) + (360 / count) / 2) + 'deg) translateY(calc(var(--ring-r) * -1))';
-        dot.style.animationDelay = ((i * 45) % 800) + 'ms';
+        dot.className = 'slot-light-dot';
+        dot.style.animationDelay = ((i * 70) % 900) + 'ms';
         container.appendChild(dot);
     }
 }
 
-function roundRectPath(ctx, x, y, w, h, r) {
-    ctx.beginPath();
-    ctx.moveTo(x + r, y);
-    ctx.arcTo(x + w, y, x + w, y + h, r);
-    ctx.arcTo(x + w, y + h, x, y + h, r);
-    ctx.arcTo(x, y + h, x, y, r);
-    ctx.arcTo(x, y, x + w, y, r);
-    ctx.closePath();
+function shuffled(arr) {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
 }
 
-function drawWheel() {
-    const canvas = document.getElementById('wheelCanvas');
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    const size = canvas.width;
-    const cx = size / 2, cy = size / 2;
-    const R = size / 2 - 28;
-    const innerR = 162;
-    const n = WHEEL_DATA.length;
-    ctx.clearRect(0, 0, size, size);
+/* Build the vertical strip: N shuffled passes; winner forced into the final landing cell */
+function buildReel(winnerId) {
+    const reel = el('slotReel');
+    reel.innerHTML = '';
 
-    if (n === 0) {
-        ctx.beginPath();
-        ctx.arc(cx, cy, R, 0, Math.PI * 2);
-        ctx.fillStyle = '#fdf2f8';
-        ctx.fill();
-        ctx.strokeStyle = '#f9a8d4';
-        ctx.lineWidth = 8;
-        ctx.stroke();
-        ctx.fillStyle = '#9ca3af';
-        ctx.font = 'bold 46px "Segoe UI", sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText('No tickets yet', cx, cy - 12);
-        ctx.font = '28px "Segoe UI", sans-serif';
-        ctx.fillText('Upload participants first', cx, cy + 48);
-        return;
+    let cells = [];
+    // More passes = faster roll; cap total cells so very large events stay smooth
+    const passes = Math.min(REEL_PASSES, Math.max(6, Math.ceil(3000 / SLOT_DATA.length)));
+    for (let p = 0; p < passes; p++) cells = cells.concat(shuffled(SLOT_DATA));
+
+    // Landing cell: second-to-last so there is still motion after it visually settles
+    const landIndex = cells.length - 2;
+    if (winnerId != null && cells.length > 0) {
+        const wIdx = cells.findIndex(c => c.id === winnerId);
+        if (wIdx !== -1 && wIdx !== landIndex) {
+            [cells[wIdx], cells[landIndex]] = [cells[landIndex], cells[wIdx]];
+        }
     }
 
-    const arc = (2 * Math.PI) / n;
-    const fontSize = wheelFontSize(n);
-
-    // metal rim
-    const rim = ctx.createLinearGradient(0, cy - R - 26, 0, cy + R + 26);
-    rim.addColorStop(0, '#f8fafc');
-    rim.addColorStop(0.2, '#cbd5e1');
-    rim.addColorStop(0.5, '#94a3b8');
-    rim.addColorStop(0.82, '#64748b');
-    rim.addColorStop(1, '#334155');
-    ctx.beginPath();
-    ctx.arc(cx, cy, R + 26, 0, Math.PI * 2);
-    ctx.fillStyle = rim;
-    ctx.fill();
-    ctx.beginPath();
-    ctx.arc(cx, cy, R + 26, 0, Math.PI * 2);
-    ctx.strokeStyle = 'rgba(236,73,153,0.45)';
-    ctx.lineWidth = 2;
-    ctx.stroke();
-
-    // wheel face base
-    ctx.beginPath();
-    ctx.arc(cx, cy, R, 0, Math.PI * 2);
-    ctx.fillStyle = '#ffffff';
-    ctx.fill();
-
-    for (let i = 0; i < n; i++) {
-        const start = wheelAngle + i * arc;
-        const end = start + arc;
-        const isWinner = winningSegmentIndex === i && !wheelSpinning;
-
-        let color = WHEEL_COLORS[i % WHEEL_COLORS.length];
-        if (i % 2 === 1) color = shadeHex(color, -0.18);
-        if (isWinner) color = shadeHex(color, 0.3);
-
-        ctx.beginPath();
-        ctx.arc(cx, cy, innerR, start, end);
-        ctx.arc(cx, cy, R, end, start, true);
-        ctx.closePath();
-        ctx.fillStyle = color;
-        ctx.fill();
-
-        // subtle 3D sheen across the face
-        const sheen = ctx.createRadialGradient(cx, cy, innerR, cx, cy, R);
-        sheen.addColorStop(0, 'rgba(255,255,255,0.22)');
-        sheen.addColorStop(0.55, 'rgba(255,255,255,0.05)');
-        sheen.addColorStop(0.8, 'rgba(255,255,255,0)');
-        sheen.addColorStop(1, 'rgba(0,0,0,0.16)');
-        ctx.beginPath();
-        ctx.arc(cx, cy, innerR, start, end);
-        ctx.arc(cx, cy, R, end, start, true);
-        ctx.closePath();
-        ctx.fillStyle = sheen;
-        ctx.fill();
-
-        // engraved separator
-        ctx.save();
-        ctx.translate(cx, cy);
-        ctx.rotate(start);
-        ctx.beginPath();
-        ctx.moveTo(innerR, 0);
-        ctx.lineTo(R + 2, 0);
-        ctx.strokeStyle = 'rgba(0,0,0,0.16)';
-        ctx.lineWidth = 3;
-        ctx.stroke();
-        ctx.strokeStyle = 'rgba(255,255,255,0.55)';
-        ctx.lineWidth = 1.5;
-        ctx.stroke();
-        ctx.restore();
-
-        // winner glow outline
-        if (isWinner) {
-            ctx.save();
-            ctx.shadowColor = 'rgba(245,158,11,0.95)';
-            ctx.shadowBlur = 40;
-            ctx.beginPath();
-            ctx.arc(cx, cy, innerR, start, end);
-            ctx.arc(cx, cy, R, end, start, true);
-            ctx.closePath();
-            ctx.strokeStyle = '#fbbf24';
-            ctx.lineWidth = 5;
-            ctx.stroke();
-            ctx.restore();
-        }
-
-        // ticket number label chip
-        ctx.save();
-        ctx.translate(cx, cy);
-        ctx.rotate(start + arc / 2);
-        const text = String(WHEEL_DATA[i].number);
-        ctx.font = 'bold ' + fontSize + 'px "Segoe UI", sans-serif';
-        if (fontSize >= 34) {
-            const tw = ctx.measureText(text).width;
-            const chipW = tw + 28;
-            const chipH = fontSize + 20;
-            const chipX = R - 24 - chipW;
-            const chipY = -chipH / 2;
-            roundRectPath(ctx, chipX, chipY, chipW, chipH, chipH / 2);
-            ctx.fillStyle = isWinner ? 'rgba(255, 205, 90, 0.96)' : 'rgba(255, 255, 255, 0.92)';
-            ctx.shadowColor = 'rgba(0, 0, 0, 0.35)';
-            ctx.shadowBlur = 8;
-            ctx.shadowOffsetY = 3;
-            ctx.fill();
-            ctx.shadowBlur = 0;
-            ctx.shadowOffsetY = 0;
-            ctx.fillStyle = isWinner ? '#92400e' : shadeHex(color, -0.35);
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText(text, chipX + chipW / 2, chipY + chipH / 2 + 1);
-        } else {
-            ctx.textAlign = 'right';
-            ctx.textBaseline = 'middle';
-            ctx.fillStyle = isWinner ? '#fff3cd' : '#ffffff';
-            ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
-            ctx.shadowBlur = 6;
-            ctx.shadowOffsetY = 2;
-            ctx.fillText(text, R - 20, 0);
-        }
-        ctx.restore();
-
-        // outer bead
-        ctx.beginPath();
-        ctx.arc(cx + Math.cos(start) * (R - 10), cy + Math.sin(start) * (R - 10), 5, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(255,255,255,0.95)';
-        ctx.shadowColor = 'rgba(0,0,0,0.3)';
-        ctx.shadowBlur = 4;
-        ctx.fill();
-        ctx.shadowBlur = 0;
-    }
-
-    // hub recess shadow
-    ctx.beginPath();
-    ctx.arc(cx, cy, innerR, 0, Math.PI * 2);
-    ctx.strokeStyle = 'rgba(0,0,0,0.16)';
-    ctx.lineWidth = 6;
-    ctx.stroke();
-
-    // clean white ring around the hub
-    ctx.beginPath();
-    ctx.arc(cx, cy, innerR, 0, Math.PI * 2);
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 5;
-    ctx.stroke();
+    cells.forEach((c, i) => {
+        const div = document.createElement('div');
+        div.className = 'slot-cell';
+        div.textContent = String(c.number);
+        div.dataset.id = c.id;
+        if (i === landIndex) div.dataset.land = '1';
+        reel.appendChild(div);
+    });
+    return landIndex;
 }
 
-function mod2Pi(a) {
-    a = a % (2 * Math.PI);
-    return a < 0 ? a + 2 * Math.PI : a;
+function cellHeight() {
+    const cell = document.querySelector('.slot-cell');
+    return cell ? cell.offsetHeight : 120;
 }
 
-function setWheelStatus(icon, text) {
-    const iconEl = document.getElementById('wheelStatusIcon');
-    const textEl = document.getElementById('wheelStatusText');
+function setSlotStatus(icon, text) {
+    const iconEl = el('wheelStatusIcon'), textEl = el('wheelStatusText');
     if (iconEl) iconEl.textContent = icon;
     if (textEl) textEl.textContent = text;
 }
 
-function spinWheel() {
-    if (wheelSpinning) return;
-    if (WHEEL_DATA.length === 0) {
-        showToast('No participants on the wheel yet.', 'error');
+function spinSlot() {
+    if (slotSpinning) return;
+    if (SLOT_DATA.length === 0) {
+        showToast('No participants in the machine yet.', 'error');
         return;
     }
 
-    const prizeSelect = document.getElementById('prize_select');
-    if (!prizeSelect.value || prizeSelect.value === '0') {
-        showToast('Please select a prize first.', 'error');
-        return;
-    }
-
-    wheelSpinning = true;
-    winningSegmentIndex = null;
-    const spinBtnEl = document.getElementById('spin_btn');
+    slotSpinning = true;
+    const spinBtnEl = el('spin_btn');
     spinBtnEl.disabled = true;
     spinBtnEl.classList.add('spinning');
-    document.getElementById('wheelLights').classList.add('lights-on');
-    setWheelStatus('🎡', 'Spinning the wheel...');
+    el('slotLights').classList.add('lights-on');
+    setSlotStatus('\u{1F3B0}', 'Rolling the numbers...');
 
-    const fullTurns = 8 + Math.floor(Math.random() * 6);
-    const extraAngle = Math.random() * 2 * Math.PI;
-    const targetAngle = wheelAngle + fullTurns * 2 * Math.PI + extraAngle;
-    const startAngle = wheelAngle;
-    const duration = 6000;
-    const startTime = performance.now();
-    const trembleStart = 0.78;
+    const winner = SLOT_DATA[Math.floor(Math.random() * SLOT_DATA.length)];
+    const landIndex = buildReel(winner.id);
+
+    const reel = el('slotReel');
+    reel.style.transform = 'translateY(0)';
+    void reel.offsetHeight; // force layout before animating
+
+    const ch = cellHeight();
+    const target = -(landIndex - 1) * ch;   // center the landing cell in the window
+    const start = performance.now();
 
     function frame(now) {
-        const t = Math.min((now - startTime) / duration, 1);
-        let eased;
-        if (t < trembleStart) {
-            eased = 1 - Math.pow(1 - (t / trembleStart), 5);
+        const t = Math.min((now - start) / SPIN_DURATION, 1);
+        let eased, extra = 0;
+        if (t < FAST_PHASE) {
+            eased = (t / FAST_PHASE) * 0.90;                       // constant blur-fast roll
         } else {
-            const tt = (t - trembleStart) / (1 - trembleStart);
-            const slow = 1 - Math.pow(1 - tt, 3);
-            eased = (1 - Math.pow(1 - trembleStart, 5)) + slow * (1 - (1 - Math.pow(1 - trembleStart, 5)));
-            const tremble = Math.sin(tt * Math.PI * 12) * (1 - tt) * 0.008;
-            eased += tremble;
+            const u = (t - FAST_PHASE) / (1 - FAST_PHASE);
+            eased = 0.90 + (1 - Math.pow(1 - u, 2)) * 0.10;        // hard snap to the stop
         }
-        wheelAngle = startAngle + (targetAngle - startAngle) * eased;
-        drawWheel();
-        if (t < 1) {
+
+        // Mechanical kick-back once the reel hits the stop
+        const tb = (now - start - SPIN_DURATION) / BOUNCE_MS;
+        if (tb >= 0) {
+            extra = -OVERSHOOT_PX * Math.exp(-4.5 * tb) * Math.cos(10 * tb);
+        }
+
+        reel.style.transform = 'translateY(' + (target * eased + extra) + 'px)';
+        reel.classList.toggle('fast', t < FAST_PHASE);
+
+        if (tb < 0 || t < 1 || (now - start) < SPIN_DURATION + BOUNCE_MS) {
             requestAnimationFrame(frame);
         } else {
-            wheelSpinning = false;
+            slotSpinning = false;
             spinBtnEl.disabled = false;
             spinBtnEl.classList.remove('spinning');
-            document.getElementById('wheelLights').classList.remove('lights-on');
+            reel.classList.remove('fast');
 
-            const arc = (2 * Math.PI) / WHEEL_DATA.length;
-            const pointer = mod2Pi(-Math.PI / 2 - wheelAngle);
-            const idx = Math.floor(pointer / arc) % WHEEL_DATA.length;
-            const winner = WHEEL_DATA[idx];
-
-            winningSegmentIndex = idx;
-            drawWheel();
-
-            const stageEl = document.querySelector('.big-wheel-stage');
-            if (stageEl) {
-                stageEl.classList.remove('landed');
-                void stageEl.offsetWidth;
-                stageEl.classList.add('landed');
-            }
+            const landed = reel.querySelector('[data-land]');
+            if (landed) landed.classList.add('is-winner');
 
             currentWinner = {
                 participant_id: winner.id,
                 number: winner.number,
                 name: winner.name,
-                barangay: winner.barangay
+                purok: winner.purok
             };
 
-            setWheelStatus('🏆', 'Winner: Ticket #' + winner.number);
-            const lastEl = document.getElementById('wheel_last_winner');
-            if (lastEl) lastEl.textContent = 'Last winner: Ticket #' + winner.number;
-            setTimeout(function() { showWinnerModal(currentWinner); }, 800);
+            setSlotStatus('\u{1F3C6}', 'Winner: ' + winner.name);
+            const lastEl = el('wheel_last_winner');
+            if (lastEl) lastEl.textContent = 'Last winner: ' + winner.name;
+            setTimeout(function(){ showWinnerModal(currentWinner); }, 700);
         }
     }
-
     requestAnimationFrame(frame);
 }
+
+document.addEventListener('DOMContentLoaded', function() {
+    buildSlotLights();
+    buildReel(null);
+    const spinBtn = el('spin_btn');
+    if (spinBtn) spinBtn.addEventListener('click', spinSlot);
+});
 
 /* ===== WINNER MODAL ===== */
 function showWinnerModal(winner) {
     document.getElementById('winner_name').textContent = winner.name;
-    document.getElementById('winner_number').textContent = 'Ticket No. ' + winner.number;
-    document.getElementById('winner_barangay').textContent = 'Barangay ' + winner.barangay;
-
-    const prize = getSelectedPrize();
-    const prizeEl = document.getElementById('winner_prize');
-    if (prize.id > 0) {
-        prizeEl.textContent = 'Prize: ' + prize.name;
-        prizeEl.style.display = '';
-    } else {
-        prizeEl.textContent = '';
-        prizeEl.style.display = 'none';
-    }
-
+    document.getElementById('winner_purok').textContent = 'Purok ' + winner.purok;
     document.getElementById('winnerModal').classList.add('show');
     if (typeof startConfetti === 'function') startConfetti();
 }
 
 function confirmWinner(winner) {
-    const prize = getSelectedPrize();
     const formData = new FormData();
     formData.append('confirm_winner', '1');
     formData.append('participant_id', winner.participant_id);
     formData.append('number', winner.number);
     formData.append('name', winner.name);
-    formData.append('barangay', winner.barangay);
-    formData.append('prize_id', prize.id);
-    formData.append('prize_name', prize.name);
-    formData.append('prize_type', prize.type);
+    formData.append('purok', winner.purok);
 
     fetch('wheel.php', { method: 'POST', body: formData })
         .then(response => response.json())
@@ -559,19 +310,19 @@ function confirmWinner(winner) {
             if (data.success) {
                 showToast('Winner confirmed successfully!', 'success');
 
-                const idx = WHEEL_DATA.findIndex(w => w.id === winner.participant_id);
-                if (idx !== -1) WHEEL_DATA.splice(idx, 1);
+                const idx = SLOT_DATA.findIndex(w => w.id === winner.participant_id);
+                if (idx !== -1) SLOT_DATA.splice(idx, 1);
                 const countEl = document.getElementById('wheel_participant_count');
-                if (countEl) countEl.textContent = WHEEL_DATA.length;
-                winningSegmentIndex = null;
-                drawWheel();
-                setWheelStatus('🎯', 'Ready to spin the wheel');
-                const lastEl = document.getElementById('wheel_last_winner');
-                if (lastEl) lastEl.textContent = 'Last winner: Ticket #' + winner.number;
+                if (countEl) countEl.textContent = SLOT_DATA.length;
 
-                document.getElementById('winnerModal').classList.remove('show');
-                if (typeof stopConfetti === 'function') stopConfetti();
-                currentWinner = null;
+                const reel = el('slotReel');
+                reel.style.transform = 'translateY(0)';
+                buildReel(null);
+                setSlotStatus('\u{1F3AF}', 'Ready to spin');
+                const lastEl = document.getElementById('wheel_last_winner');
+                if (lastEl) lastEl.textContent = 'Last winner: ' + winner.name;
+
+                closeModal();
             } else {
                 showToast(data.message, 'error');
             }
@@ -599,17 +350,17 @@ function removeFromList(winner) {
             if (data.success) {
                 showToast(data.message, 'success');
 
-                const idx = WHEEL_DATA.findIndex(w => w.id === winner.participant_id);
-                if (idx !== -1) WHEEL_DATA.splice(idx, 1);
+                const idx = SLOT_DATA.findIndex(w => w.id === winner.participant_id);
+                if (idx !== -1) SLOT_DATA.splice(idx, 1);
                 const countEl = document.getElementById('wheel_participant_count');
-                if (countEl) countEl.textContent = WHEEL_DATA.length;
-                winningSegmentIndex = null;
-                drawWheel();
-                setWheelStatus('🎯', 'Ready to spin the wheel');
+                if (countEl) countEl.textContent = SLOT_DATA.length;
 
-                document.getElementById('winnerModal').classList.remove('show');
-                if (typeof stopConfetti === 'function') stopConfetti();
-                currentWinner = null;
+                const reel = el('slotReel');
+                reel.style.transform = 'translateY(0)';
+                buildReel(null);
+                setSlotStatus('\u{1F3AF}', 'Ready to spin');
+
+                closeModal();
             } else {
                 showToast(data.message, 'error');
             }
@@ -624,19 +375,17 @@ document.getElementById('remove_btn').addEventListener('click', function() {
     removeFromList(currentWinner);
 });
 
+function closeModal(){
+    document.getElementById('winnerModal').classList.remove('show');
+    if (typeof stopConfetti === 'function') stopConfetti();
+    currentWinner = null;
+}
+
 document.querySelectorAll('.close, .close-modal').forEach(element => {
-    element.addEventListener('click', function() {
-        document.getElementById('winnerModal').classList.remove('show');
-        if (typeof stopConfetti === 'function') stopConfetti();
-        currentWinner = null;
-    });
+    element.addEventListener('click', closeModal);
 });
 
 document.getElementById('winnerModal').addEventListener('click', function(e) {
-    if (e.target === this) {
-        this.classList.remove('show');
-        if (typeof stopConfetti === 'function') stopConfetti();
-        currentWinner = null;
-    }
+    if (e.target === this) closeModal();
 });
 </script>

@@ -1541,6 +1541,7 @@ tbody tr:hover {
   gap: 14px;
   justify-content: center;
   flex-wrap: wrap;
+  margin-top: 44px;
 }
 
 .winner-modal .winner-actions .btn {

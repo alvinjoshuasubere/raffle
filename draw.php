@@ -42,7 +42,7 @@ if (isset($_POST['draw_winner'])) {
         'winner' => [
             'number' => $participant['number'],
             'name' => $participant['name'],
-            'barangay' => $participant['barangay'],
+            'purok' => $participant['purok'],
             'participant_id' => $participant['id']
         ]
     ]);
@@ -125,18 +125,6 @@ if (isset($_POST['remove_participant'])) {
     exit;
 }
 
-// Fetch available prizes
-$prizes_stmt = $conn->prepare("SELECT * FROM prizes WHERE event_id = ? AND enabled = 1 AND claimed < quantity ORDER BY (type = 'Major') DESC, id ASC");
-$prizes_stmt->bind_param("i", $current_event_id);
-$prizes_stmt->execute();
-$prizes_result = $prizes_stmt->get_result();
-$prizes = [];
-while ($p = $prizes_result->fetch_assoc()) {
-    $prizes[] = $p;
-}
-
-$no_prizes = empty($prizes);
-
 // Get past winners
 $stmt_pw = $conn->prepare("SELECT number, name, barangay, prize_name, won_at FROM winners WHERE event_id = ? ORDER BY won_at DESC LIMIT 10");
 $stmt_pw->bind_param("i", $current_event_id);
@@ -151,33 +139,11 @@ $past_winners = $stmt_pw->get_result();
     <div class="draw-panel-inner">
 
       <div class="draw-header-area">
-        <div class="draw-header-icon">🎯</div>
+        <div class="draw-header-icon">&#127904;</div>
         <div>
           <h2 class="draw-heading">Draw Entry</h2>
           <p class="draw-subtitle">Enter ticket number to find winner</p>
         </div>
-      </div>
-
-      <?php if ($no_prizes): ?>
-      <div class="no-prize-notice">
-        ⚠️ No prizes available yet. <a href="admin.php?page=prizes" style="color:#ec4899; font-weight:700; text-decoration:none;">Add prizes</a> before drawing.
-      </div>
-      <?php endif; ?>
-
-      <div class="draw-prize-select">
-        <label class="draw-label">Prize for this draw</label>
-        <select id="prize_select" class="prize-select" <?php echo $no_prizes ? 'disabled' : ''; ?>>
-          <option value="0">— No Prize Selected —</option>
-          <?php foreach ($prizes as $p): ?>
-          <?php $remaining = $p['quantity'] - $p['claimed']; ?>
-          <option value="<?php echo $p['id']; ?>"
-                  data-name="<?php echo htmlspecialchars($p['name']); ?>"
-                  data-type="<?php echo $p['type']; ?>"
-                  data-image="<?php echo htmlspecialchars($p['image']); ?>">
-            <?php echo htmlspecialchars($p['name']); ?> (<?php echo $remaining; ?> left)
-          </option>
-          <?php endforeach; ?>
-        </select>
       </div>
 
       <div class="draw-number-section">
@@ -215,13 +181,9 @@ $past_winners = $stmt_pw->get_result();
 
         <div class="wm-congrats">Congratulations!</div>
 
-        <div class="winner-number" id="winner_number"></div>
-
         <div class="winner-name" id="winner_name"></div>
 
-        <div class="winner-barangay" id="winner_barangay"></div>
-
-        <div class="winner-prize" id="winner_prize"></div>
+        <div class="winner-barangay" id="winner_purok"></div>
 
         <div class="winner-actions">
             <button type="button" id="confirm_btn" class="btn btn-confirm">Confirm Winner</button>
@@ -235,35 +197,13 @@ $past_winners = $stmt_pw->get_result();
 let currentWinner = null;
 let nameCheckTimeout = null;
 
-function getSelectedPrize() {
-    const sel = document.getElementById('prize_select');
-    const opt = sel.options[sel.selectedIndex];
-    return {
-        id: parseInt(opt.value || '0', 10),
-        name: opt.getAttribute('data-name') || '',
-        type: opt.getAttribute('data-type') || '',
-        image: opt.getAttribute('data-image') || ''
-    };
-}
-
 document.addEventListener('DOMContentLoaded', function() {
     const drawBtn = document.getElementById('draw_btn');
     const resetBtn = document.getElementById('reset_drawn_number');
-    const prizeSelect = document.getElementById('prize_select');
-
-    if (prizeSelect && prizeSelect.options.length > 1) {
-        prizeSelect.selectedIndex = 1;
-    }
 
     if (drawBtn) {
         drawBtn.addEventListener('click', function() {
             const drawnNumber = document.getElementById('drawn_number').value.trim();
-            const prizeSelect = document.getElementById('prize_select');
-
-            if (!prizeSelect.value || prizeSelect.value === '0') {
-                showToast('Please select a prize first.', 'error');
-                return;
-            }
 
             if (!drawnNumber) {
                 showToast('Please enter a number.', 'error');
@@ -300,34 +240,19 @@ document.addEventListener('DOMContentLoaded', function() {
 
 function showWinnerModal(winner) {
     document.getElementById('winner_name').textContent = winner.name;
-    document.getElementById('winner_number').textContent = 'Ticket No. ' + winner.number;
-    document.getElementById('winner_barangay').textContent = 'Barangay ' + winner.barangay;
-
-    const prize = getSelectedPrize();
-    const prizeEl = document.getElementById('winner_prize');
-    if (prize.id > 0) {
-        prizeEl.textContent = 'Prize: ' + prize.name;
-        prizeEl.style.display = '';
-    } else {
-        prizeEl.textContent = '';
-        prizeEl.style.display = 'none';
-    }
+    document.getElementById('winner_purok').textContent = 'Purok ' + winner.purok;
 
     document.getElementById('winnerModal').classList.add('show');
     if (typeof startConfetti === 'function') startConfetti();
 }
 
 function confirmWinner(winner) {
-    const prize = getSelectedPrize();
     const formData = new FormData();
     formData.append('confirm_winner', '1');
     formData.append('participant_id', winner.participant_id);
     formData.append('number', winner.number);
     formData.append('name', winner.name);
-    formData.append('barangay', winner.barangay);
-    formData.append('prize_id', prize.id);
-    formData.append('prize_name', prize.name);
-    formData.append('prize_type', prize.type);
+    formData.append('purok', winner.purok);
 
     fetch('draw.php', { method: 'POST', body: formData })
         .then(response => response.json())

@@ -95,10 +95,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
         }
     }
 
-    if (!$error && (empty($lastname) || empty($firstname) || empty($birthdate) || empty($sex))) {
+    if (!$error && (empty($lastname) || empty($firstname))) {
         $error = 'Please fill in all required personal details.';
         $error_step = 1;
-    } elseif (!$error && (empty($barangay) || empty($contact))) {
+    } elseif (!$error && empty($barangay)) {
         $error = 'Please complete your residency and contact details.';
         $error_step = 2;
     } elseif (!$error) {
@@ -163,7 +163,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
                 fwrite($fp, json_encode($jdata, JSON_PRETTY_PRINT));
 
                 $ins = $conn->prepare("INSERT INTO participants (event_id, number, lastname, firstname, middlename, suffix, name, birthdate, province, city, barangay, purok, contact_number, sex, nationality, email, photo_data, registration_attachment) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-                $ins->bind_param("isssssssssssssssss", $current_event_id, $number, $lastname, $firstname, $middlename, $suffix, $fullname, $birthdate, $province, $city, $barangay, $purok, $contact, $sex, $nationality, $email, $photo_data, $reg_attachment);
+                $birthdate_db = ($birthdate !== '') ? $birthdate : null; // optional field
+                $ins->bind_param("isssssssssssssssss", $current_event_id, $number, $lastname, $firstname, $middlename, $suffix, $fullname, $birthdate_db, $province, $city, $barangay, $purok, $contact, $sex, $nationality, $email, $photo_data, $reg_attachment);
                 $ins->execute();
                 $ins->close();
 
@@ -650,12 +651,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
                         </select>
                     </div>
                     <div class="fld">
-                        <label for="birthdate">Birthdate <span class="star">*</span></label>
-                        <input type="date" name="birthdate" id="birthdate" max="<?php echo date('Y-m-d'); ?>" value="<?php echo htmlspecialchars($submitted['birthdate'] ?? ''); ?>" required>
+                        <label for="birthdate">Birthdate <span class="opt">(Optional)</span></label>
+                        <input type="date" name="birthdate" id="birthdate" max="<?php echo date('Y-m-d'); ?>" value="<?php echo htmlspecialchars($submitted['birthdate'] ?? ''); ?>">
                     </div>
                     <div class="fld">
-                        <label for="sex">Sex <span class="star">*</span></label>
-                        <select name="sex" id="sex" required>
+                        <label for="sex">Sex <span class="opt">(Optional)</span></label>
+                        <select name="sex" id="sex">
                             <option value="" disabled selected>Select</option>
                             <option value="MALE">Male</option>
                             <option value="FEMALE">Female</option>
@@ -678,8 +679,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
 
                 <div class="grid">
                     <div class="fld">
-                        <label for="contact_number">Mobile Contact Number <span class="star">*</span></label>
-                        <input type="tel" name="contact_number" id="contact_number" placeholder="0917XXXXXXX" value="<?php echo htmlspecialchars($submitted['contact_number'] ?? ''); ?>" required>
+                        <label for="contact_number">Mobile Contact Number <span class="opt">(Optional)</span></label>
+                        <input type="tel" name="contact_number" id="contact_number" placeholder="0917XXXXXXX" value="<?php echo htmlspecialchars($submitted['contact_number'] ?? ''); ?>">
                     </div>
                     <div class="fld">
                         <label for="email">Email Address <span class="opt">(Optional)</span></label>
@@ -930,14 +931,11 @@ function validateStep(n) {
     if (n === 1) {
         checks = [
             { el: el('firstname'),  name: 'First Name' },
-            { el: el('lastname'),   name: 'Last Name' },
-            { el: el('sex'),        name: 'Sex' },
-            { el: el('birthdate'),  name: 'Birthdate' }
+            { el: el('lastname'),   name: 'Last Name' }
         ];
     } else if (n === 2) {
         checks = [
-            { el: el('contact_number'), name: 'Mobile Contact Number' },
-            { el: el('barangay'),       name: 'Barangay' }
+            { el: el('barangay'), name: 'Barangay' }
         ];
     } else if (n === 3) {
         return true;

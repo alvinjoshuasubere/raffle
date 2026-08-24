@@ -162,6 +162,7 @@ if (isset($_POST['upload_csv'])) {
                     $city     = 'City of Koronadal';
                     $number   = (string)$next_number++;
 
+                    if ($birthdate === '') $birthdate = null; // optional field: empty string is not a valid DATE
                     $stmt->bind_param("isssssssssss", $current_event_id, $number, $lastname, $firstname, $middlename, $name, $birthdate, $province, $city, $barangay, $purok, $contact);
 
                     if ($stmt->execute()) {

@@ -16,8 +16,8 @@ $error = null;
 $submitted = [];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
-    $submitted['fullname'] = strtoupper(trim($_POST['fullname'] ?? ''));
-    $submitted['purok']    = strtoupper(trim($_POST['purok'] ?? ''));
+    $submitted['fullname'] = strtoupper(trim(preg_replace('/\s+/', ' ', $_POST['fullname'] ?? '')));
+    $submitted['purok']    = strtoupper(trim(preg_replace('/\s+/', ' ', $_POST['purok'] ?? '')));
 
     $fullname = $submitted['fullname'];
     $purok    = $submitted['purok'];
@@ -25,23 +25,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
     if ($fullname === '' || $purok === '') {
         $error = 'Please enter your Full Name and Purok.';
     } else {
-        // Next ticket number comes from the database only
-        $max_q = $conn->prepare("SELECT MAX(CAST(number AS UNSIGNED)) as max_num FROM participants WHERE event_id = ?");
-        $max_q->bind_param("i", $current_event_id);
-        $max_q->execute();
-        $db_max = (int)($max_q->get_result()->fetch_assoc()['max_num'] ?? 0);
-        $max_q->close();
-        $number = $db_max + 1;
+        // Block duplicate registration of the same name within the same event
+        $dup = $conn->prepare("SELECT id FROM participants WHERE event_id = ? AND TRIM(UPPER(name)) = UPPER(?) LIMIT 1");
+        $dup->bind_param("is", $current_event_id, $fullname);
+        $dup->execute();
+        $is_duplicate = $dup->get_result()->num_rows > 0;
+        $dup->close();
 
-        $ins = $conn->prepare("INSERT INTO participants (event_id, number, lastname, firstname, middlename, suffix, name, barangay, purok) VALUES (?, ?, '', '', '', '', ?, '', ?)");
-        $ins->bind_param("iiss", $current_event_id, $number, $fullname, $purok);
-        if ($ins->execute()) {
-            $success = ['name' => $fullname, 'purok' => $purok, 'number' => $number];
-            $submitted = [];
+        if ($is_duplicate) {
+            $error = '"' . $fullname . '" is already registered for this event.';
         } else {
-            $error = 'Could not save registration. Please try again.';
+            // Next ticket number comes from the database only
+            $max_q = $conn->prepare("SELECT MAX(CAST(number AS UNSIGNED)) as max_num FROM participants WHERE event_id = ?");
+            $max_q->bind_param("i", $current_event_id);
+            $max_q->execute();
+            $db_max = (int)($max_q->get_result()->fetch_assoc()['max_num'] ?? 0);
+            $max_q->close();
+            $number = $db_max + 1;
+
+            $ins = $conn->prepare("INSERT INTO participants (event_id, number, lastname, firstname, middlename, suffix, name, barangay, purok) VALUES (?, ?, '', '', '', '', ?, '', ?)");
+            $ins->bind_param("iiss", $current_event_id, $number, $fullname, $purok);
+            if ($ins->execute()) {
+                $success = ['name' => $fullname, 'purok' => $purok, 'number' => $number];
+                $submitted = [];
+            } else {
+                $error = 'Could not save registration. Please try again.';
+            }
+            $ins->close();
         }
-        $ins->close();
     }
 }
 ?>

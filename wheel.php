@@ -175,13 +175,14 @@ $slot_participants = $slot_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 </div>
 
 <script>
-const SLOT_DATA = <?php echo json_encode($slot_participants); ?>;
+const SLOT_DATA = <?php echo json_encode($slot_participants, JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE); ?>;
 
 let currentWinner = null;
 let slotSpinning = false;
 
 /* ===== SLOT MACHINE ===== */
 const REEL_PASSES = 20;         // heavy strip churn = real slot-machine speed
+const MAX_STRIP_CELLS = 800;    // hard cap on rendered cells so 2k+ events stay smooth
 const SPIN_DURATION = <?php echo $slot_spin_seconds * 1000; ?>;   // admin-configurable spin seconds
 const FAST_PHASE = 0.90;        // sustained top speed until 90% of the spin
 const BOUNCE_MS = 240;          // mechanical kick-back after hitting the stop
@@ -214,29 +215,34 @@ function shuffled(arr) {
 function buildReel(winnerId) {
     const reel = el('slotReel');
     reel.innerHTML = '';
+    if (SLOT_DATA.length === 0) return -1;
 
     let cells = [];
-    // More passes = faster roll; cap total cells so very large events stay smooth
+    // More passes = faster roll
     const passes = Math.min(REEL_PASSES, Math.max(6, Math.ceil(3000 / SLOT_DATA.length)));
     for (let p = 0; p < passes; p++) cells = cells.concat(shuffled(SLOT_DATA));
 
+    // Hard cap: never render more than MAX_STRIP_CELLS DOM nodes (keeps 2k+ events fast)
+    if (cells.length > MAX_STRIP_CELLS) cells = shuffled(cells).slice(0, MAX_STRIP_CELLS);
+
     // Landing cell: second-to-last so there is still motion after it visually settles
     const landIndex = cells.length - 2;
-    if (winnerId != null && cells.length > 0) {
-        const wIdx = cells.findIndex(c => c.id === winnerId);
-        if (wIdx !== -1 && wIdx !== landIndex) {
-            [cells[wIdx], cells[landIndex]] = [cells[landIndex], cells[wIdx]];
-        }
+    const wIdx = winnerId == null ? -1 : cells.findIndex(c => c.id === winnerId);
+    if (wIdx !== -1 && wIdx !== landIndex) {
+        [cells[wIdx], cells[landIndex]] = [cells[landIndex], cells[wIdx]];
+    } else if (wIdx === -1 && winnerId != null) {
+        cells[landIndex] = SLOT_DATA.find(c => c.id === winnerId); // guarantee winner lands
     }
 
-    cells.forEach((c, i) => {
+    const frag = document.createDocumentFragment();
+    for (let i = 0; i < cells.length; i++) {
         const div = document.createElement('div');
         div.className = 'slot-cell';
-        div.textContent = String(c.number);
-        div.dataset.id = c.id;
+        div.textContent = String(cells[i].number);
         if (i === landIndex) div.dataset.land = '1';
-        reel.appendChild(div);
-    });
+        frag.appendChild(div);
+    }
+    reel.appendChild(frag);
     return landIndex;
 }
 

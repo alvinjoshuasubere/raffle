@@ -62,41 +62,57 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
     }
 
     .card {
-        width:100%; max-width:420px; background:#fff; border-radius:14px;
+        width:100%; max-width:640px; background:#fff; border-radius:18px;
         border:1px solid var(--line);
         box-shadow:0 16px 44px rgba(194,23,91,.10);
-        padding:36px 34px 32px;
+        padding:48px 52px 44px;
     }
 
-    .logo { text-align:center; margin-bottom:16px; }
-    .logo img { height:60px; width:auto; object-fit:contain; }
+    .card-header {
+        display:flex; align-items:center; gap:28px;
+        padding-bottom:26px; margin-bottom:6px;
+        border-bottom:1px solid var(--line);
+    }
+    .logo { flex-shrink:0; }
+    .logo img { display:block; height:auto; width:160px; max-height:140px; object-fit:contain; }
 
-    h1 { font-size:19px; font-weight:700; color:var(--ink); text-align:center; letter-spacing:-.2px; }
-    .sub { font-size:13px; color:var(--muted); text-align:center; margin-top:6px; line-height:1.55; }
-    .sub strong { color:var(--brand); font-weight:600; }
+    .headings {
+        flex:1; min-width:0;
+        padding-left:28px;
+        border-left:1px solid var(--line);
+    }
+    h1 {
+        font-size:12.5px; font-weight:700; color:var(--muted);
+        letter-spacing:2.6px; text-transform:uppercase;
+    }
+    .sub { font-size:14px; color:var(--muted); margin-top:12px; line-height:1.5; }
+    .sub strong {
+        display:block; color:var(--brand); font-weight:800; font-size:36px;
+        margin-top:4px; letter-spacing:-.5px; line-height:1.22;
+    }
 
     label {
-        display:block; font-size:11px; font-weight:600; color:var(--muted);
-        letter-spacing:1.1px; text-transform:uppercase; margin:20px 0 7px;
+        display:block; font-size:13px; font-weight:700; color:var(--muted);
+        letter-spacing:1.2px; text-transform:uppercase; margin:26px 0 9px;
     }
     input[type="text"] {
-        width:100%; padding:12px 14px; font-size:15px; font-weight:500; color:var(--ink);
-        border:1px solid var(--line); border-radius:8px; outline:none; background:#fbfcfe;
+        width:100%; padding:17px 18px; font-size:21px; font-weight:500; color:var(--ink);
+        border:2px solid var(--line); border-radius:10px; outline:none; background:#fbfcfe;
         transition:border-color .15s ease, box-shadow .15s ease;
     }
-    input[type="text"]:focus { border-color:var(--brand); box-shadow:0 0 0 3px var(--brand-soft); background:#fff; }
-    input::placeholder { color:#a8b3c2; font-weight:400; }
+    input[type="text"]:focus { border-color:var(--brand); box-shadow:0 0 0 4px var(--brand-soft); background:#fff; }
+    input::placeholder { color:#a8b3c2; font-weight:400; font-size:18px; }
 
     .btn-reg {
-        width:100%; margin-top:26px; padding:13px; border:none; border-radius:8px; cursor:pointer;
+        width:100%; margin-top:32px; padding:19px; border:none; border-radius:10px; cursor:pointer;
         background:linear-gradient(135deg, #ec4899, #f472b6); color:#fff; font-family:inherit;
-        font-size:13.5px; font-weight:600; letter-spacing:1.5px; text-transform:uppercase;
+        font-size:17px; font-weight:700; letter-spacing:1.8px; text-transform:uppercase;
         transition:filter .15s ease;
     }
     .btn-reg:hover { filter:brightness(1.07); }
 
     .err {
-        margin-top:16px; padding:11px 14px; border-radius:8px; font-size:13px;
+        margin-top:18px; padding:13px 16px; border-radius:8px; font-size:15px;
         background:#fef2f2; color:#dc2626; border:1px solid #fecaca; text-align:center;
     }
 
@@ -143,7 +159,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
     }
     .ok:hover { filter:brightness(1.07); }
 
-    @media (max-width:480px){ .card{ padding:28px 22px 26px; } .logo img{ height:48px; } }
+    @media (max-width:640px){
+        .card{ padding:34px 24px 30px; }
+        .card-header{
+            flex-direction:column; text-align:center; gap:16px;
+            padding-bottom:22px;
+        }
+        .logo img{ width:130px; }
+        .headings{ padding-left:0; border-left:none; }
+        h1{ font-size:11.5px; letter-spacing:2.2px; }
+        .sub strong{ font-size:27px; }
+        input[type="text"]{ font-size:18px; padding:15px 16px; }
+        input::placeholder{ font-size:15px; }
+        .btn-reg{ padding:17px; font-size:15px; }
+    }
 </style>
 </head>
 <body>
@@ -151,9 +180,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
 <a href="index.php" class="back-btn"><span class="arr">&#8592;</span> Back</a>
 
 <div class="card">
-    <div class="logo"><img src="Mayor_Logo.png" alt="Logo"></div>
-    <h1>Event Registration</h1>
-    <div class="sub">You are registering for <strong><?php echo htmlspecialchars($current_event_name); ?></strong></div>
+    <div class="card-header">
+        <div class="logo"><img src="Mayor_Logo.png" alt="Logo"></div>
+        <div class="headings">
+            <h1>Event Registration</h1>
+            <div class="sub">You are registering for <strong><?php echo htmlspecialchars($current_event_name); ?></strong></div>
+        </div>
+    </div>
 
     <form method="POST" autocomplete="off" novalidate>
         <input type="hidden" name="register" value="1">

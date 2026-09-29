@@ -2,14 +2,18 @@
 require_once __DIR__ . '/config.php';
 
 // Get active event from DB
-$ev = $conn->query("SELECT id, name FROM events WHERE status='Active' ORDER BY id ASC LIMIT 1");
+$ev = $conn->query("SELECT id, name, registration_fields FROM events WHERE status='Active' ORDER BY id ASC LIMIT 1");
 $current_event_name = 'Raffle Event';
 $current_event_id = 1;
+$row = null;
 if ($ev && $ev->num_rows > 0) {
     $row = $ev->fetch_assoc();
     $current_event_id = (int)$row['id'];
     $current_event_name = $row['name'];
 }
+
+// Fields the active event wants collected (Full Name is always required)
+$reg_fields = get_event_reg_fields($conn, $current_event_id, $row['registration_fields'] ?? null);
 
 $success = null;
 $error = null;
@@ -17,13 +21,28 @@ $submitted = [];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
     $submitted['fullname'] = strtoupper(trim(preg_replace('/\s+/', ' ', $_POST['fullname'] ?? '')));
-    $submitted['purok']    = strtoupper(trim(preg_replace('/\s+/', ' ', $_POST['purok'] ?? '')));
-
     $fullname = $submitted['fullname'];
-    $purok    = $submitted['purok'];
 
-    if ($fullname === '' || $purok === '') {
-        $error = 'Please enter your Full Name and Purok.';
+    $values = [];
+    $missing = [];
+    foreach ($reg_fields as $fkey => $cfg) {
+        $raw = $_POST[$fkey] ?? '';
+        // Barangay may be "Other", in which case the typed value wins
+        if ($fkey === 'barangay' && $raw === '__other__') {
+            $raw = $_POST['barangay_other'] ?? '';
+        }
+        $val = strtoupper(trim(preg_replace('/\s+/', ' ', $raw)));
+        $submitted[$fkey] = $val;
+        $values[$fkey] = $val;
+        if (!empty($cfg['required']) && $val === '') {
+            $missing[] = $reg_field_options[$fkey];
+        }
+    }
+
+    if ($fullname === '') {
+        $error = 'Please enter your Full Name.';
+    } elseif (!empty($missing)) {
+        $error = 'Please enter: ' . implode(', ', $missing) . '.';
     } else {
         // Block duplicate registration of the same name within the same event
         $dup = $conn->prepare("SELECT id FROM participants WHERE event_id = ? AND TRIM(UPPER(name)) = UPPER(?) LIMIT 1");
@@ -43,10 +62,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
             $max_q->close();
             $number = $db_max + 1;
 
-            $ins = $conn->prepare("INSERT INTO participants (event_id, number, lastname, firstname, middlename, suffix, name, barangay, purok) VALUES (?, ?, '', '', '', '', ?, '', ?)");
-            $ins->bind_param("iiss", $current_event_id, $number, $fullname, $purok);
+            $ins = $conn->prepare("INSERT INTO participants (event_id, number, lastname, firstname, middlename, suffix, name, barangay, purok, city, contact_number) VALUES (?, ?, '', '', '', '', ?, ?, ?, ?, ?)");
+            $barangay = $values['barangay'] ?? '';
+            $purok    = $values['purok'] ?? '';
+            $city     = $values['city'] ?? '';
+            $contact  = $values['contact_number'] ?? '';
+            $ins->bind_param("iisssss", $current_event_id, $number, $fullname, $barangay, $purok, $city, $contact);
             if ($ins->execute()) {
-                $success = ['name' => $fullname, 'purok' => $purok, 'number' => $number];
+                $success = ['name' => $fullname, 'values' => $values, 'number' => $number];
                 $submitted = [];
             } else {
                 $error = 'Could not save registration. Please try again.';
@@ -106,12 +129,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
         display:block; font-size:13px; font-weight:700; color:var(--muted);
         letter-spacing:1.2px; text-transform:uppercase; margin:26px 0 9px;
     }
-    input[type="text"] {
+    input[type="text"],
+    select {
         width:100%; padding:17px 18px; font-size:21px; font-weight:500; color:var(--ink);
         border:2px solid var(--line); border-radius:10px; outline:none; background:#fbfcfe;
         transition:border-color .15s ease, box-shadow .15s ease;
+        font-family:inherit;
     }
-    input[type="text"]:focus { border-color:var(--brand); box-shadow:0 0 0 4px var(--brand-soft); background:#fff; }
+    input[type="text"]:focus,
+    select:focus { border-color:var(--brand); box-shadow:0 0 0 4px var(--brand-soft); background:#fff; }
+    select { cursor:pointer; }
+    select option { color:var(--ink); }
     input::placeholder { color:#a8b3c2; font-weight:400; font-size:18px; }
 
     .btn-reg {
@@ -180,7 +208,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
         .headings{ padding-left:0; border-left:none; }
         h1{ font-size:11.5px; letter-spacing:2.2px; }
         .sub strong{ font-size:27px; }
-        input[type="text"]{ font-size:18px; padding:15px 16px; }
+        input[type="text"],
+        select { font-size:18px; padding:15px 16px; }
         input::placeholder{ font-size:15px; }
         .btn-reg{ padding:17px; font-size:15px; }
     }
@@ -188,11 +217,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
 </head>
 <body>
 
-<a href="index.php" class="back-btn"><span class="arr">&#8592;</span> Back</a>
+<a href="index" class="back-btn"><span class="arr">&#8592;</span> Back</a>
 
 <div class="card">
     <div class="card-header">
-        <div class="logo"><img src="Mayor_Logo.png" alt="Logo"></div>
+        <div class="logo"><img src="Logo_Mayor.png" alt="Logo"></div>
         <div class="headings">
             <h1>Event Registration</h1>
             <div class="sub">You are registering for <strong><?php echo htmlspecialchars($current_event_name); ?></strong></div>
@@ -202,15 +231,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
     <form method="POST" autocomplete="off" novalidate>
         <input type="hidden" name="register" value="1">
 
-        <label for="fullname">Full Name</label>
+        <label for="fullname">Full Name <span style="color:#ef4444;">*</span></label>
         <input type="text" name="fullname" id="fullname" maxlength="150"
                placeholder="Enter your full name"
                value="<?php echo htmlspecialchars($submitted['fullname'] ?? ''); ?>">
 
-        <label for="purok">Purok</label>
-        <input type="text" name="purok" id="purok" maxlength="100"
-               placeholder="Enter your purok"
-               value="<?php echo htmlspecialchars($submitted['purok'] ?? ''); ?>">
+        <?php foreach ($reg_fields as $fkey => $cfg): ?>
+        <label for="<?php echo $fkey; ?>"><?php echo htmlspecialchars($reg_field_options[$fkey]); ?><?php if (!empty($cfg['required'])): ?> <span style="color:#ef4444;">*</span><?php endif; ?></label>
+        <?php if ($fkey === 'barangay'): ?>
+        <?php
+        // A barangay that is not in the official list must still be typeable,
+        // otherwise those participants simply cannot register.
+        $bgy_submitted = trim($submitted['barangay'] ?? '');
+        $bgy_on_list   = in_array(strtoupper($bgy_submitted), array_map('strtoupper', $koronadal_barangays), true);
+        $bgy_show_other = $bgy_submitted !== '' && !$bgy_on_list;
+        ?>
+        <select name="barangay" id="barangay" data-bgy-select>
+            <option value="">Select Barangay of Koronadal</option>
+            <?php foreach ($koronadal_barangays as $bgy): ?>
+            <option value="<?php echo htmlspecialchars($bgy); ?>"
+                    <?php echo strtoupper($bgy) === strtoupper($bgy_submitted) ? 'selected' : ''; ?>>
+                <?php echo htmlspecialchars($bgy); ?>
+            </option>
+            <?php endforeach; ?>
+            <option value="__other__" <?php echo $bgy_show_other ? 'selected' : ''; ?>>Other (type below)</option>
+        </select>
+        <input type="text" name="barangay_other" id="barangay_other" maxlength="150"
+               placeholder="Enter your barangay"
+               value="<?php echo htmlspecialchars($bgy_show_other ? $bgy_submitted : ''); ?>"
+               style="margin-top:12px; <?php echo $bgy_show_other ? '' : 'display:none;'; ?>">
+        <div style="font-size:13px; color:#94a3b8; margin-top:8px;">
+            Can't find yours? Choose <strong>Other</strong> and type it in.
+        </div>
+        <?php else: ?>
+
+        <input type="text" name="<?php echo $fkey; ?>" id="<?php echo $fkey; ?>" maxlength="150"
+               placeholder="Enter your <?php echo htmlspecialchars(strtolower($reg_field_options[$fkey])); ?>"
+               value="<?php echo htmlspecialchars($submitted[$fkey] ?? ''); ?>">
+        <?php endif; ?>
+        <?php endforeach; ?>
 
         <button type="submit" class="btn-reg">Register</button>
 
@@ -221,6 +280,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
     </form>
 </div>
 
+<script>
+(function () {
+    var sel  = document.querySelector('[data-bgy-select]');
+    var other = document.getElementById('barangay_other');
+    if (!sel || !other) return;
+
+    function sync() {
+        var isOther = sel.value === '__other__';
+        other.style.display = isOther ? '' : 'none';
+        other.required = isOther;
+        if (isOther) other.focus();
+    }
+
+    sel.addEventListener('change', sync);
+    sync();
+})();
+</script>
+
 <!-- Success overlay -->
 <div class="overlay<?php echo $success ? ' show' : ''; ?>" id="successOverlay">
     <div class="sheet">
@@ -229,9 +306,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
         <div class="tlabel">Your Ticket No.</div>
         <div class="tnum"><?php echo $success ? (int)$success['number'] : ''; ?></div>
         <div class="name"><?php echo htmlspecialchars($success['name'] ?? ''); ?></div>
-        <div class="purok"><?php echo htmlspecialchars($success['purok'] ?? ''); ?></div>
+        <?php foreach (($success['values'] ?? []) as $fkey => $fval): ?>
+        <div class="purok"><?php echo htmlspecialchars($reg_field_options[$fkey] . ': ' . $fval); ?></div>
+        <?php endforeach; ?>
         <div class="sub2">See you at the draw!</div>
-        <a href="register.php" class="ok">Register Another</a>
+        <a href="register" class="ok">Register Another</a>
     </div>
 </div>
 

@@ -115,7 +115,8 @@ body.wheel-active .btn-spin-big .spin-arrow {
 /* Bigger machine, centered inside the uploaded background zone
    (the area left of the 520px control panel, where admin.php
    paints uploads/bg/custom_bg.jpg) */
-body.wheel-active .slot-hero {
+body.wheel-active .slot-hero,
+body.num-active .slot-hero {
   position: absolute;
   inset: 0;
   right: 520px;
@@ -318,7 +319,8 @@ body.wheel-active .slot-hero {
 }
 
 @media (max-width: 1100px) {
-  body.wheel-active .slot-hero {
+  body.wheel-active .slot-hero,
+  body.num-active .slot-hero {
     position: static;
     inset: auto;
     right: auto;

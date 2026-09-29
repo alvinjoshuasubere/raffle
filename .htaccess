@@ -1,0 +1,13 @@
+# Serve PHP pages without the .php extension.
+# e.g. /register, /admin?page=numbers, /media?id=5
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Let real files and directories pass through
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+
+    # If "<request>.php" exists on disk, rewrite to it (query string is preserved)
+    RewriteCond %{REQUEST_FILENAME}.php -f
+    RewriteRule ^(.+?)/?$ $1.php [L]
+</IfModule>

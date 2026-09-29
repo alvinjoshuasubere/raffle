@@ -9,14 +9,24 @@ if (!isset($_SESSION['user_id'])) {
 header('Content-Type: text/csv; charset=utf-8');
 header('Content-Disposition: attachment; filename="participant-template.csv"');
 
+$event_id = get_active_event_id($conn);
+$columns  = get_upload_columns($conn, $event_id);
+
 $out = fopen('php://output', 'w');
 
 // UTF-8 BOM so Excel renders characters correctly
 fwrite($out, "\xEF\xBB\xBF");
 
-fputcsv($out, ['Lastname', 'Firstname', 'Middlename', 'Birthdate', 'Barangay', 'Purok', 'Contact Number']);
-fputcsv($out, ['SANTOS', 'MARIA', 'REYES', '05/14/1990', 'Assumption', 'Purok 3', '0917 123 4567']);
-fputcsv($out, ['DELA CRUZ', 'JUAN', '', '11/02/1985', 'Carpenter Hill', 'Purok 1', '0998 765 4321']);
+// Header row mirrors the Excel template, with the same required markers
+$header = [];
+$example = [];
+foreach ($columns as $col) {
+    $header[]  = $col['label'] . ($col['required'] ? ' *' : '');
+    $example[] = upload_column_example($col);
+}
+fputcsv($out, $header);
+fputcsv($out, $example);
+fputcsv($out, $example);
 
 fclose($out);
 exit;

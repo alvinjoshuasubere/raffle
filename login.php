@@ -1,7 +1,7 @@
 <?php
 session_start();
 if (isset($_SESSION['user_id'])) {
-    header('Location: admin.php');
+    header('Location: admin');
     exit;
 }
 
@@ -32,7 +32,7 @@ if (isset($_POST['login'])) {
                 $_SESSION['user_id'] = $user['id'];
                 $_SESSION['username'] = $user['username'];
                 $_SESSION['display_name'] = $user['display_name'];
-                header('Location: admin.php');
+                header('Location: admin');
                 exit;
             }
         }
@@ -490,7 +490,7 @@ if (isset($_POST['login'])) {
 
                 <div class="divider">or</div>
 
-                <a href="register.php" class="btn-register">Register as Participant</a>
+                <a href="register" class="btn-register">Register as Participant</a>
             </form>
 
         </main>

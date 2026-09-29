@@ -1,4 +1,12 @@
 <?php
+// Reset the round: clear the winners log and return every winning number to the wheel
+if (isset($_POST['reset_winners'])) {
+    $reset = reset_event_winners($conn, $current_event_id);
+    set_message('success', "Round reset. {$reset['cleared']} winner record(s) cleared and {$reset['returned']} number(s) returned to the wheel.");
+    header('Location: admin?page=winners');
+    exit;
+}
+
 $stmt_w = $conn->prepare("SELECT * FROM winners WHERE event_id = ? ORDER BY won_at DESC");
 $stmt_w->bind_param("i", $current_event_id);
 $stmt_w->execute();
@@ -15,10 +23,15 @@ $winners = $stmt_w->get_result();
     <div>
         <p style="color: #6b7280;">Total Winners: <strong style="color: #ec4899;"><?php echo $winners->num_rows; ?></strong></p>
     </div>
-    <div>
+    <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
         <button onclick="exportWinnersPDF()" class="btn btn-success">Export to PDF</button>
+        <button type="button" id="showResetModalBtn" class="btn btn-danger">Reset Winners</button>
     </div>
 </div>
+
+<form id="resetWinnersForm" method="POST" style="display:none;">
+    <input type="hidden" name="reset_winners" value="1">
+</form>
 
 <table>
     <thead>
@@ -77,9 +90,44 @@ $winners = $stmt_w->get_result();
 <div style="text-align: center; padding: 60px; background: #faf5f7; border-radius: 16px; border: 1px solid rgba(0,0,0,0.04);">
     <h2 style="color: #4a4a6a; margin-bottom: 15px;">No Winners Yet</h2>
     <p style="color: #6b7280; margin-bottom: 40px;">Start drawing winners from the Draw section!</p>
-    <a href="admin.php?page=draw" class="btn btn-primary" style="display:inline-block; margin-top:20px;">Go to Draw</a>
+    <a href="admin?page=draw" class="btn btn-primary" style="display:inline-block; margin-top:20px;">Go to Draw</a>
 </div>
 <?php endif; ?>
+
+<!-- Modal for reset confirmation -->
+<div id="resetModal"
+    style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.35);">
+    <div
+        style="background:#ffffff; max-width:380px; margin:120px auto; padding:30px 24px 24px 24px; border-radius:16px; box-shadow:0 8px 40px rgba(0,0,0,0.08); text-align:center; position:relative; border:1px solid rgba(0,0,0,0.04);">
+        <h3 style="color:#ec4899; margin-bottom:14px;">Reset the winners?</h3>
+        <p style="color:#6b7280; margin-bottom:8px; line-height:1.5;">
+            All winner records for this event will be deleted and every winning number goes
+            back into the wheel for a new round.
+        </p>
+        <p style="color:#9ca3af; font-size:13px; margin-bottom:22px;">
+            This action cannot be undone.
+        </p>
+        <button id="confirmResetBtn" class="btn btn-danger" style="margin-right:10px;">YES, Reset</button>
+        <button id="cancelResetBtn" class="btn btn-secondary">NO, Cancel</button>
+    </div>
+</div>
+
+<script>
+var resetModal = document.getElementById('resetModal');
+var showResetBtn = document.getElementById('showResetModalBtn');
+var cancelResetBtn = document.getElementById('cancelResetBtn');
+var confirmResetBtn = document.getElementById('confirmResetBtn');
+var resetForm = document.getElementById('resetWinnersForm');
+
+if (showResetBtn && resetModal) {
+    showResetBtn.onclick = function() { resetModal.style.display = 'block'; };
+    cancelResetBtn.onclick = function() { resetModal.style.display = 'none'; };
+    confirmResetBtn.onclick = function() { resetForm.submit(); };
+    resetModal.addEventListener('click', function(e) {
+        if (e.target === resetModal) resetModal.style.display = 'none';
+    });
+}
+</script>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>

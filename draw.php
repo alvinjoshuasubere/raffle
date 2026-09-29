@@ -214,7 +214,7 @@ document.addEventListener('DOMContentLoaded', function() {
             formData.append('draw_winner', '1');
             formData.append('drawn_number', drawnNumber);
 
-            fetch('draw.php', { method: 'POST', body: formData })
+            fetch('draw', { method: 'POST', body: formData })
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
@@ -254,7 +254,7 @@ function confirmWinner(winner) {
     formData.append('name', winner.name);
     formData.append('purok', winner.purok);
 
-    fetch('draw.php', { method: 'POST', body: formData })
+    fetch('draw', { method: 'POST', body: formData })
         .then(response => response.json())
         .then(data => {
             if (data.success) {
@@ -285,7 +285,7 @@ function removeFromList(winner) {
     formData.append('remove_participant', '1');
     formData.append('participant_id', winner.participant_id);
 
-    fetch('draw.php', { method: 'POST', body: formData })
+    fetch('draw', { method: 'POST', body: formData })
         .then(response => response.json())
         .then(data => {
             if (data.success) {

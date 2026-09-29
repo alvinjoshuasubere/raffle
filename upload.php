@@ -7,11 +7,11 @@ if (isset($_POST['remove_participant'])) {
     $upd->execute();
     $upd->close();
     set_message('success', 'Participant has been removed from the draw list.');
-    header('Location: admin.php?page=upload');
+    header('Location: admin?page=upload');
     exit;
 }
 
-// Handle CSV Upload
+// Handle CSV / Excel Upload
 if (isset($_POST['upload_csv'])) {
     // Ensure DB connection is UTF-8
     $conn->set_charset('utf8mb4');
@@ -19,27 +19,20 @@ if (isset($_POST['upload_csv'])) {
     mysqli_query($conn, "SET CHARACTER SET utf8mb4");
     mysqli_query($conn, "SET SESSION collation_connection = 'utf8mb4_general_ci'");
 
+    // Columns this event actually requires (drives validation and the template)
+    $upload_columns = get_upload_columns($conn, $current_event_id);
+
     if (isset($_FILES['csv_file']) && $_FILES['csv_file']['error'] === UPLOAD_ERR_OK) {
         $file = $_FILES['csv_file'];
         $file_ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
 
-        if ($file_ext !== 'csv') {
-            set_message('error', 'Error: Please upload a CSV file only.');
+        if (!in_array($file_ext, ['csv', 'xlsx'], true)) {
+            set_message('error', 'Error: Please upload an Excel (.xlsx) or CSV file.');
         } else {
-            // Detect file encoding
-            $csv_content = file_get_contents($file['tmp_name']);
-            $encoding = mb_detect_encoding($csv_content, ['UTF-8', 'ISO-8859-1', 'Windows-1252', 'ASCII'], true);
-            
-            // Convert file content to UTF-8
-            $utf8_content = mb_convert_encoding($csv_content, 'UTF-8', $encoding);
-            
-            // Write the UTF-8 version to a temporary file
-            $temp_file = tmpfile();
-            $meta = stream_get_meta_data($temp_file);
-            fwrite($temp_file, $utf8_content);
-            rewind($temp_file);
+            // Normalise the upload (xlsx or csv, any encoding) into a row stream
+            $handle = upload_to_csv_stream($file['tmp_name'], $file_ext);
 
-            if (($handle = $temp_file) !== FALSE) {
+            if ($handle !== FALSE) {
                 // Delete all existing participants for this event
                 $stmt_del = $conn->prepare("DELETE FROM participants WHERE event_id = ?");
                 $stmt_del->bind_param("i", $current_event_id);
@@ -63,6 +56,7 @@ if (isset($_POST['upload_csv'])) {
                 $map = [];
                 foreach ($header ?: [] as $i => $h) {
                     $key = strtolower(preg_replace('/[^a-z0-9]/i', '', trim((string)$h)));
+                    $key = preg_replace('/required$/i', '', $key); // template marks required columns with " *"
                     switch ($key) {
                         case 'lastname':   case 'surname':      $map['lastname']   = $i; break;
                         case 'firstname':  case 'givenname':    $map['firstname']  = $i; break;
@@ -70,6 +64,7 @@ if (isset($_POST['upload_csv'])) {
                         case 'birthdate':  case 'birthday':     case 'dateofbirth': $map['birthdate'] = $i; break;
                         case 'barangay':   case 'brgy':         $map['barangay']   = $i; break;
                         case 'purok':                            $map['purok']      = $i; break;
+                        case 'city':                            $map['city']       = $i; break;
                         case 'contactnumber': case 'contact': case 'phonenumber': case 'mobilenumber':
                                                                  $map['contact']    = $i; break;
                         case 'name':       case 'fullname':     $map['fullname']   = $i; break;
@@ -77,6 +72,13 @@ if (isset($_POST['upload_csv'])) {
                 }
 
                 $has_split_names = isset($map['lastname'], $map['firstname']);
+                $has_fullname    = isset($map['fullname']);
+
+                // Which of this event's fields are mandatory, keyed by header token
+                $required_map = [];
+                foreach ($upload_columns as $uc) {
+                    if (!empty($uc['required'])) $required_map[$uc['source']] = $uc['label'];
+                }
 
                 $stmt = $conn->prepare("INSERT INTO participants (event_id, number, lastname, firstname, middlename, name, birthdate, province, city, barangay, purok, contact_number) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
 
@@ -91,39 +93,22 @@ if (isset($_POST['upload_csv'])) {
                     };
 
                     if ($has_split_names) {
-                        // New detailed format
+                        // Legacy detailed format: separate Lastname / Firstname columns
                         $lastname   = $get('lastname');
                         $firstname  = $get('firstname');
                         $middlename = $get('middlename');
                         $birthdate  = $get('birthdate');
                         $barangay   = $get('barangay');
                         $purok      = $get('purok');
+                        $city       = $get('city');
                         $contact    = $get('contact');
 
-                        if (empty($lastname) || empty($firstname) || empty($barangay)) {
-                            $errors[] = "Row {$row_count}: Missing required fields (Lastname, Firstname, Barangay)";
-                            continue;
-                        }
-
-                        // Normalize birthdate (mm/dd/yyyy) to Y-m-d when valid
-                        if ($birthdate !== '') {
-                            $dt = false;
-                            if (preg_match('#^\d{1,2}/\d{1,2}/\d{4}$#', $birthdate)) {
-                                $dt = DateTime::createFromFormat('m/d/Y', $birthdate);
-                                $le = DateTime::getLastErrors();
-                                if ($dt && (($le['warning_count'] ?? 0) || ($le['error_count'] ?? 0))) {
-                                    $dt = false; // reject rollovers e.g. 13/45/2020
-                                }
-                            } else {
-                                $ts = strtotime($birthdate); // accepts Y-m-d and other formats
-                                $dt = $ts ? (new DateTime())->setTimestamp($ts) : false;
-                            }
-                            $birthdate = $dt ? $dt->format('Y-m-d') : '';
-                        }
-
                         $name = strtoupper(trim($firstname . ' ' . $middlename . ' ' . $lastname));
-                    } elseif (isset($map['fullname'])) {
-                        // Full name single column format
+
+                        // Full Name is always required, even in the split-name format
+                        $required_map['fullname'] = 'Full Name';
+                    } elseif ($has_fullname) {
+                        // Current format: single Full Name column
                         $name       = $get('fullname');
                         $lastname   = '';
                         $firstname  = '';
@@ -131,12 +116,8 @@ if (isset($_POST['upload_csv'])) {
                         $birthdate  = $get('birthdate');
                         $barangay   = $get('barangay');
                         $purok      = $get('purok');
+                        $city       = $get('city');
                         $contact    = $get('contact');
-
-                        if (empty($name) || empty($barangay)) {
-                            $errors[] = "Row {$row_count}: Missing required fields (Name, Barangay)";
-                            continue;
-                        }
                     } else {
                         // Legacy positional format: Name, Barangay, Contact
                         if (count($data) < 3) {
@@ -150,16 +131,48 @@ if (isset($_POST['upload_csv'])) {
                         $birthdate  = '';
                         $barangay   = strtoupper(trim($data[1]));
                         $purok      = '';
+                        $city       = '';
                         $contact    = strtoupper(trim($data[2] ?? ''));
 
-                        if (empty($name) || empty($barangay)) {
-                            $errors[] = "Row {$row_count}: Missing required fields";
-                            continue;
+                        $required_map = ['fullname' => 'Full Name', 'barangay' => 'Barangay'];
+                    }
+
+                    // Reject the row when any field this event requires is blank
+                    $values_by_source = [
+                        'fullname'  => $name,
+                        'birthdate' => $birthdate,
+                        'barangay'  => $barangay,
+                        'purok'     => $purok,
+                        'city'      => $city,
+                        'contact'   => $contact,
+                    ];
+                    $missing = [];
+                    foreach ($required_map as $src => $label) {
+                        if (trim((string)($values_by_source[$src] ?? '')) === '') $missing[] = $label;
+                    }
+                    if (!empty($missing)) {
+                        $errors[] = "Row {$row_count}: Missing required field(s): " . implode(', ', $missing);
+                        continue;
+                    }
+
+                    // Normalize birthdate (mm/dd/yyyy) to Y-m-d when valid
+                    if ($birthdate !== '') {
+                        $dt = false;
+                        if (preg_match('#^\d{1,2}/\d{1,2}/\d{4}$#', $birthdate)) {
+                            $dt = DateTime::createFromFormat('m/d/Y', $birthdate);
+                            $le = DateTime::getLastErrors();
+                            if ($dt && (($le['warning_count'] ?? 0) || ($le['error_count'] ?? 0))) {
+                                $dt = false; // reject rollovers e.g. 13/45/2020
+                            }
+                        } else {
+                            $ts = strtotime($birthdate); // accepts Y-m-d and other formats
+                            $dt = $ts ? (new DateTime())->setTimestamp($ts) : false;
                         }
+                        $birthdate = $dt ? $dt->format('Y-m-d') : '';
                     }
 
                     $province = 'South Cotabato';
-                    $city     = 'City of Koronadal';
+                    $city     = $city !== '' ? $city : 'City of Koronadal';
                     $number   = (string)$next_number++;
 
                     if ($birthdate === '') $birthdate = null; // optional field: empty string is not a valid DATE
@@ -183,21 +196,21 @@ if (isset($_POST['upload_csv'])) {
                     }
                     set_message('success', $message);
                 } else {
-                    set_message('error', 'No participants were uploaded. Please check your CSV file.');
+                    set_message('error', 'No participants were uploaded. Please check your file.');
                 }
 
                 if (!empty($errors)) {
                     $_SESSION['upload_errors'] = $errors;
                 }
             } else {
-                set_message('error', 'Error: Could not read CSV file.');
+                set_message('error', 'Error: Could not read the uploaded file.');
             }
         }
     } else {
         set_message('error', 'Error: Please select a file to upload.');
     }
 
-    header('Location: admin.php?page=upload');
+    header('Location: admin?page=upload');
     exit;
 }
 
@@ -208,7 +221,7 @@ if (isset($_POST['delete_all'])) {
     $stmt_del->execute();
     $stmt_del->close();
     set_message('success', 'All participants have been deleted.');
-    header('Location: admin.php?page=upload');
+    header('Location: admin?page=upload');
     exit;
 }
 
@@ -238,7 +251,7 @@ if (isset($_POST['upload_background'])) {
     } else {
         set_message('error', 'Please select an image file to upload.');
     }
-    header('Location: admin.php?page=upload');
+    header('Location: admin?page=upload');
     exit;
 }
 
@@ -250,13 +263,25 @@ if (isset($_POST['remove_background'])) {
     } else {
         set_message('error', 'No custom background found.');
     }
-    header('Location: admin.php?page=upload');
+    header('Location: admin?page=upload');
     exit;
 }
 
 
-$count_query = $conn->prepare("SELECT COUNT(*) as total FROM participants WHERE event_id = ?");
-$count_query->bind_param("i", $current_event_id);
+$total_all_q = $conn->prepare("SELECT COUNT(*) as total FROM participants WHERE event_id = ?");
+$total_all_q->bind_param("i", $current_event_id);
+$total_all_q->execute();
+$total_all = $total_all_q->get_result()->fetch_assoc()['total'];
+
+// Search filter for the participant table
+$search = isset($_GET['q']) ? trim($_GET['q']) : '';
+$like = '%' . strtoupper($search) . '%';
+
+$count_query = $conn->prepare("SELECT COUNT(*) as total FROM participants
+    WHERE event_id = ?
+      AND (TRIM(UPPER(name)) LIKE ? OR number LIKE ? OR TRIM(UPPER(barangay)) LIKE ?
+           OR TRIM(UPPER(city)) LIKE ? OR TRIM(UPPER(purok)) LIKE ? OR TRIM(UPPER(contact_number)) LIKE ?)");
+$count_query->bind_param("issssss", $current_event_id, $like, $like, $like, $like, $like, $like);
 $count_query->execute();
 $participant_count = $count_query->get_result()->fetch_assoc()['total'];
 
@@ -267,7 +292,12 @@ if ($page < 1) $page = 1;
 $offset = ($page - 1) * $limit;
 
 // Get total pages
-$total_pages = ceil($participant_count / $limit);
+$total_pages = max(1, ceil($participant_count / $limit));
+if ($page > $total_pages) $page = $total_pages;
+
+// Range info
+$from = $participant_count > 0 ? $offset + 1 : 0;
+$to   = min($offset + $limit, $participant_count);
 
 // Fetch participants for current page (blob columns excluded; flags only)
 $participants = $conn->prepare("
@@ -276,10 +306,12 @@ $participants = $conn->prepare("
            (registration_attachment IS NOT NULL AND registration_attachment <> '') AS has_attachment
     FROM participants 
     WHERE event_id = ?
+      AND (TRIM(UPPER(name)) LIKE ? OR number LIKE ? OR TRIM(UPPER(barangay)) LIKE ?
+           OR TRIM(UPPER(city)) LIKE ? OR TRIM(UPPER(purok)) LIKE ? OR TRIM(UPPER(contact_number)) LIKE ?)
     ORDER BY id ASC 
     LIMIT $limit OFFSET $offset
 ");
-$participants->bind_param("i", $current_event_id);
+$participants->bind_param("issssss", $current_event_id, $like, $like, $like, $like, $like, $like);
 $participants->execute();
 $participants = $participants->get_result();
 
@@ -300,6 +332,28 @@ $print_stmt = $conn->prepare("
 $print_stmt->bind_param("i", $current_event_id);
 $print_stmt->execute();
 $print_list = $print_stmt->get_result();
+
+// Smart pagination: build page numbers with a single ellipsis per gap
+$delta = 2;
+$pages = [];
+for ($i = 1; $i <= $total_pages; $i++) {
+    $near_start = $i <= 1 + $delta;
+    $near_end   = $i >= $total_pages - $delta;
+    $near_page  = $i >= $page - $delta && $i <= $page + $delta;
+    if ($near_start || $near_end || $near_page) {
+        $pages[] = $i;
+    }
+}
+// Insert "..." wherever there's a gap between consecutive page numbers
+$window = [];
+foreach ($pages as $idx => $pg) {
+    if ($idx > 0 && $pg - $pages[$idx - 1] > 1) {
+        $window[] = '...';
+    }
+    $window[] = $pg;
+}
+$pages = $window;
+$base_qs = 'page=upload&amp;limit=' . $limit . '&amp;q=' . urlencode($search);
 ?>
 
 <style>
@@ -436,7 +490,23 @@ if (isset($_SESSION['upload_errors'])) {
 
 <?php if ($participant_count > 0): ?>
 <div style="margin-top: 30px;">
-    <h3 style="color: #ec4899; margin-bottom: 15px;">All Participants</h3>
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:15px; flex-wrap:wrap;">
+        <h3 style="color: #ec4899; margin:0;">All Participants</h3>
+        <form method="GET" action="admin" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+            <input type="hidden" name="page" value="upload">
+            <input type="text" name="q" value="<?php echo htmlspecialchars($search); ?>"
+                   placeholder="Search name, number, barangay, purok, city, contact..."
+                   style="padding:9px 14px; border:1.5px solid #e2e8f0; border-radius:8px; font-size:14px; min-width:260px; outline:none;"
+                   onfocus="this.style.borderColor='#ec4899';" onblur="this.style.borderColor='#e2e8f0';">
+            <button type="submit" class="btn btn-primary" style="padding:9px 18px;">Search</button>
+            <?php if ($search !== ''): ?>
+            <a href="admin?page=upload" class="btn btn-secondary" style="padding:9px 14px; text-decoration:none; display:inline-flex; align-items:center;">Clear</a>
+            <?php endif; ?>
+        </form>
+    </div>
+    <?php if ($search !== ''): ?>
+    <p style="margin:0 0 12px; font-size:13px; color:#6b7280;">Search results for <strong>&ldquo;<?php echo htmlspecialchars($search); ?>&rdquo;</strong>: <?php echo number_format($participant_count); ?> participant(s)</p>
+    <?php endif; ?>
     <?php if ($participants->num_rows > 0): ?>
     <table style="width:100%; border-collapse:collapse;">
         <thead>
@@ -456,7 +526,7 @@ if (isset($_SESSION['upload_errors'])) {
             <tr style="<?php echo ($row['status'] === 'winner' || $row['status'] === 'removed') ? 'opacity:0.5;' : ''; ?>">
                 <td style="padding:8px; border:1px solid #ddd; text-align:center;">
                     <?php if (!empty($row['has_photo'])): ?>
-                    <img src="media.php?id=<?php echo $row['id']; ?>&amp;type=photo" class="pavatar" alt="" onclick="viewPhoto(<?php echo $row['id']; ?>)">
+                    <img src="media?id=<?php echo $row['id']; ?>&amp;type=photo" class="pavatar" alt="" onclick="viewPhoto(<?php echo $row['id']; ?>)">
                     <?php else: ?>
                     <span style="color:#c4b5c0;">&mdash;</span>
                     <?php endif; ?>
@@ -467,7 +537,7 @@ if (isset($_SESSION['upload_errors'])) {
                 <td style="padding:8px; border:1px solid #ddd;"><?php echo htmlspecialchars($row['contact_number']); ?></td>
                 <td style="padding:8px; border:1px solid #ddd; text-align:center;">
                     <?php if (!empty($row['has_attachment'])): ?>
-                    <a class="attach-link" href="media.php?id=<?php echo $row['id']; ?>&amp;type=attachment">&#128206; Download</a>
+                    <a class="attach-link" href="media?id=<?php echo $row['id']; ?>&amp;type=attachment">&#128206; Download</a>
                     <?php else: ?>
                     <span style="color:#c4b5c0;">&mdash;</span>
                     <?php endif; ?>
@@ -496,59 +566,56 @@ if (isset($_SESSION['upload_errors'])) {
         </tbody>
     </table>
 
-    <!-- Controls Row -->
-    <div style="margin-top:15px; display:flex; justify-content:space-between; align-items:center;">
+    <!-- Pagination -->
+    <?php if ($total_pages > 1): ?>
+    <div style="margin-top:15px; display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:12px;">
 
-        <!-- Pagination (left aligned) -->
-        <div>
-            <?php if ($total_pages > 1): ?>
-            <div style="display:inline-flex; gap:5px;">
+        <!-- Left: Showing entries -->
+        <span style="font-size:14px; color:#6b7280;">Showing <strong style="color:#0f172a;"><?php echo number_format($from); ?></strong> to <strong style="color:#0f172a;"><?php echo number_format($to); ?></strong> of <strong style="color:#0f172a;"><?php echo number_format($participant_count); ?></strong> entries</span>
 
-                <?php if ($page > 1): ?>
-                <a href="admin.php?page=upload&amp;p=<?php echo $page-1; ?>&amp;limit=<?php echo $limit; ?>"
-                    style="padding:6px 12px; border-radius:20px; background:#f1f1f1; text-decoration:none; color:#333;">
-                    ‹ Prev
-                </a>
-                <?php endif; ?>
+        <!-- Right: Controls -->
+        <div style="display:flex; align-items:center; gap:5px;">
 
-                <?php for ($i = 1; $i <= $total_pages; $i++): ?>
-                <?php if ($i == $page): ?>
-                <span style="padding:6px 12px; border-radius:20px; background:#ec4899; color:#fff; font-weight:bold;">
-                    <?php echo $i; ?>
-                </span>
-                <?php else: ?>
-                <a href="admin.php?page=upload&amp;p=<?php echo $i; ?>&amp;limit=<?php echo $limit; ?>"
-                    style="padding:6px 12px; border-radius:20px; background:#f1f1f1; text-decoration:none; color:#333;">
-                    <?php echo $i; ?>
-                </a>
-                <?php endif; ?>
-                <?php endfor; ?>
+            <!-- First -->
+            <a href="admin?<?php echo $base_qs; ?>&amp;p=1" title="First page"
+                style="display:inline-flex; align-items:center; justify-content:center; min-width:34px; height:34px; padding:0 8px; border-radius:8px; text-decoration:none; font-size:14px; font-weight:600; color:<?php echo $page==1?'#d1d5db':'#6b7280'; ?>; background:#f3f4f6; transition:all .15s;<?php echo $page==1?'pointer-events:none;':''; ?>"
+                <?php echo $page!=1?'onmouseover="this.style.background=\'#e5e7eb\';this.style.color=\'#374151\';" onmouseout="this.style.background=\'#f3f4f6\';this.style.color=\'#6b7280\';"':''; ?>>&laquo;</a>
 
-                <?php if ($page < $total_pages): ?>
-                <a href="admin.php?page=upload&amp;p=<?php echo $page+1; ?>&amp;limit=<?php echo $limit; ?>"
-                    style="padding:6px 12px; border-radius:20px; background:#f1f1f1; text-decoration:none; color:#333;">
-                    Next ›
-                </a>
-                <?php endif; ?>
+            <!-- Previous -->
+            <a href="admin?<?php echo $base_qs; ?>&amp;p=<?php echo max(1, $page-1); ?>" title="Previous page"
+                style="display:inline-flex; align-items:center; justify-content:center; min-width:34px; height:34px; padding:0 8px; border-radius:8px; text-decoration:none; font-size:14px; font-weight:600; color:<?php echo $page==1?'#d1d5db':'#6b7280'; ?>; background:#f3f4f6; transition:all .15s;<?php echo $page==1?'pointer-events:none;':''; ?>"
+                <?php echo $page!=1?'onmouseover="this.style.background=\'#e5e7eb\';this.style.color=\'#374151\';" onmouseout="this.style.background=\'#f3f4f6\';this.style.color=\'#6b7280\';"':''; ?>>&lsaquo;</a>
 
-            </div>
+            <?php foreach ($pages as $p): ?>
+            <?php if ($p === '...'): ?>
+            <span style="display:inline-flex; align-items:center; justify-content:center; width:28px; height:34px; font-size:14px; color:#9ca3af;">&hellip;</span>
+            <?php elseif ($p == $page): ?>
+            <span style="display:inline-flex; align-items:center; justify-content:center; min-width:34px; height:34px; padding:0 6px; border-radius:8px; font-size:14px; font-weight:600; color:#fff; background:#ec4899;">
+                <?php echo number_format($p); ?>
+            </span>
+            <?php else: ?>
+            <a href="admin?<?php echo $base_qs; ?>&amp;p=<?php echo $p; ?>"
+                style="display:inline-flex; align-items:center; justify-content:center; min-width:34px; height:34px; padding:0 6px; border-radius:8px; text-decoration:none; font-size:14px; font-weight:500; color:#6b7280; background:#f3f4f6; transition:all .15s;"
+                onmouseover="this.style.background='#e5e7eb';this.style.color='#374151';"
+                onmouseout="this.style.background='#f3f4f6';this.style.color='#6b7280';">
+                <?php echo number_format($p); ?>
+            </a>
             <?php endif; ?>
-        </div>
+            <?php endforeach; ?>
 
-        <!-- Items per page (right aligned) -->
-        <form method="get" style="margin:0; display:flex; align-items:center; gap:5px;">
-            <input type="hidden" name="page" value="upload">
-            <label for="limit">Page Items</label>
-            <select name="limit" id="limit" onchange="this.form.submit()"
-                style="padding:5px; border-radius:6px; border:1px solid #ccc;">
-                <?php foreach ([5, 10, 20, 50] as $opt): ?>
-                <option value="<?php echo $opt; ?>" <?php echo ($limit == $opt) ? 'selected' : ''; ?>>
-                    <?php echo $opt; ?>
-                </option>
-                <?php endforeach; ?>
-            </select>
-        </form>
+            <!-- Next -->
+            <a href="admin?<?php echo $base_qs; ?>&amp;p=<?php echo min($total_pages, $page+1); ?>" title="Next page"
+                style="display:inline-flex; align-items:center; justify-content:center; min-width:34px; height:34px; padding:0 8px; border-radius:8px; text-decoration:none; font-size:14px; font-weight:600; color:<?php echo $page==$total_pages?'#d1d5db':'#6b7280'; ?>; background:#f3f4f6; transition:all .15s;<?php echo $page==$total_pages?'pointer-events:none;':''; ?>"
+                <?php echo $page!=$total_pages?'onmouseover="this.style.background=\'#e5e7eb\';this.style.color=\'#374151\';" onmouseout="this.style.background=\'#f3f4f6\';this.style.color=\'#6b7280\';"':''; ?>>&rsaquo;</a>
+
+            <!-- Last -->
+            <a href="admin?<?php echo $base_qs; ?>&amp;p=<?php echo $total_pages; ?>" title="Last page"
+                style="display:inline-flex; align-items:center; justify-content:center; min-width:34px; height:34px; padding:0 8px; border-radius:8px; text-decoration:none; font-size:14px; font-weight:600; color:<?php echo $page==$total_pages?'#d1d5db':'#6b7280'; ?>; background:#f3f4f6; transition:all .15s;<?php echo $page==$total_pages?'pointer-events:none;':''; ?>"
+                <?php echo $page!=$total_pages?'onmouseover="this.style.background=\'#e5e7eb\';this.style.color=\'#374151\';" onmouseout="this.style.background=\'#f3f4f6\';this.style.color=\'#6b7280\';"':''; ?>>&raquo;</a>
+
+        </div>
     </div>
+    <?php endif; ?>
     <?php else: ?>
     <p>No participants found.</p>
     <?php endif; ?>
@@ -556,17 +623,18 @@ if (isset($_SESSION['upload_errors'])) {
 
 <?php endif; ?>
 <div class="upload-box">
-    <h2 style="color: #f472b6; margin-bottom: 15px;">Upload CSV File</h2>
-    <p>Current Participants: <strong><?php echo $participant_count; ?></strong></p>
+    <h2 style="color: #f472b6; margin-bottom: 15px;">Upload Excel File</h2>
+    <p>Current Participants: <strong><?php echo $total_all; ?></strong></p>
 
     <form method="POST" enctype="multipart/form-data" style="margin-top:20px; text-align:center;">
         <div style="display:flex; flex-direction:column; align-items:center; gap:16px;">
             <div class="form-group">
-                <input type="file" name="csv_file" accept=".csv" required>
+                <input type="file" name="csv_file" accept=".xlsx,.csv" required>
             </div>
             <div style="display:flex; gap:12px; justify-content:center; flex-wrap:wrap;">
-                <button type="submit" name="upload_csv" class="btn btn-primary">Upload CSV</button>
-                <a href="csv_template.php" class="btn btn-secondary" style="text-decoration:none; display:inline-flex; align-items:center;">&#11015; Download CSV Template</a>
+                <button type="submit" name="upload_csv" class="btn btn-primary">Upload Excel</button>
+                <a href="xlsx_template" class="btn btn-success" style="text-decoration:none; display:inline-flex; align-items:center;">&#11015; Download Excel Template</a>
+                <a href="csv_template" class="btn btn-secondary" style="text-decoration:none; display:inline-flex; align-items:center;">&#11015; Download CSV Template</a>
                 <button type="button" class="btn btn-secondary" onclick="window.print()" <?php echo $print_list->num_rows === 0 ? 'disabled' : ''; ?>>&#128424; Print Participant List</button>
                 <button type="button" id="showDeleteModalBtn" class="btn btn-secondary">Delete All Participants</button>
             </div>
@@ -577,21 +645,36 @@ if (isset($_SESSION['upload_errors'])) {
     </form>
 </div>
 
-
+<?php
+// Columns for this event's upload, generated from the same spec the importer uses
+$upload_cols = get_upload_columns($conn, $current_event_id);
+$field_help  = [
+    'fullname'      => "Participant's full name, exactly as it should appear on the ticket.",
+    'birthdate'     => 'Optional, format <strong>mm/dd/yyyy</strong> (e.g. 05/14/1990).',
+    'barangay'      => 'Barangay of Koronadal. The template has a dropdown for this.',
+    'purok'         => "Participant's purok.",
+    'city'          => 'Leave blank to use <em>City of Koronadal</em>.',
+    'contact_number'=> "Participant's contact number.",
+];
+?>
 <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin-top: 30px;">
-    <h3 style="color: #f472b6; margin-bottom: 15px;">CSV File Format</h3>
+    <h3 style="color: #f472b6; margin-bottom: 8px;">Required Fields for This Event</h3>
+    <p style="color:#666; margin-bottom:15px;">
+        These are the fields configured under <strong>Events &rarr; Registration Form Fields</strong>.
+        A row missing any field marked <span style="color:#ef4444;">*</span> is skipped and reported.
+    </p>
     <p style="margin-bottom: 10px;"><strong>Columns (order doesn't matter &mdash; matched by header name):</strong></p>
     <ol style="padding-left: 25px; line-height: 1.8;">
-        <li><strong>Lastname</strong> <span style="color:#ef4444;">*</span> &mdash; Participant's last name</li>
-        <li><strong>Firstname</strong> <span style="color:#ef4444;">*</span> &mdash; Participant's first name</li>
-        <li><strong>Middlename</strong> &mdash; optional</li>
-        <li><strong>Birthdate</strong> &mdash; optional, format <strong>mm/dd/yyyy</strong> (e.g. 05/14/1990)</li>
-        <li><strong>Barangay</strong> <span style="color:#ef4444;">*</span> &mdash; Participant's barangay</li>
-        <li><strong>Purok</strong> &mdash; optional</li>
-        <li><strong>Contact Number</strong> &mdash; optional</li>
+        <?php foreach ($upload_cols as $uc): ?>
+        <li>
+            <strong><?php echo htmlspecialchars($uc['label']); ?></strong>
+            <?php if (!empty($uc['required'])): ?><span style="color:#ef4444;">*</span><?php endif; ?>
+            &mdash; <?php echo $field_help[$uc['key']] ?? ''; ?>
+        </li>
+        <?php endforeach; ?>
     </ol>
-    <p style="margin-top: 10px; color: #666;">Province and City are set automatically (South Cotabato, City of Koronadal). Old 3-column files (<em>Name, Barangay, Contact</em>) are still accepted.</p>
-    <p style="margin-top: 15px; color: #666;"><em>Note: Numbers are auto-generated sequentially. First row must contain headers. Uploading a new CSV will replace all existing participants.</em></p>
+    <p style="margin-top: 10px; color: #666;">Province is set automatically (South Cotabato). Old files using separate <em>Lastname</em> / <em>Firstname</em> columns, and old 3-column files (<em>Name, Barangay, Contact</em>), are still accepted.</p>
+    <p style="margin-top: 15px; color: #666;"><em>Note: Numbers are auto-generated sequentially. The first row must contain headers. Uploading a new file will replace all existing participants.</em></p>
 </div>
 
 <!-- Modal for delete confirmation -->
@@ -636,7 +719,7 @@ window.onclick = function(event) {
 
 <script>
 function viewPhoto(id) {
-    document.getElementById('photoModalImg').src = 'media.php?id=' + id + '&type=photo';
+    document.getElementById('photoModalImg').src = 'media?id=' + id + '&type=photo';
     document.getElementById('photoModal').style.display = 'block';
 }
 document.getElementById('photoModal').addEventListener('click', function(e) {

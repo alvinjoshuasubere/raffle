@@ -2,12 +2,13 @@
 if (isset($_POST['add_event'])) {
     $name = sanitize_input($_POST['name']);
     $description = sanitize_input($_POST['description']);
+    $reg_fields_json = reg_fields_from_post();
 
     if (empty($name)) {
         set_message('error', 'Event name is required.');
     } else {
-        $stmt = $conn->prepare("INSERT INTO events (name, description, status) VALUES (?, ?, 'Inactive')");
-        $stmt->bind_param("ss", $name, $description);
+        $stmt = $conn->prepare("INSERT INTO events (name, description, registration_fields, status) VALUES (?, ?, ?, 'Inactive')");
+        $stmt->bind_param("sss", $name, $description, $reg_fields_json);
         if ($stmt->execute()) {
             set_message('success', 'Event created successfully!');
         } else {
@@ -15,7 +16,7 @@ if (isset($_POST['add_event'])) {
         }
         $stmt->close();
     }
-    header('Location: admin.php?page=events');
+    header('Location: admin?page=events');
     exit;
 }
 
@@ -33,7 +34,7 @@ if (isset($_GET['delete_event'])) {
             $_SESSION['event_id'] = get_active_event_id($conn);
         }
     }
-    header('Location: admin.php?page=events');
+    header('Location: admin?page=events');
     exit;
 }
 
@@ -55,7 +56,7 @@ if (isset($_GET['activate_event'])) {
     } else {
         set_message('error', 'Event not found.');
     }
-    header('Location: admin.php?page=events');
+    header('Location: admin?page=events');
     exit;
 }
 
@@ -67,7 +68,7 @@ if (isset($_GET['deactivate_event'])) {
     $stmt->execute();
     $stmt->close();
     set_message('success', 'Event deactivated. Activate another event to run the raffle on it.');
-    header('Location: admin.php?page=events');
+    header('Location: admin?page=events');
     exit;
 }
 
@@ -76,12 +77,13 @@ if (isset($_POST['update_event'])) {
     $eid = intval($_POST['event_id']);
     $name = sanitize_input($_POST['name']);
     $description = sanitize_input($_POST['description']);
+    $reg_fields_json = reg_fields_from_post();
 
     if (empty($name)) {
         set_message('error', 'Event name is required.');
     } else {
-        $stmt = $conn->prepare("UPDATE events SET name=?, description=? WHERE id=?");
-        $stmt->bind_param("ssi", $name, $description, $eid);
+        $stmt = $conn->prepare("UPDATE events SET name=?, description=?, registration_fields=? WHERE id=?");
+        $stmt->bind_param("sssi", $name, $description, $reg_fields_json, $eid);
         if ($stmt->execute()) {
             set_message('success', 'Event updated successfully!');
         } else {
@@ -89,7 +91,7 @@ if (isset($_POST['update_event'])) {
         }
         $stmt->close();
     }
-    header('Location: admin.php?page=events');
+    header('Location: admin?page=events');
     exit;
 }
 
@@ -102,6 +104,20 @@ if (isset($_GET['edit_event'])) {
     $stmt->execute();
     $editing = $stmt->get_result()->fetch_assoc();
     $stmt->close();
+}
+
+// Prefill which registration fields are checked (and required) on the form
+$reg_fields_checked = ['purok' => ['required' => true]];
+if ($editing) {
+    $stored = !empty($editing['registration_fields']) ? json_decode($editing['registration_fields'], true) : null;
+    if (is_array($stored)) {
+        $reg_fields_checked = [];
+        foreach ($stored as $fkey => $cfg) {
+            if (isset($reg_field_options[$fkey])) {
+                $reg_fields_checked[$fkey] = is_array($cfg) ? $cfg : [];
+            }
+        }
+    }
 }
 
 $events = $conn->query("
@@ -178,6 +194,16 @@ $events = $conn->query("
                 <div class="ev-meta">
                     <span>Participants: <?php echo $event['participant_count']; ?></span>
                     <span>Winners: <?php echo $event['winner_count']; ?></span>
+                    <?php
+                    $ev_fields = !empty($event['registration_fields']) ? json_decode($event['registration_fields'], true) : null;
+                    if (is_array($ev_fields) && count($ev_fields) > 0):
+                        $labels = ['Full Name'];
+                        foreach ($ev_fields as $fkey => $cfg) {
+                            $labels[] = ($reg_field_options[$fkey] ?? $fkey) . (!empty($cfg['required']) ? '*' : '');
+                        }
+                    ?>
+                    <span>Form fields: <?php echo htmlspecialchars(implode(', ', $labels)); ?></span>
+                    <?php endif; ?>
                 </div>
                 <div class="ev-actions" style="margin-top:16px; padding-top:14px; border-top:1px solid #f1f5f9;">
                     <a href="?page=events&edit_event=<?php echo $event['id']; ?>" class="ev-btn"><i class="fas fa-pen"></i> Edit</a>
@@ -224,13 +250,36 @@ $events = $conn->query("
                 <label>Description</label>
                 <textarea name="description" rows="3" style="width:100%; padding:12px 15px; border:2px solid rgba(0,0,0,0.08); border-radius:5px; font-size:15px; background:#fafafa; resize:vertical;" placeholder="Optional description"><?php echo htmlspecialchars($editing['description'] ?? ''); ?></textarea>
             </div>
+            <div class="form-group">
+                <label>Registration Form Fields</label>
+                <p class="ev-hint">Pick which fields appear on the public registration form. Full Name is always required.</p>
+                <div style="margin-top:12px; display:flex; flex-direction:column; gap:10px;">
+                    <label style="display:flex; align-items:center; gap:10px; font-size:14px; font-weight:600; color:#374151;">
+                        <input type="checkbox" checked disabled style="opacity:.55;"> Full Name <span style="color:#ef4444; font-weight:700;">*</span>
+                    </label>
+                    <?php foreach ($reg_field_options as $fkey => $flabel): ?>
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <label style="display:flex; align-items:center; gap:10px; font-size:14px; font-weight:600; color:#374151; cursor:pointer;">
+                            <input type="checkbox" name="reg_fields[]" value="<?php echo $fkey; ?>"
+                                   <?php echo isset($reg_fields_checked[$fkey]) ? 'checked' : ''; ?>>
+                            <?php echo htmlspecialchars($flabel); ?>
+                        </label>
+                        <label style="display:flex; align-items:center; gap:6px; font-size:12.5px; color:#64748b; cursor:pointer;">
+                            <input type="checkbox" name="reg_required[]" value="<?php echo $fkey; ?>"
+                                   <?php echo !empty($reg_fields_checked[$fkey]['required']) ? 'checked' : ''; ?>>
+                            Require
+                        </label>
+                    </div>
+                    <?php endforeach; ?>
+                </div>
+            </div>
             <div style="display:flex; gap:10px; align-items:center;">
                 <button type="submit" name="<?php echo $editing ? 'update_event' : 'add_event'; ?>"
                         class="ev-btn ev-btn-primary" style="min-width:140px;">
                     <?php echo $editing ? 'Update Event' : 'Create Event'; ?>
                 </button>
                 <?php if ($editing): ?>
-                <a href="admin.php?page=events" class="ev-btn">Cancel</a>
+                <a href="admin?page=events" class="ev-btn">Cancel</a>
                 <?php endif; ?>
             </div>
         </form>

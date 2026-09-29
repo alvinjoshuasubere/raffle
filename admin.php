@@ -10,7 +10,7 @@ $page = isset($_GET['page']) ? $_GET['page'] : 'events';
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Raffle System - <?php echo htmlspecialchars($current_event_name); ?></title>
     <link rel="stylesheet" href="style.css?v=8">
-    <?php if ($page === 'wheel'): ?>
+    <?php if (in_array($page, ['wheel', 'numbers'])): ?>
     <link rel="stylesheet" href="wheel-page.css?v=4">
     <?php endif; ?>
     <style>
@@ -23,27 +23,28 @@ $page = isset($_GET['page']) ? $_GET['page'] : 'events';
         .user-info{display:flex;align-items:center;gap:12px;padding:0 20px;border-left:1px solid rgba(0,0,0,.06)}
         .user-info span{font-size:13px;color:#4a4a6a;font-weight:600}.user-info a{font-size:12px;color:#9ca3af;text-decoration:none;font-weight:600}.user-info a:hover{color:#ec4899}
     </style>
-    <?php if (in_array($page, ['draw', 'wheel']) && file_exists('uploads/bg/custom_bg.jpg')): ?>
+    <?php if (in_array($page, ['draw', 'wheel', 'numbers']) && file_exists('uploads/bg/custom_bg.jpg')): ?>
     <style>.container1::before{content:'';position:absolute;top:0;left:0;right:520px;height:100%;background-image:url('uploads/bg/custom_bg.jpg?v=<?php echo filemtime('uploads/bg/custom_bg.jpg'); ?>');background-size:contain;background-position:center;background-repeat:no-repeat;z-index:0}</style>
     <?php endif; ?>
 </head>
-<body class="<?php echo $page === 'wheel' ? 'wheel-active' : ''; ?>">
+<body class="<?php echo $page === 'wheel' ? 'wheel-active' : ($page === 'numbers' ? 'num-active' : ''); ?>">
 <div class="header">
     <img src="Logo.png" alt="Logo" class="logo"><span class="systemName" style="margin-left:5px">Raffle System</span>
     <span class="event-badge"><?php echo htmlspecialchars($current_event_name); ?></span>
     <nav class="nav">
-        <a href="admin.php?page=events" class="<?php echo $page === 'events' ? 'active' : ''; ?>">Events</a>
-        <a href="admin.php?page=upload" class="<?php echo $page === 'upload' ? 'active' : ''; ?>">Home</a>
-        <a href="admin.php?page=prizes" class="<?php echo $page === 'prizes' ? 'active' : ''; ?>">Prizes</a>
-        <a href="admin.php?page=draw" class="<?php echo $page === 'draw' ? 'active' : ''; ?>">Draw</a>
-        <a href="admin.php?page=wheel" class="<?php echo $page === 'wheel' ? 'active' : ''; ?>">Wheel</a>
-        <a href="admin.php?page=winners" class="<?php echo $page === 'winners' ? 'active' : ''; ?>">Winners</a>
+        <a href="admin?page=events" class="<?php echo $page === 'events' ? 'active' : ''; ?>">Events</a>
+        <a href="admin?page=upload" class="<?php echo $page === 'upload' ? 'active' : ''; ?>">Home</a>
+        <a href="admin?page=prizes" class="<?php echo $page === 'prizes' ? 'active' : ''; ?>">Prizes</a>
+        <a href="admin?page=draw" class="<?php echo $page === 'draw' ? 'active' : ''; ?>">Draw</a>
+        <a href="admin?page=wheel" class="<?php echo $page === 'wheel' ? 'active' : ''; ?>">Wheel</a>
+        <a href="admin?page=numbers" class="<?php echo $page === 'numbers' ? 'active' : ''; ?>">Numbers</a>
+        <a href="admin?page=winners" class="<?php echo $page === 'winners' ? 'active' : ''; ?>">Winners</a>
     </nav>
-    <div class="user-info"><span><?php echo htmlspecialchars($_SESSION['display_name'] ?? ''); ?></span><a href="logout.php">Logout</a></div>
+    <div class="user-info"><span><?php echo htmlspecialchars($_SESSION['display_name'] ?? ''); ?></span><a href="logout">Logout</a></div>
 </div>
-<div class="container"><div class="content <?php echo in_array($page,['draw','wheel'])?'fullscreen':''; ?>">
+<div class="container"><div class="content <?php echo in_array($page,['draw','wheel','numbers'])?'fullscreen':''; ?>">
 <?php
-switch($page){case 'events':include 'events.php';break;case 'upload':include 'upload.php';break;case 'prizes':include 'prizes.php';break;case 'draw':include 'draw.php';break;case 'wheel':include 'wheel.php';break;case 'winners':include 'winners.php';break;default:include 'events.php';}
+switch($page){case 'events':include 'events.php';break;case 'upload':include 'upload.php';break;case 'prizes':include 'prizes.php';break;case 'draw':include 'draw.php';break;case 'wheel':include 'wheel.php';break;case 'numbers':include 'numbers.php';break;case 'winners':include 'winners.php';break;default:include 'events.php';}
 ?>
 </div></div>
 <canvas id="confetti-canvas"></canvas><script src="confetti.js"></script><?php if ($page === 'wheel'): ?><script src="wheel-interactions.js?v=1"></script><?php endif; ?><div class="toast-container" id="toastContainer"></div>

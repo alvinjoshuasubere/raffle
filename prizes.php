@@ -31,7 +31,7 @@ if (isset($_POST['add_prize'])) {
         }
         $stmt->close();
     }
-    header('Location: admin.php?page=prizes');
+    header('Location: admin?page=prizes');
     exit;
 }
 
@@ -49,7 +49,7 @@ if (isset($_GET['delete_prize'])) {
         $del->execute();
         set_message('success', 'Prize deleted.');
     }
-    header('Location: admin.php?page=prizes');
+    header('Location: admin?page=prizes');
     exit;
 }
 
@@ -60,7 +60,7 @@ if (isset($_GET['reset_prize'])) {
     $upd->bind_param("ii", $pid, $current_event_id);
     $upd->execute();
     set_message('success', 'Prize reset (available again).');
-    header('Location: admin.php?page=prizes');
+    header('Location: admin?page=prizes');
     exit;
 }
 

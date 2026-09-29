@@ -1,7 +1,7 @@
 <?php
 session_start();
 if (isset($_SESSION['user_id'])) {
-    header('Location: admin.php');
+    header('Location: admin');
     exit;
 }
 require_once 'config.php';
@@ -161,7 +161,7 @@ if ($wc) $winner_count = $wc->fetch_assoc()['cnt'];
     </div>
     <div class="nav-links">
         <a href="#info">About</a>
-        <a href="register.php" class="btn-sm">Register Now</a>
+        <a href="register" class="btn-sm">Register Now</a>
     </div>
 </div>
 
@@ -170,8 +170,8 @@ if ($wc) $winner_count = $wc->fetch_assoc()['cnt'];
     <h1>Koronadal <span>Raffle</span> Draw</h1>
     <p>Register your ticket for a chance to win exciting prizes at <?php echo htmlspecialchars($short_event); ?>.</p>
     <div class="buttons">
-        <a href="register.php" class="btn btn-primary">Register Your Ticket</a>
-        <a href="login.php" class="btn btn-outline">Admin Login</a>
+        <a href="register" class="btn btn-primary">Register Your Ticket</a>
+        <a href="login" class="btn btn-outline">Admin Login</a>
     </div>
 </section>
 

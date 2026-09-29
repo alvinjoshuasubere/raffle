@@ -4,6 +4,16 @@ if (!isset($current_event_id)) {
     $current_event_id = get_active_event_id($conn);
 }
 
+// Tickets still in the drum: everyone not yet a winner and not removed.
+function wheel_pool($conn, $event_id) {
+    $stmt = $conn->prepare("SELECT id, number, name, purok FROM participants WHERE event_id = ? AND (status IS NULL OR status = '') ORDER BY CAST(number AS UNSIGNED) ASC");
+    $stmt->bind_param("i", $event_id);
+    $stmt->execute();
+    $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $stmt->close();
+    return $rows;
+}
+
 // Handle Confirm Winner
 if (isset($_POST['confirm_winner'])) {
     $participant_id = intval($_POST['participant_id']);
@@ -19,6 +29,21 @@ if (isset($_POST['confirm_winner'])) {
         $upd_status->bind_param("ii", $participant_id, $current_event_id);
         $upd_status->execute();
         $upd_status->close();
+        $stmt->close();
+
+        // Everyone left in the drum has now won: roll straight into a fresh round
+        // so the numbers return to the wheel instead of leaving it empty.
+        if (count(wheel_pool($conn, $current_event_id)) === 0) {
+            $reset = reset_event_winners($conn, $current_event_id);
+            echo json_encode([
+                'success' => true,
+                'auto_reset' => true,
+                'participants' => wheel_pool($conn, $current_event_id),
+                'message' => 'All participants have been drawn! The wheel was reset and ' . $reset['returned'] . ' numbers are back in the machine.'
+            ]);
+            exit;
+        }
+
         echo json_encode(['success' => true, 'message' => 'Winner confirmed successfully!']);
     } else {
         echo json_encode(['success' => false, 'message' => 'Failed to confirm winner.']);
@@ -49,18 +74,29 @@ if (isset($_POST['save_slot_timing'])) {
     set_setting($conn, 'slot_spin_seconds', (string)$spin_secs);
     set_setting($conn, 'slot_modal_delay_seconds', (string)$delay_secs);
     set_message('success', "Slot timing saved: {$spin_secs}s spin, {$delay_secs}s before modal.");
-    header('Location: admin.php?page=wheel');
+    header('Location: admin?page=wheel');
     exit;
 }
 
 $slot_spin_seconds  = max(1, min(60, intval(get_setting($conn, 'slot_spin_seconds', '3'))));
 $slot_delay_seconds = max(0, min(120, intval(get_setting($conn, 'slot_modal_delay_seconds', '0'))));
 
-// Fetch all participants for the slot machine
-$slot_stmt = $conn->prepare("SELECT id, number, name, purok FROM participants WHERE event_id = ? AND (status IS NULL OR status = '') ORDER BY CAST(number AS UNSIGNED) ASC");
-$slot_stmt->bind_param("i", $current_event_id);
-$slot_stmt->execute();
-$slot_participants = $slot_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+// A previous round may have consumed every ticket (page closed before the draw
+// finished, or a reset that never fired). Recover so the wheel is never stuck empty.
+$slot_participants = wheel_pool($conn, $current_event_id);
+if (count($slot_participants) === 0) {
+    $pending = $conn->prepare("SELECT COUNT(*) AS c FROM participants WHERE event_id = ? AND status = 'winner'");
+    $pending->bind_param("i", $current_event_id);
+    $pending->execute();
+    $winner_count = (int)$pending->get_result()->fetch_assoc()['c'];
+    $pending->close();
+
+    if ($winner_count > 0) {
+        $reset = reset_event_winners($conn, $current_event_id);
+        $slot_participants = wheel_pool($conn, $current_event_id);
+        set_message('success', "All participants were already winners, so the round reset automatically. {$reset['returned']} numbers are back in the machine.");
+    }
+}
 ?>
 
 <?php display_message(); ?>
@@ -251,6 +287,20 @@ function cellHeight() {
     return cell ? cell.offsetHeight : 120;
 }
 
+// Swap the whole drum contents (used after a round reset) and rebuild the reel
+function setSlotData(list) {
+    const rows = Array.isArray(list) ? list : [];
+    SLOT_DATA.length = 0;
+    rows.forEach(p => SLOT_DATA.push(p));
+
+    const reel = el('slotReel');
+    reel.style.transform = 'translateY(0)';
+    buildReel(null);
+
+    const countEl = document.getElementById('wheel_participant_count');
+    if (countEl) countEl.textContent = SLOT_DATA.length;
+}
+
 function setSlotStatus(icon, text) {
     const iconEl = el('wheelStatusIcon'), textEl = el('wheelStatusText');
     if (iconEl) iconEl.textContent = icon;
@@ -380,11 +430,18 @@ function confirmWinner(winner) {
     formData.append('name', winner.name);
     formData.append('purok', winner.purok);
 
-    fetch('wheel.php', { method: 'POST', body: formData })
+    fetch('wheel', { method: 'POST', body: formData })
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                showToast('Winner confirmed successfully!', 'success');
+                showToast(data.message, 'success');
+
+                if (data.auto_reset) {
+                    setSlotData(data.participants);
+                    setSlotStatus('\u{1F504}', 'Round reset - all numbers back');
+                    closeModal();
+                    return;
+                }
 
                 const idx = SLOT_DATA.findIndex(w => w.id === winner.participant_id);
                 if (idx !== -1) SLOT_DATA.splice(idx, 1);
@@ -420,7 +477,7 @@ function removeFromList(winner) {
     formData.append('remove_participant', '1');
     formData.append('participant_id', winner.participant_id);
 
-    fetch('wheel.php', { method: 'POST', body: formData })
+    fetch('wheel', { method: 'POST', body: formData })
         .then(response => response.json())
         .then(data => {
             if (data.success) {

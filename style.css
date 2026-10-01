@@ -1622,7 +1622,6 @@ tbody tr:hover {
   margin: 2px 0 10px;
   color: #ff1493;
   text-shadow:
-    0 0 35px rgba(255, 20, 147, 0.75),
     0 0 70px rgba(255, 20, 147, 0.45),
     0 0 120px rgba(255, 20, 147, 0.25);
   line-height: 1.05;

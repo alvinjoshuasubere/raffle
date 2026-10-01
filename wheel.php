@@ -421,13 +421,13 @@ function showWinnerModal(winner) {
     const purok = (winner.purok || '').trim();
     let location = '';
     if (city !== '' && barangay !== '') {
-        location = city + ', Brgy. ' + barangay;
+        location = city + ', BRGY. ' + barangay;
     } else if (city !== '') {
         location = city;
     } else if (barangay !== '') {
-        location = 'Brgy. ' + barangay;
+        location = 'BRGY. ' + barangay;
     } else if (purok !== '') {
-        location = 'Purok ' + purok;
+        location = 'PUROK ' + purok;
     }
     document.getElementById('winner_purok').textContent = location;
     document.getElementById('winnerModal').classList.add('show');

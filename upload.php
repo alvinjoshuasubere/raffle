@@ -64,10 +64,10 @@ if (isset($_POST['upload_csv'])) {
                         case 'birthdate':  case 'birthday':     case 'dateofbirth': $map['birthdate'] = $i; break;
                         case 'barangay':   case 'brgy':         $map['barangay']   = $i; break;
                         case 'purok':                            $map['purok']      = $i; break;
-                        case 'city':                            $map['city']       = $i; break;
+                        case 'city': case 'municipality': case 'town':  $map['city']       = $i; break;
                         case 'contactnumber': case 'contact': case 'phonenumber': case 'mobilenumber':
                                                                  $map['contact']    = $i; break;
-                        case 'name':       case 'fullname':     $map['fullname']   = $i; break;
+                        case 'name': case 'fullname': case 'participantname': case 'participant': $map['fullname'] = $i; break;
                     }
                 }
 

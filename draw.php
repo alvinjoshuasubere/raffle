@@ -42,7 +42,8 @@ if (isset($_POST['draw_winner'])) {
         'winner' => [
             'number' => $participant['number'],
             'name' => $participant['name'],
-            'purok' => $participant['purok'],
+            'barangay' => isset($participant['barangay']) ? trim((string)$participant['barangay']) : '',
+            'purok' => isset($participant['purok']) ? trim((string)$participant['purok']) : '',
             'participant_id' => $participant['id']
         ]
     ]);
@@ -82,7 +83,7 @@ if (isset($_POST['confirm_winner'])) {
     $participant_id = intval($_POST['participant_id']);
     $number = intval($_POST['number']);
     $name = sanitize_input($_POST['name']);
-    $barangay = sanitize_input($_POST['barangay']);
+    $barangay = isset($_POST['barangay']) ? sanitize_input($_POST['barangay']) : '';
     $prize_id = intval($_POST['prize_id'] ?? 0);
     $prize_name = isset($_POST['prize_name']) ? sanitize_input($_POST['prize_name']) : '';
     $prize_type = isset($_POST['prize_type']) ? sanitize_input($_POST['prize_type']) : '';
@@ -240,7 +241,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
 function showWinnerModal(winner) {
     document.getElementById('winner_name').textContent = winner.name;
-    document.getElementById('winner_purok').textContent = 'Purok ' + winner.purok;
+    const barangay = (winner.barangay || '').trim();
+    const purok = (winner.purok || '').trim();
+    const locationText = barangay !== '' ? barangay : (purok !== '' ? 'Purok ' + purok : '');
+    document.getElementById('winner_purok').textContent = locationText;
 
     document.getElementById('winnerModal').classList.add('show');
     if (typeof startConfetti === 'function') startConfetti();
@@ -252,7 +256,7 @@ function confirmWinner(winner) {
     formData.append('participant_id', winner.participant_id);
     formData.append('number', winner.number);
     formData.append('name', winner.name);
-    formData.append('purok', winner.purok);
+    formData.append('barangay', winner.barangay || '');
 
     fetch('draw', { method: 'POST', body: formData })
         .then(response => response.json())

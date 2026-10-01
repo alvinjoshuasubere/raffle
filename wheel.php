@@ -99,31 +99,7 @@ if (count($slot_participants) === 0) {
 }
 ?>
 
-<?php display_message(); ?><style>
-/* ===== RAFFLE PREMIUM UI ===== */
-.container1{width:min(1180px,calc(100% - 32px));margin:28px auto 60px;position:relative;z-index:2}
-.slot-hero{padding:8px 0 20px}
-.slot-machine{width:min(760px,100%);margin:auto;filter:drop-shadow(0 28px 45px rgba(15,23,42,.18))}
-.slot-topper{min-height:62px;border-radius:24px 24px 10px 10px;background:linear-gradient(135deg,#0f172a,#1e3a8a 55%,#2563eb);color:#fff;display:flex;align-items:center;justify-content:center;gap:15px;font-weight:900;letter-spacing:5px;font-size:clamp(18px,4vw,30px);box-shadow:inset 0 1px rgba(255,255,255,.2)}
-.slot-topper .star{font-size:16px;color:#fbbf24;animation:rafflePulse 1.6s infinite}
-.slot-topper .star:nth-child(2n){animation-delay:.3s}.slot-topper .star:nth-child(3n){animation-delay:.6s}
-.slot-cabinet{position:relative;padding:34px 28px 38px;background:linear-gradient(145deg,#111827,#172554 60%,#0f172a);border-radius:12px 12px 28px 28px;border:2px solid rgba(255,255,255,.08)}
-.slot-window{height:190px;position:relative;overflow:hidden;border-radius:18px;background:#020617;border:8px solid #334155;box-shadow:inset 0 0 35px rgba(0,0,0,.9),0 0 0 3px rgba(59,130,246,.2)}
-.slot-reel{will-change:transform}
-.slot-cell{height:120px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:clamp(42px,8vw,76px);font-weight:900;letter-spacing:3px;text-shadow:0 4px 18px rgba(0,0,0,.6)}
-.slot-cell.is-winner{color:#fbbf24;text-shadow:0 0 35px rgba(251,191,36,.7)}
-.slot-frame,.slot-shade{position:absolute;inset:0;pointer-events:none}.slot-shade{background:linear-gradient(to bottom,rgba(2,6,23,.8),transparent 25%,transparent 75%,rgba(2,6,23,.8));z-index:3}.slot-frame{border:2px solid rgba(96,165,250,.5);border-radius:10px;box-shadow:inset 0 0 30px rgba(37,99,235,.18);z-index:4}
-.slot-lights{position:absolute;inset:10px;display:flex;justify-content:space-around;pointer-events:none;z-index:5}.slot-light-dot{width:8px;height:8px;border-radius:50%;background:#475569;box-shadow:0 0 0 transparent}.slot-lights.lights-on .slot-light-dot{background:#fbbf24;box-shadow:0 0 14px #fbbf24}
-.slot-plate{margin:-10px auto 0;width:fit-content;position:relative;padding:12px 28px;border-radius:999px;background:#f8fafc;border:1px solid #dbeafe;color:#1e3a8a;font-size:12px;font-weight:900;letter-spacing:3px;box-shadow:0 10px 20px rgba(15,23,42,.12)}
-.draw-panel{margin:24px auto 0;max-width:900px;border:1px solid #e2e8f0;background:rgba(255,255,255,.94);border-radius:28px;box-shadow:0 18px 55px rgba(15,23,42,.1);overflow:hidden}
-.draw-panel-inner{padding:30px}.draw-header-area{display:flex;align-items:center;gap:15px;margin-bottom:24px}.draw-header-icon{width:52px;height:52px;border-radius:16px;display:grid;place-items:center;background:#eff6ff;color:#2563eb;font-size:25px}.draw-heading{margin:0;font-size:22px;font-weight:900;color:#0f172a}.draw-subtitle{margin:4px 0 0;color:#64748b;font-size:13px}
-.wheel-controls{display:grid;grid-template-columns:1fr 300px;gap:20px;align-items:stretch}.spin-wrap{display:flex;align-items:center;justify-content:center;min-height:150px;border-radius:22px;background:linear-gradient(135deg,#eff6ff,#f8fafc);border:1px solid #dbeafe}
-.btn-spin-big{width:min(360px,90%);height:78px;border:0;border-radius:20px;background:linear-gradient(135deg,#1d4ed8,#2563eb,#3b82f6);color:#fff;font:900 18px Inter,system-ui;letter-spacing:2px;display:flex;align-items:center;justify-content:center;gap:14px;cursor:pointer;box-shadow:0 14px 30px rgba(37,99,235,.28);transition:.25s}.btn-spin-big:hover{transform:translateY(-3px);box-shadow:0 18px 38px rgba(37,99,235,.35)}.btn-spin-big:disabled{opacity:.65;cursor:not-allowed;transform:none}.spin-icon-chip{width:40px;height:40px;border-radius:12px;background:rgba(255,255,255,.16);display:grid;place-items:center}.spin-arrow{font-size:25px}
-.slot-timing{padding:20px;border:1px solid #e2e8f0;border-radius:20px;background:#fff}.slot-timing-title{font-weight:800;color:#0f172a;margin-bottom:14px}.slot-timing-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}.slot-timing label{font-size:11px;color:#64748b;font-weight:700}.slot-timing input{width:100%;margin-top:6px;padding:10px;border:1px solid #cbd5e1;border-radius:10px;font:inherit}.slot-timing-save{width:100%;margin-top:12px;padding:11px;border:0;border-radius:11px;background:#0f172a;color:#fff;font-weight:800;cursor:pointer}.slot-timing-hint{font-size:10px;color:#94a3b8;margin-top:9px;line-height:1.4}
-.winner-modal{border-radius:28px!important;border:1px solid rgba(255,255,255,.35)!important;box-shadow:0 30px 100px rgba(2,6,23,.35)!important;padding:42px 30px!important}.wm-congrats{font-size:13px;text-transform:uppercase;letter-spacing:3px;font-weight:900;color:#2563eb;margin-bottom:14px}.winner-name{font-size:clamp(30px,6vw,54px)!important;font-weight:900!important;color:#0f172a!important;line-height:1.05}.winner-barangay{margin-top:12px!important;color:#64748b!important;font-size:16px!important;font-weight:700}.winner-actions{margin-top:30px!important;display:flex;flex-wrap:wrap;justify-content:center;gap:10px}
-@keyframes rafflePulse{50%{transform:scale(1.25);opacity:.7}}
-@media(max-width:760px){.container1{width:min(100% - 18px,700px);margin-top:12px}.slot-cabinet{padding:25px 12px 30px}.slot-window{height:155px}.slot-cell{height:100px}.wheel-controls{grid-template-columns:1fr}.draw-panel-inner{padding:20px}.slot-topper{min-height:52px;gap:8px;letter-spacing:2px}.slot-topper .star{display:none}}
-</style>
+<?php display_message(); ?>
 
 <div class="container1">
   <!-- SLOT MACHINE STAGE -->

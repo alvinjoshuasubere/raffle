@@ -6,7 +6,7 @@ if (!isset($current_event_id)) {
 
 // Tickets still in the drum: everyone not yet a winner and not removed.
 function wheel_pool($conn, $event_id) {
-    $stmt = $conn->prepare("SELECT id, number, name, barangay, purok FROM participants WHERE event_id = ? AND (status IS NULL OR status = '') ORDER BY CAST(number AS UNSIGNED) ASC");
+    $stmt = $conn->prepare("SELECT id, number, name, city, barangay, purok FROM participants WHERE event_id = ? AND (status IS NULL OR status = '') ORDER BY CAST(number AS UNSIGNED) ASC");
     $stmt->bind_param("i", $event_id);
     $stmt->execute();
     $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
@@ -361,6 +361,7 @@ function spinSlot() {
                 participant_id: winner.id,
                 number: winner.number,
                 name: winner.name,
+                city: winner.city || '',
                 barangay: winner.barangay || '',
                 purok: winner.purok || ''
             };
@@ -415,9 +416,20 @@ document.addEventListener('DOMContentLoaded', function() {
 /* ===== WINNER MODAL ===== */
 function showWinnerModal(winner) {
     document.getElementById('winner_name').textContent = winner.name;
+    const city = (winner.city || '').trim();
     const barangay = (winner.barangay || '').trim();
     const purok = (winner.purok || '').trim();
-    document.getElementById('winner_purok').textContent = barangay !== '' ? barangay : (purok !== '' ? 'Purok ' + purok : '');
+    let location = '';
+    if (city !== '' && barangay !== '') {
+        location = city + ', Brgy. ' + barangay;
+    } else if (city !== '') {
+        location = city;
+    } else if (barangay !== '') {
+        location = 'Brgy. ' + barangay;
+    } else if (purok !== '') {
+        location = 'Purok ' + purok;
+    }
+    document.getElementById('winner_purok').textContent = location;
     document.getElementById('winnerModal').classList.add('show');
     if (typeof startConfetti === 'function') startConfetti();
 }

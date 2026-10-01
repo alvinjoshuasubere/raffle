@@ -135,12 +135,12 @@ $max_number    = $min_number + $total_numbers - 1;
   const MIN = <?php echo $min_number; ?>;
   const TOTAL = <?php echo $total_numbers; ?>;
   const MAX = MIN + TOTAL - 1;
-  const SPIN_MS = <?php echo $spin_secs * 1000; ?>;
+  const SPIN_MS = Math.max(500, <?php echo $spin_secs * 1000; ?> * 0.55); // faster slot spin
   const MODAL_DELAY_MS = <?php echo $delay_secs * 1000; ?>;
   const MAX_STRIP_CELLS = 800;   // hard cap on rendered cells (same as the wheel)
   const MIN_STRIP_CELLS = 400;   // never build a strip so short the roll looks stubby
   const STRIP_JITTER = 80;       // vary run length so back-to-back spins differ
-  const FAST_PHASE = 0.90;
+  const FAST_PHASE = 0.82;
   const BOUNCE_MS = 240;
   const OVERSHOOT_PX = 22;
 

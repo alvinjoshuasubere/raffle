@@ -100,88 +100,60 @@ if (count($slot_participants) === 0) {
 ?>
 
 <?php display_message(); ?>
-<style>
-/* ===== WHEEL TAB — PURE SLOT MACHINE ===== */
-.wheel-page{min-height:calc(100vh - 80px);display:flex;align-items:center;justify-content:center;padding:24px 16px 50px}
-.slot-machine{width:min(720px,96vw);margin:0 auto;filter:drop-shadow(0 35px 55px rgba(15,23,42,.30))}
-.slot-topper{position:relative;min-height:76px;border-radius:28px 28px 12px 12px;background:linear-gradient(180deg,#e11d48 0%,#be123c 55%,#881337 100%);color:#fff;display:flex;align-items:center;justify-content:center;gap:14px;font-weight:1000;letter-spacing:5px;font-size:clamp(20px,5vw,32px);border:3px solid #fda4af;box-shadow:inset 0 2px 0 rgba(255,255,255,.35),0 8px 0 #4c0519,0 18px 30px rgba(76,5,25,.28)}
-.slot-topper .star{font-size:16px;color:#fde68a;text-shadow:0 0 12px rgba(253,230,138,.9);animation:rafflePulse 1.2s infinite}
-.slot-topper .star:nth-child(2n){animation-delay:.2s}.slot-topper .star:nth-child(3n){animation-delay:.4s}
-.slot-cabinet{position:relative;padding:30px 28px 38px;background:linear-gradient(145deg,#fff1f2,#ffe4e6 55%,#fecdd3);border:4px solid #9f1239;border-top:0;border-radius:12px 12px 34px 34px;box-shadow:inset 0 0 0 2px rgba(255,255,255,.7),0 10px 0 #4c0519}
-.slot-cabinet:before,.slot-cabinet:after{content:"";position:absolute;top:18px;bottom:18px;width:10px;border-radius:999px;background:linear-gradient(#fbbf24,#fde68a,#f59e0b);box-shadow:0 0 12px rgba(245,158,11,.6)}
-.slot-cabinet:before{left:10px}.slot-cabinet:after{right:10px}
-.slot-window{height:230px;position:relative;overflow:hidden;border-radius:22px;background:#09090b;border:12px solid #3f3f46;box-shadow:inset 0 0 45px rgba(0,0,0,.95),0 0 0 4px #fda4af,0 8px 20px rgba(76,5,25,.25)}
-.slot-window:before,.slot-window:after{content:"";position:absolute;z-index:6;left:0;right:0;height:28px;pointer-events:none}
-.slot-window:before{top:0;background:linear-gradient(#000,transparent)}
-.slot-window:after{bottom:0;background:linear-gradient(transparent,#000)}
-.slot-reel{will-change:transform;transform:translate3d(0,0,0);backface-visibility:hidden}
-.slot-cell{height:110px;display:flex;align-items:center;justify-content:center;color:#fff;font:900 clamp(48px,9vw,82px)/1 Arial,sans-serif;letter-spacing:4px;text-shadow:0 3px 0 #27272a,0 0 22px rgba(255,255,255,.18);contain:layout paint}
-.slot-cell.is-winner{color:#fde68a;text-shadow:0 0 12px #fbbf24,0 3px 0 #78350f}
-.slot-frame{position:absolute;inset:0;pointer-events:none;border:3px solid rgba(251,113,133,.55);border-radius:12px;box-shadow:inset 0 0 35px rgba(244,63,94,.12);z-index:5}
-.slot-shade{position:absolute;inset:0;pointer-events:none;background:linear-gradient(to bottom,rgba(0,0,0,.72),transparent 22%,transparent 78%,rgba(0,0,0,.72));z-index:4}
-.slot-lights{position:absolute;inset:9px;display:flex;justify-content:space-around;pointer-events:none;z-index:7}
-.slot-light-dot{width:9px;height:9px;border-radius:50%;background:#71717a;box-shadow:inset 0 0 2px #18181b}
-.slot-lights.lights-on .slot-light-dot{background:#fde68a;box-shadow:0 0 16px #fbbf24}
-.slot-plate{margin:-8px auto 0;width:max-content;position:relative;z-index:10;padding:13px 34px;border-radius:999px;background:linear-gradient(#fff,#ffe4e6);border:3px solid #9f1239;color:#881337;font-size:13px;font-weight:1000;letter-spacing:3px;box-shadow:0 6px 0 #4c0519,0 12px 20px rgba(76,5,25,.22)}
-.slot-lever{position:absolute;right:-54px;top:42%;width:70px;height:180px;z-index:20;filter:drop-shadow(0 8px 8px rgba(0,0,0,.2))}
-.lever-rail{position:absolute;right:28px;top:10px;width:14px;height:120px;border-radius:10px;background:linear-gradient(90deg,#52525b,#e4e4e7,#52525b);border:2px solid #27272a}
-.lever-ball{position:absolute;right:4px;top:0;width:48px;height:48px;border-radius:50%;background:radial-gradient(circle at 30% 25%,#fb7185,#be123c 55%,#4c0519);border:3px solid #fda4af;box-shadow:0 5px 0 #4c0519;transition:top .18s ease}
-.lever-base{position:absolute;right:10px;bottom:4px;width:52px;height:34px;border-radius:12px;background:linear-gradient(#e4e4e7,#71717a);border:2px solid #27272a}
-.slot-lever.pull .lever-ball{top:88px}
-.slot-status{margin:24px auto 0;text-align:center;color:#881337;font-weight:800;font-size:13px;min-height:20px}
-.slot-spin-button{display:block;margin:18px auto 0;min-width:190px;height:54px;border:0;border-radius:16px;background:linear-gradient(180deg,#f43f5e,#be123c);color:#fff;font:900 16px Arial,sans-serif;letter-spacing:3px;cursor:pointer;border:2px solid #fda4af;box-shadow:0 6px 0 #4c0519,0 12px 20px rgba(76,5,25,.22);transition:transform .12s,box-shadow .12s}
-.slot-spin-button:hover{transform:translateY(-2px)}
-.slot-spin-button:active,.slot-spin-button.spinning{transform:translateY(4px);box-shadow:0 2px 0 #4c0519}
-.slot-spin-button:disabled{opacity:.75;cursor:not-allowed}
-@keyframes rafflePulse{50%{transform:scale(1.3);opacity:.65}}
-@media(max-width:760px){
- .wheel-page{padding:12px 10px 35px}
- .slot-machine{width:min(620px,96vw)}
- .slot-topper{min-height:62px;letter-spacing:3px}
- .slot-topper .star{font-size:12px}
- .slot-cabinet{padding:22px 16px 30px}
- .slot-window{height:195px;border-width:9px}
- .slot-cell{height:92px;font-size:clamp(42px,12vw,66px)}
- .slot-lever{right:-39px;transform:scale(.75);transform-origin:top left}
- .slot-spin-button{min-width:170px}
-}
-@media(max-width:480px){
- .slot-machine{width:calc(100vw - 30px);margin-left:-3px}
- .slot-topper{letter-spacing:2px}
- .slot-topper .star{display:none}
- .slot-cabinet{padding:18px 12px 26px}
- .slot-window{height:175px}
- .slot-lever{right:-43px;transform:scale(.62)}
- .slot-plate{padding:10px 24px;font-size:11px}
-}
-</style>
 
-<div class="wheel-page">
-  <div class="slot-machine" id="slotMachine">
-    <div class="slot-topper">
-      <span class="star">&#9733;</span><span class="star">&#9733;</span><span class="star">&#9733;</span>
-      <span>RAFFLE</span>
-      <span class="star">&#9733;</span><span class="star">&#9733;</span><span class="star">&#9733;</span>
-    </div>
 
-    <div class="slot-cabinet">
-      <div class="slot-lights" id="slotLights"></div>
-      <div class="slot-window">
-        <div class="slot-reel" id="slotReel"></div>
-        <div class="slot-shade"></div>
-        <div class="slot-frame"></div>
+<div class="container1">
+  <!-- SAME SLOT MACHINE UI AS NUMBERS TAB -->
+  <div class="slot-hero">
+    <div class="slot-machine" id="wheelMachine">
+
+      <div class="slot-topper">
+        <span class="star">&#9733;</span><span class="star">&#9733;</span><span class="star">&#9733;</span>
+        <span class="topper-text">LUCKY NUMBER</span>
+        <span class="star">&#9733;</span><span class="star">&#9733;</span><span class="star">&#9733;</span>
       </div>
 
-      <div class="slot-lever" id="slotLever" aria-hidden="true">
-        <div class="lever-rail"></div>
-        <div class="lever-ball"></div>
-        <div class="lever-base"></div>
+      <div class="slot-cabinet">
+        <div class="slot-lights" id="slotLights"></div>
+        <div class="slot-window">
+          <div class="slot-reel" id="slotReel"><!-- cells injected by JS --></div>
+          <div class="slot-shade"></div>
+          <div class="slot-frame"></div>
+        </div>
+      </div>
+
+      <div class="slot-plate">WINNING NUMBER</div>
+    </div>
+  </div>
+
+  <!-- CONTROL PANEL — MATCHES NUMBERS TAB -->
+  <div class="draw-panel">
+    <div class="draw-panel-inner">
+      <div class="draw-header-area">
+        <div class="draw-header-icon">&#127922;</div>
+        <div>
+          <h2 class="draw-heading">Draw a Winner</h2>
+          <p class="draw-subtitle">Spin the machine to draw a random participant</p>
+        </div>
+      </div>
+
+      <div class="wheel-controls">
+        <div class="num-current-range">
+          Participants available:
+          <strong id="wheel_participant_count"><?php echo number_format(count($slot_participants)); ?></strong>
+        </div>
+
+        <div class="spin-wrap">
+          <button type="button" id="spin_btn" class="btn-spin-big">
+            <span class="spin-icon-chip">&#127922;</span>
+            <span class="spin-text">SPIN</span>
+            <span class="spin-arrow">&rarr;</span>
+          </button>
+        </div>
+
+        <div class="slot-countdown" id="slotStatus">READY TO SPIN</div>
       </div>
     </div>
-
-    <div class="slot-plate">LUCKY NUMBER</div>
-    <div class="slot-status" id="slotStatus">READY TO SPIN</div>
-    <button type="button" id="spin_btn" class="slot-spin-button">SPIN</button>
   </div>
 </div>
 

@@ -247,7 +247,10 @@ function xlsx_to_rows($path) {
 
     $rows = [];
     foreach ($xml->sheetData->row as $row) {
+        // Preserve the real Excel column positions. Do not collapse blank cells:
+        // Forms exports commonly contain empty columns between useful fields.
         $cells = [];
+        $max_col = -1;
         foreach ($row->c as $c) {
             $col  = xlsx_col_index((string)$c['r']);
             $type = (string)$c['t'];
@@ -255,13 +258,20 @@ function xlsx_to_rows($path) {
                 $val = $shared[(int)$c->v] ?? '';
             } elseif ($type === 'inlineStr') {
                 $val = xlsx_si_text(isset($c->is) ? $c->is : null);
+            } elseif ($type === 'b') {
+                $val = ((string)$c->v === '1') ? 'TRUE' : 'FALSE';
             } else {
-                $val = (string)$c->v;
+                $val = isset($c->v) ? (string)$c->v : '';
             }
             $cells[$col] = $val;
+            if ($col > $max_col) $max_col = $col;
         }
-        ksort($cells);
-        $rows[] = array_values($cells);
+
+        $row_values = [];
+        for ($i = 0; $i <= $max_col; $i++) {
+            $row_values[$i] = $cells[$i] ?? '';
+        }
+        $rows[] = $row_values;
     }
     return $rows;
 }

@@ -426,8 +426,8 @@ tbody tr:hover {
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: linear-gradient(135deg, #0b0f2a 0%, #161c3f 50%, #0e1330 100%);
-  opacity: 0.97;
+  background: rgba(0, 0, 0, 0.78);
+  opacity: 1;
 }
 
 .modal-content {

@@ -55,16 +55,11 @@ foreach ($columns as $i => $col) {
     }
 }
 
-// Dropdown validation for Barangay
+// The importer matches columns by header name, so the template does not
+// depend on Excel's 255-character inline-list validation limit. The previous
+// template embedded every barangay in one inline validation formula, which can
+// make Excel report a damaged/invalid workbook on some versions.
 $validations = '';
-if (isset($col_letters['barangay'])) {
-    $list = array_map(function($b) { return '"' . str_replace('"', '', $b) . '"'; }, $koronadal_barangays);
-    $validations = '<dataValidations count="1">'
-        . '<dataValidation type="list" allowBlank="1" showInputMessage="1" showErrorMessage="1"'
-        . ' sqref="' . $col_letters['barangay'] . '2:' . $col_letters['barangay'] . '10000">'
-        . '<formula1>' . xe(implode(',', $list)) . '</formula1>'
-        . '</dataValidation></dataValidations>';
-}
 
 // Column widths
 $cols_xml = '<cols>';
@@ -149,11 +144,20 @@ $filename = 'participant-template-' . preg_replace('/[^a-z0-9]+/i', '-', $event_
 
 header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
 header('Content-Disposition: attachment; filename="' . $filename . '"');
-header('Cache-Control: no-store');
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+header('Pragma: no-cache');
+
+if (ob_get_length()) {
+    ob_end_clean();
+}
 
 $tmp = tempnam(sys_get_temp_dir(), 'xlsx');
 $zip = new ZipArchive();
-$zip->open($tmp, ZipArchive::OVERWRITE);
+if ($zip->open($tmp, ZipArchive::OVERWRITE) !== true) {
+    @unlink($tmp);
+    http_response_code(500);
+    exit('Unable to create Excel template.');
+}
 $zip->addFromString('[Content_Types].xml', $content_types);
 $zip->addFromString('_rels/.rels', $root_rels);
 $zip->addFromString('xl/workbook.xml', $workbook_xml);

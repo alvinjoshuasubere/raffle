@@ -150,7 +150,11 @@ function get_event_reg_fields($conn, $event_id, $raw = null) {
             return $out;
         }
     }
-    return ['purok' => ['required' => true]];
+    // If an event has no saved field configuration, keep only the
+    // universally required Full Name rule. This allows external registration
+    // exports (e.g. Google Forms) that contain Full Name + Municipality +
+    // Barangay without inventing a Purok requirement.
+    return [];
 }
 
 // Build the registration_fields JSON from the events form POST data.

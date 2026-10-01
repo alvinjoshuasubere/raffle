@@ -152,6 +152,23 @@ if (count($slot_participants) === 0) {
         </div>
 
         <div class="slot-countdown" id="slotStatus">READY TO SPIN</div>
+
+        <form method="POST" class="slot-timing" id="wheelCfgForm">
+          <input type="hidden" name="save_slot_timing" value="1">
+          <div class="slot-timing-title">Wheel Timing</div>
+          <div class="slot-timing-row">
+            <label>Spin (sec)
+              <input type="number" name="spin_seconds" min="1" max="60" step="1"
+                     value="<?php echo $slot_spin_seconds; ?>" required>
+            </label>
+            <label>Countdown
+              <input type="number" name="modal_delay_seconds" min="0" max="120" step="1"
+                     value="<?php echo $slot_delay_seconds; ?>" required>
+            </label>
+          </div>
+          <button type="submit" class="btn btn-primary slot-timing-save">Save</button>
+          <div class="slot-timing-hint">Spin cannot be 0. Countdown 0 = show the winner immediately.</div>
+        </form>
       </div>
     </div>
   </div>

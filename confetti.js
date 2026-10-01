@@ -1,10 +1,9 @@
-// Confetti animation
+// Lightweight confetti animation
 const canvas = document.getElementById("confetti-canvas");
 const ctx = canvas.getContext("2d");
 let confettiParticles = [];
 let animationId = null;
 
-// Set canvas size
 function resizeCanvas() {
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
@@ -13,29 +12,28 @@ function resizeCanvas() {
 window.addEventListener("resize", resizeCanvas);
 resizeCanvas();
 
-// Confetti particle class
 class ConfettiParticle {
   constructor() {
     this.x = Math.random() * canvas.width;
     this.y = Math.random() * canvas.height - canvas.height;
-    this.size = Math.random() * 8 + 5;
-    this.speedY = Math.random() * 3 + 2;
-    this.speedX = Math.random() * 2 - 1;
+    this.size = Math.random() * 3 + 2; // smaller particles
+    this.speedY = Math.random() * 2.5 + 1.5;
+    this.speedX = Math.random() * 1.5 - 0.75;
     this.color = this.randomColor();
     this.angle = Math.random() * 360;
-    this.spin = Math.random() * 10 - 5;
+    this.spin = Math.random() * 8 - 4;
   }
 
   randomColor() {
     const colors = [
-      "#DC143C", // Red
-      "#FFD700", // Gold
-      "#FF6347", // Tomato
-      "#FFA500", // Orange
-      "#FF1493", // Deep Pink
-      "#00CED1", // Dark Turquoise
-      "#32CD32", // Lime Green
-      "#FF69B4", // Hot Pink
+      "#DC143C",
+      "#FFD700",
+      "#FF6347",
+      "#FFA500",
+      "#FF1493",
+      "#00CED1",
+      "#32CD32",
+      "#FF69B4",
     ];
     return colors[Math.floor(Math.random() * colors.length)];
   }
@@ -45,9 +43,8 @@ class ConfettiParticle {
     this.x += this.speedX;
     this.angle += this.spin;
 
-    // Reset particle if it goes off screen
     if (this.y > canvas.height) {
-      this.y = -10;
+      this.y = -6;
       this.x = Math.random() * canvas.width;
     }
   }
@@ -62,33 +59,31 @@ class ConfettiParticle {
   }
 }
 
-// Create confetti particles
 function createConfetti() {
   confettiParticles = [];
-  for (let i = 0; i < 150; i++) {
+  for (let i = 0; i < 60; i++) { // 60 instead of 150
     confettiParticles.push(new ConfettiParticle());
   }
 }
 
-// Animate confetti
 function animateConfetti() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  confettiParticles.forEach((particle) => {
+  for (let i = 0; i < confettiParticles.length; i++) {
+    const particle = confettiParticles[i];
     particle.update();
     particle.draw();
-  });
+  }
 
   animationId = requestAnimationFrame(animateConfetti);
 }
 
-// Start confetti
 function startConfetti() {
+  if (animationId) return;
   createConfetti();
   animateConfetti();
 }
 
-// Stop confetti
 function stopConfetti() {
   if (animationId) {
     cancelAnimationFrame(animationId);

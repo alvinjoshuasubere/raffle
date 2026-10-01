@@ -1506,10 +1506,11 @@ tbody tr:hover {
   font-weight: 900;
   letter-spacing: -1px;
   margin: 2px 0 10px;
-  color: #ec4899;
+  color: #ff1493;
   text-shadow:
-    0 0 60px rgba(236, 73, 153, 0.5),
-    0 0 120px rgba(236, 73, 153, 0.25);
+    0 0 35px rgba(255, 20, 147, 0.75),
+    0 0 70px rgba(255, 20, 147, 0.45),
+    0 0 120px rgba(255, 20, 147, 0.25);
   line-height: 1.05;
 }
 

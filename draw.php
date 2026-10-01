@@ -134,13 +134,63 @@ $past_winners = $stmt_pw->get_result();
 ?>
 
 <?php display_message(); ?>\n<style>
-/* Number display only */
-.number-display-bg{padding:22px;border-radius:28px;background:linear-gradient(135deg,#eff6ff,#f8fafc);border:1px solid #dbeafe}
-.number-display-inner{background:#020617;border-radius:22px;padding:12px;box-shadow:inset 0 0 30px rgba(0,0,0,.7)}
-.draw-number-input{width:100%;height:150px;border:2px solid #1e40af;border-radius:16px;background:linear-gradient(#0f172a,#111827);color:#fff;text-align:center;font:900 clamp(62px,12vw,110px)/1 Inter,system-ui;letter-spacing:12px;outline:none;text-shadow:0 0 30px rgba(96,165,250,.55);caret-color:#60a5fa}
-.draw-number-input:focus{border-color:#60a5fa;box-shadow:0 0 35px rgba(37,99,235,.25)}
-.draw-number-input::placeholder{color:#334155}
-@media(max-width:600px){.draw-number-input{height:125px;letter-spacing:7px}.number-display-bg{padding:12px}}
+/* Original giant ticket input design */
+.draw-number-section{
+  margin-bottom:0;
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  min-height:0;
+}
+.number-display-bg{
+  background:#ffffff;
+  border-radius:24px;
+  padding:24px 32px;
+  border:2px solid rgba(244,114,182,.15);
+  box-shadow:
+    0 8px 40px rgba(0,0,0,.04),
+    inset 0 1px 0 rgba(255,255,255,.8);
+  position:relative;
+  overflow:visible;
+  flex:1;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  min-height:220px;
+}
+.number-display-inner{
+  background:transparent;
+  border-radius:0;
+  padding:0;
+  border:none;
+  width:100%;
+}
+.draw-number-input{
+  width:auto;
+  padding:0;
+  height:200px;
+  font-size:10rem !important;
+  font-weight:900;
+  text-align:center;
+  border:none;
+  border-radius:0;
+  background:transparent;
+  color:#1a1a2e;
+  font-family:"NumberFont",monospace;
+  letter-spacing:1px;
+  transition:all .2s ease;
+  line-height:1;
+  outline:none;
+  display:block;
+  margin:0 auto;
+}
+.draw-number-input:focus{outline:none;box-shadow:none}
+.draw-number-input::placeholder{color:transparent;letter-spacing:10px}
+@media(max-width:600px){
+  .number-display-bg{padding:16px 12px;min-height:150px}
+  .draw-number-input{height:125px;font-size:6rem !important}
+}
 </style>
 
 <div class="container1">

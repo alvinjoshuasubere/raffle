@@ -210,8 +210,8 @@ let slotSpinning = false;
 /* ===== SLOT MACHINE ===== */
 const REEL_PASSES = 8;          // optimized: small DOM, fast render
 const MAX_STRIP_CELLS = 96;      // optimized cap; keeps large events lightweight
-const SPIN_DURATION = <?php echo $slot_spin_seconds * 1000; ?>;   // admin-configurable spin seconds
-const FAST_PHASE = 0.90;        // sustained top speed until 90% of the spin
+const SPIN_DURATION = Math.max(500, <?php echo $slot_spin_seconds * 1000; ?> * 0.55); // faster wheel spin while keeping timing control
+const FAST_PHASE = 0.82;        // reach top speed quickly, then snap to the stop
 const BOUNCE_MS = 240;          // mechanical kick-back after hitting the stop
 const OVERSHOOT_PX = 22;        // how far past the stop it kicks before settling
 const MODAL_DELAY_MS = <?php echo $slot_delay_seconds * 1000; ?>; // admin-configurable delay before modal

@@ -49,5 +49,5 @@ switch($page){case 'events':include 'events.php';break;case 'upload':include 'up
 ?>
 </div></div>
 <canvas id="confetti-canvas"></canvas><script src="confetti.js"></script><?php if ($page === 'wheel'): ?><script src="wheel-interactions.js?v=1"></script><?php endif; ?><div class="toast-container" id="toastContainer"></div>
-<script>function showToast(message,type){type=type||'info';var c=document.getElementById('toastContainer'),t=document.createElement('div');t.className='toast toast-'+type;var i={success:'✓',error:'✕',info:'ℹ'};t.innerHTML='<span style="font-size:18px;font-weight:900;line-height:1">'+(i[type]||'ℹ')+'</span> '+message;c.appendChild(t);setTimeout(function(){t.classList.add('toast-out');setTimeout(function(){t.remove()},300)},4000)}</script>
+<script>function showToast(message,type){type=type||'info';var c=document.getElementById('toastContainer'),t=document.createElement('div');t.className='toast toast-'+type;var i={success:'✓',error:'✕',info:'ℹ'};t.innerHTML='<span style="font-size:18px;font-weight:900;line-height:1">'+(i[type]||'ℹ')+'</span> '+message;c.appendChild(t);setTimeout(function(){t.classList.add('toast-out');setTimeout(function(){t.remove()},300)},1000)}</script>
 </body></html>

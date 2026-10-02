@@ -87,33 +87,58 @@ if (isset($_POST['search_participant_prefix'])) {
 // Handle Confirm Winner
 if (isset($_POST['confirm_winner'])) {
     $participant_id = intval($_POST['participant_id']);
-    $number = intval($_POST['number']);
-    $name = sanitize_input($_POST['name']);
-    $barangay = isset($_POST['barangay']) ? sanitize_input($_POST['barangay']) : '';
-    $prize_id = intval($_POST['prize_id'] ?? 0);
+    $prize_id = isset($_POST['prize_id']) && intval($_POST['prize_id']) > 0 ? intval($_POST['prize_id']) : null;
     $prize_name = isset($_POST['prize_name']) ? sanitize_input($_POST['prize_name']) : '';
     $prize_type = isset($_POST['prize_type']) ? sanitize_input($_POST['prize_type']) : '';
 
-    if ($prize_id > 0) {
-        $upd = $conn->prepare("UPDATE prizes SET claimed = claimed + 1, enabled = IF(claimed + 1 >= quantity, 0, 1) WHERE id = ? AND event_id = ?");
-        $upd->bind_param("ii", $prize_id, $current_event_id);
-        $upd->execute();
-        $upd->close();
-    }
+    $conn->begin_transaction();
+    try {
+        $participant_q = $conn->prepare("SELECT number, name, barangay, status FROM participants WHERE id = ? AND event_id = ? FOR UPDATE");
+        $participant_q->bind_param("ii", $participant_id, $current_event_id);
+        $participant_q->execute();
+        $participant = $participant_q->get_result()->fetch_assoc();
+        $participant_q->close();
 
-    $stmt = $conn->prepare("INSERT INTO winners (event_id, participant_id, prize_id, number, name, barangay, prize_name, prize_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-    $stmt->bind_param("iiisssss", $current_event_id, $participant_id, $prize_id, $number, $name, $barangay, $prize_name, $prize_type);
+        if (!$participant || in_array($participant['status'], ['winner', 'removed'], true)) {
+            throw new RuntimeException('This participant is no longer available to confirm.');
+        }
 
-    if ($stmt->execute()) {
-        $upd_status = $conn->prepare("UPDATE participants SET status = 'winner' WHERE id = ? AND event_id = ?");
+        if ($prize_id > 0) {
+            $upd_prize = $conn->prepare("UPDATE prizes SET claimed = claimed + 1, enabled = IF(claimed + 1 >= quantity, 0, 1) WHERE id = ? AND event_id = ?");
+            $upd_prize->bind_param("ii", $prize_id, $current_event_id);
+            $upd_prize->execute();
+            if ($upd_prize->affected_rows !== 1) {
+                $upd_prize->close();
+                throw new RuntimeException('The selected prize could not be updated.');
+            }
+            $upd_prize->close();
+        }
+
+        $number = (string)$participant['number'];
+        $name = $participant['name'];
+        $barangay = $participant['barangay'];
+        $stmt = $conn->prepare("INSERT INTO winners (event_id, participant_id, prize_id, number, name, barangay, prize_name, prize_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->bind_param("iiisssss", $current_event_id, $participant_id, $prize_id, $number, $name, $barangay, $prize_name, $prize_type);
+        $stmt->execute();
+        $stmt->close();
+
+        $upd_status = $conn->prepare("UPDATE participants SET status = 'winner' WHERE id = ? AND event_id = ? AND (status IS NULL OR status = '')");
         $upd_status->bind_param("ii", $participant_id, $current_event_id);
         $upd_status->execute();
+        if ($upd_status->affected_rows !== 1) {
+            $upd_status->close();
+            throw new RuntimeException('Could not update the participant status.');
+        }
         $upd_status->close();
+
+        $conn->commit();
         echo json_encode(['success' => true, 'message' => 'Winner confirmed successfully!']);
-    } else {
-        echo json_encode(['success' => false, 'message' => 'Failed to confirm winner.']);
+    } catch (Throwable $e) {
+        $conn->rollback();
+        error_log('Winner confirmation failed: ' . $e->getMessage());
+        $message = get_class($e) === RuntimeException::class ? $e->getMessage() : 'Failed to confirm winner. Please try again.';
+        echo json_encode(['success' => false, 'message' => $message]);
     }
-    $stmt->close();
     exit;
 }
 
@@ -167,6 +192,7 @@ $past_winners = $stmt_pw->get_result();
 #drawStage #winnerModal{position:absolute;inset:0;z-index:20;width:100%;height:100%}
 #drawStage #winnerModal .modal-overlay{position:absolute;inset:0}
 #drawStage #winnerModal .modal-content{width:100%;height:100%;max-width:none}
+#drawStage #toastContainer{position:absolute;right:auto;bottom:20px;left:50%;z-index:100000;width:100%;transform:translateX(-50%)}
 
 /* Top-right tool buttons */
 .draw-tools{position:absolute;top:16px;right:16px;display:flex;gap:10px;z-index:5}
@@ -425,6 +451,14 @@ document.addEventListener('fullscreenchange', function() {
             document.body.appendChild(confettiCanvas);
         }
     }
+    const toastContainer = document.getElementById('toastContainer');
+    if (toastContainer) {
+        if (on) {
+            stage.appendChild(toastContainer);
+        } else {
+            document.body.appendChild(toastContainer);
+        }
+    }
     drawnInput.focus();
 });
 
@@ -592,8 +626,6 @@ function confirmWinner(winner) {
 }
 
 function removeFromList(winner) {
-    if (!confirm('Remove this participant from the draw list?\n\nThe record will be kept, but they can no longer be drawn.')) return;
-
     const formData = new FormData();
     formData.append('remove_participant', '1');
     formData.append('participant_id', winner.participant_id);

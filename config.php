@@ -236,6 +236,8 @@ function xlsx_col_index($ref) {
 
 // Parse the first worksheet of an .xlsx into an array of rows (no library needed).
 function xlsx_to_rows($path) {
+    if (!class_exists('ZipArchive')) return false;
+
     $zip = new ZipArchive();
     if ($zip->open($path) !== true) return false;
 

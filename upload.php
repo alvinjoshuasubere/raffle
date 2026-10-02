@@ -224,7 +224,11 @@ if (isset($_POST['upload_csv'])) {
                     $_SESSION['upload_errors'] = $errors;
                 }
             } else {
-                set_message('error', 'Error: Could not read the uploaded file.');
+                if ($file_ext === 'xlsx' && !class_exists('ZipArchive')) {
+                    set_message('error', 'Cannot read .xlsx files because PHP ZIP support is disabled. Enable the zip extension in php.ini and restart Apache, or upload a CSV file.');
+                } else {
+                    set_message('error', 'Error: Could not read the uploaded file.');
+                }
             }
         }
     } else {

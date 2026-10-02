@@ -33,24 +33,10 @@ if (isset($_POST['upload_csv'])) {
             $handle = upload_to_csv_stream($file['tmp_name'], $file_ext);
 
             if ($handle !== FALSE) {
-                // Delete all existing participants for this event
-                $stmt_del = $conn->prepare("DELETE FROM participants WHERE event_id = ?");
-                $stmt_del->bind_param("i", $current_event_id);
-                $stmt_del->execute();
-                $stmt_del->close();
-
                 $row_count = 0;
                 $success_count = 0;
                 $errors = [];
                 $seen_participants = [];
-
-                // Get the max number for auto-increment
-                $max_q = $conn->prepare("SELECT MAX(CAST(number AS UNSIGNED)) as max_num FROM participants WHERE event_id = ?");
-                $max_q->bind_param("i", $current_event_id);
-                $max_q->execute();
-                $max_result = $max_q->get_result()->fetch_assoc();
-                $next_number = ($max_result['max_num'] ?? 0) + 1;
-                $max_q->close();
 
                 // Read header row and map columns by name (order-independent)
                 $header = fgetcsv($handle, 1000, ',');
@@ -74,6 +60,30 @@ if (isset($_POST['upload_csv'])) {
 
                 $has_split_names = isset($map['lastname'], $map['firstname']);
                 $has_fullname    = isset($map['fullname']);
+
+                $missing_headers = [];
+                if (!isset($map['fullname'])) $missing_headers[] = 'Full Name';
+                if (!isset($map['city'])) $missing_headers[] = 'Municipality';
+                if (!isset($map['barangay'])) $missing_headers[] = 'Barangay';
+                if (!empty($missing_headers)) {
+                    fclose($handle);
+                    set_message('error', 'The first row is missing required header(s): ' . implode(', ', $missing_headers) . '. Ticket numbers are generated automatically.');
+                    header('Location: admin?page=upload');
+                    exit;
+                }
+
+                // Replace the event's participants only after the header is accepted.
+                $stmt_del = $conn->prepare("DELETE FROM participants WHERE event_id = ?");
+                $stmt_del->bind_param("i", $current_event_id);
+                $stmt_del->execute();
+                $stmt_del->close();
+
+                $max_q = $conn->prepare("SELECT MAX(CAST(number AS UNSIGNED)) as max_num FROM participants WHERE event_id = ?");
+                $max_q->bind_param("i", $current_event_id);
+                $max_q->execute();
+                $max_result = $max_q->get_result()->fetch_assoc();
+                $next_number = ($max_result['max_num'] ?? 0) + 1;
+                $max_q->close();
 
                 // Which of this event's fields are mandatory, keyed by header token
                 $required_map = [];

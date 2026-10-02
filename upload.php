@@ -42,6 +42,7 @@ if (isset($_POST['upload_csv'])) {
                 $row_count = 0;
                 $success_count = 0;
                 $errors = [];
+                $seen_participants = [];
 
                 // Get the max number for auto-increment
                 $max_q = $conn->prepare("SELECT MAX(CAST(number AS UNSIGNED)) as max_num FROM participants WHERE event_id = ?");
@@ -155,6 +156,15 @@ if (isset($_POST['upload_csv'])) {
                         continue;
                     }
 
+                    $duplicate_key = json_encode([
+                        preg_replace('/\\s+/', ' ', trim($name)),
+                        preg_replace('/\\s+/', ' ', trim($barangay)),
+                    ]);
+                    if (isset($seen_participants[$duplicate_key])) {
+                        $errors[] = "Row {$row_count}: Duplicate Full Name and Barangay";
+                        continue;
+                    }
+
                     // Normalize birthdate (mm/dd/yyyy) to Y-m-d when valid
                     if ($birthdate !== '') {
                         $dt = false;
@@ -180,6 +190,7 @@ if (isset($_POST['upload_csv'])) {
 
                     if ($stmt->execute()) {
                         $success_count++;
+                        $seen_participants[$duplicate_key] = true;
                     } else {
                         $errors[] = "Row {$row_count}: Database error ({$conn->error})";
                     }

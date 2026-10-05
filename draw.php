@@ -48,6 +48,7 @@ if (isset($_POST['draw_winner'])) {
         'winner' => [
             'number' => $participant['number'],
             'name' => $participant['name'],
+            'city' => isset($participant['city']) ? trim((string)$participant['city']) : '',
             'barangay' => isset($participant['barangay']) ? trim((string)$participant['barangay']) : '',
             'purok' => isset($participant['purok']) ? trim((string)$participant['purok']) : '',
             'participant_id' => $participant['id']
@@ -588,9 +589,19 @@ document.addEventListener('keydown', function(e) {
 /* ---------- Winner modal ---------- */
 function showWinnerModal(winner) {
     document.getElementById('winner_name').textContent = winner.name;
+    const city = (winner.city || '').trim();
     const barangay = (winner.barangay || '').trim();
     const purok = (winner.purok || '').trim();
-    const locationText = barangay !== '' ? barangay : (purok !== '' ? 'Purok ' + purok : '');
+    let locationText = '';
+    if (city !== '' && barangay !== '') {
+        locationText = city + ', BRGY. ' + barangay;
+    } else if (city !== '') {
+        locationText = city;
+    } else if (barangay !== '') {
+        locationText = 'BRGY. ' + barangay;
+    } else if (purok !== '') {
+        locationText = 'PUROK ' + purok;
+    }
     document.getElementById('winner_purok').textContent = locationText;
 
     document.getElementById('winnerModal').classList.add('show');

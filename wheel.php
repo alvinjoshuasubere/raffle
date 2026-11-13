@@ -6,7 +6,7 @@ if (!isset($current_event_id)) {
 
 // Tickets still in the drum: everyone not yet a winner and not removed.
 function wheel_pool($conn, $event_id) {
-    $stmt = $conn->prepare("SELECT id, number, name, city, barangay, purok FROM participants WHERE event_id = ? AND (status IS NULL OR status = '') ORDER BY CAST(number AS UNSIGNED) ASC");
+    $stmt = $conn->prepare("SELECT id, number, name, city, barangay, purok FROM participants WHERE event_id = ? AND (status IS NULL OR status = '')");
     $stmt->bind_param("i", $event_id);
     $stmt->execute();
     $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
@@ -14,26 +14,58 @@ function wheel_pool($conn, $event_id) {
     return $rows;
 }
 
+function wheel_pool_count($conn, $event_id) {
+    $stmt = $conn->prepare("SELECT COUNT(*) AS c FROM participants WHERE event_id = ? AND (status IS NULL OR status = '')");
+    $stmt->bind_param("i", $event_id);
+    $stmt->execute();
+    $count = (int)$stmt->get_result()->fetch_assoc()['c'];
+    $stmt->close();
+    return $count;
+}
+
 // Handle Confirm Winner
 if (isset($_POST['confirm_winner'])) {
-    $participant_id = intval($_POST['participant_id']);
-    $number = intval($_POST['number']);
-    $name = sanitize_input($_POST['name']);
-    $barangay = sanitize_input($_POST['barangay'] ?? '');
+    $participant_id = intval($_POST['participant_id'] ?? 0);
+    if ($participant_id <= 0) {
+        echo json_encode(['success' => false, 'message' => 'A valid participant is required to confirm the winner.']);
+        exit;
+    }
 
-    $stmt = $conn->prepare("INSERT INTO winners (event_id, participant_id, number, name, barangay) VALUES (?, ?, ?, ?, ?)");
-    $stmt->bind_param("iisss", $current_event_id, $participant_id, $number, $name, $barangay);
+    $conn->begin_transaction();
+    try {
+        $participant_q = $conn->prepare("SELECT number, name, barangay, status FROM participants WHERE id = ? AND event_id = ? FOR UPDATE");
+        $participant_q->bind_param("ii", $participant_id, $current_event_id);
+        $participant_q->execute();
+        $participant = $participant_q->get_result()->fetch_assoc();
+        $participant_q->close();
 
-    if ($stmt->execute()) {
-        $upd_status = $conn->prepare("UPDATE participants SET status = 'winner' WHERE id = ? AND event_id = ?");
+        if (!$participant || in_array($participant['status'], ['winner', 'removed'], true)) {
+            throw new RuntimeException('This participant is no longer available to confirm.');
+        }
+
+        $number = (string)($participant['number'] ?? '');
+        $name = $participant['name'] ?? '';
+        $barangay = $participant['barangay'] ?? '';
+
+        $stmt = $conn->prepare("INSERT INTO winners (event_id, participant_id, number, name, barangay) VALUES (?, ?, ?, ?, ?)");
+        $stmt->bind_param("iisss", $current_event_id, $participant_id, $number, $name, $barangay);
+        $stmt->execute();
+        $stmt->close();
+
+        $upd_status = $conn->prepare("UPDATE participants SET status = 'winner' WHERE id = ? AND event_id = ? AND (status IS NULL OR status = '')");
         $upd_status->bind_param("ii", $participant_id, $current_event_id);
         $upd_status->execute();
+        if ($upd_status->affected_rows !== 1) {
+            $upd_status->close();
+            throw new RuntimeException('Could not update the participant status.');
+        }
         $upd_status->close();
-        $stmt->close();
+
+        $conn->commit();
 
         // Everyone left in the drum has now won: roll straight into a fresh round
         // so the numbers return to the wheel instead of leaving it empty.
-        if (count(wheel_pool($conn, $current_event_id)) === 0) {
+        if (wheel_pool_count($conn, $current_event_id) === 0) {
             $reset = reset_event_winners($conn, $current_event_id);
             echo json_encode([
                 'success' => true,
@@ -45,10 +77,12 @@ if (isset($_POST['confirm_winner'])) {
         }
 
         echo json_encode(['success' => true, 'message' => 'Winner confirmed successfully!']);
-    } else {
-        echo json_encode(['success' => false, 'message' => 'Failed to confirm winner.']);
+    } catch (Throwable $e) {
+        $conn->rollback();
+        error_log('Wheel winner confirmation failed: ' . $e->getMessage());
+        $message = get_class($e) === RuntimeException::class ? $e->getMessage() : 'Failed to confirm winner. Please try again.';
+        echo json_encode(['success' => false, 'message' => $message]);
     }
-    $stmt->close();
     exit;
 }
 
@@ -208,8 +242,8 @@ let currentWinner = null;
 let slotSpinning = false;
 
 /* ===== SLOT MACHINE ===== */
-const REEL_PASSES = 8;          // optimized: small DOM, fast render
-const MAX_STRIP_CELLS = 96;      // optimized cap; keeps large events lightweight
+const REEL_PASSES = 8;
+const MAX_STRIP_CELLS = 96;
 const SPIN_DURATION = Math.max(500, <?php echo $slot_spin_seconds * 1000; ?> * 0.55); // faster wheel spin while keeping timing control
 const FAST_PHASE = 0.82;        // reach top speed quickly, then snap to the stop
 const BOUNCE_MS = 240;          // mechanical kick-back after hitting the stop
@@ -229,37 +263,24 @@ function buildSlotLights() {
     }
 }
 
-function shuffled(arr) {
-    const a = arr.slice();
-    for (let i = a.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [a[i], a[j]] = [a[j], a[i]];
-    }
-    return a;
-}
-
-/* Build the vertical strip: N shuffled passes; winner forced into the final landing cell */
-function buildReel(winnerId) {
+/* Build only the cells needed for the animation, even when the event has many entries. */
+function buildReel(winner) {
     const reel = el('slotReel');
-    reel.innerHTML = '';
-    if (SLOT_DATA.length === 0) return -1;
-
-    let cells = [];
-    // More passes = faster roll
-    const passes = Math.min(REEL_PASSES, Math.max(6, Math.ceil(3000 / SLOT_DATA.length)));
-    for (let p = 0; p < passes; p++) cells = cells.concat(shuffled(SLOT_DATA));
-
-    // Hard cap: never render more than MAX_STRIP_CELLS DOM nodes (keeps 2k+ events fast)
-    if (cells.length > MAX_STRIP_CELLS) cells = shuffled(cells).slice(0, MAX_STRIP_CELLS);
-
-    // Landing cell: second-to-last so there is still motion after it visually settles
-    const landIndex = cells.length - 2;
-    const wIdx = winnerId == null ? -1 : cells.findIndex(c => c.id === winnerId);
-    if (wIdx !== -1 && wIdx !== landIndex) {
-        [cells[wIdx], cells[landIndex]] = [cells[landIndex], cells[wIdx]];
-    } else if (wIdx === -1 && winnerId != null) {
-        cells[landIndex] = SLOT_DATA.find(c => c.id === winnerId); // guarantee winner lands
+    if (SLOT_DATA.length === 0) {
+        reel.replaceChildren();
+        return -1;
     }
+
+    const passes = Math.min(REEL_PASSES, Math.max(6, Math.ceil(3000 / SLOT_DATA.length)));
+    const cellCount = Math.min(MAX_STRIP_CELLS, passes * SLOT_DATA.length);
+    const cells = new Array(cellCount);
+    for (let i = 0; i < cellCount; i++) {
+        cells[i] = SLOT_DATA[Math.floor(Math.random() * SLOT_DATA.length)];
+    }
+
+    // Keep one cell after the winner for the mechanical settle.
+    const landIndex = cellCount - 2;
+    if (winner) cells[landIndex] = winner;
 
     const frag = document.createDocumentFragment();
     for (let i = 0; i < cells.length; i++) {
@@ -269,12 +290,12 @@ function buildReel(winnerId) {
         if (i === landIndex) div.dataset.land = '1';
         frag.appendChild(div);
     }
-    reel.appendChild(frag);
+    reel.replaceChildren(frag);
     return landIndex;
 }
 
 function cellHeight() {
-    const cell = document.querySelector('.slot-cell');
+    const cell = el('slotReel').firstElementChild;
     return cell ? cell.offsetHeight : 120;
 }
 
@@ -285,7 +306,7 @@ function setSlotData(list) {
     rows.forEach(p => SLOT_DATA.push(p));
 
     const reel = el('slotReel');
-    reel.style.transform = 'translateY(0)';
+    reel.style.transform = 'translate3d(0, 0, 0)';
     buildReel(null);
 
     const countEl = document.getElementById('wheel_participant_count');
@@ -316,11 +337,10 @@ function spinSlot() {
 
 
     const winner = SLOT_DATA[Math.floor(Math.random() * SLOT_DATA.length)];
-    const landIndex = buildReel(winner.id);
+    const landIndex = buildReel(winner);
 
     const reel = el('slotReel');
-    reel.style.transform = 'translateY(0)';
-    void reel.offsetHeight; // force layout before animating
+    reel.style.transform = 'translate3d(0, 0, 0)';
 
     const ch = cellHeight();
     const target = -(landIndex - 1) * ch;   // center the landing cell in the window
@@ -342,7 +362,7 @@ function spinSlot() {
             extra = -OVERSHOOT_PX * Math.exp(-4.5 * tb) * Math.cos(10 * tb);
         }
 
-        reel.style.transform = 'translateY(' + (target * eased + extra) + 'px)';
+        reel.style.transform = 'translate3d(0, ' + (target * eased + extra) + 'px, 0)';
         reel.classList.toggle('fast', t < FAST_PHASE);
 
         if (tb < 0 || t < 1 || (now - start) < SPIN_DURATION + BOUNCE_MS) {
@@ -461,7 +481,7 @@ function confirmWinner(winner) {
                 if (countEl) countEl.textContent = SLOT_DATA.length;
 
                 const reel = el('slotReel');
-                reel.style.transform = 'translateY(0)';
+                reel.style.transform = 'translate3d(0, 0, 0)';
                 buildReel(null);
                 const statusEl = el('slotStatus');
                 if (statusEl) statusEl.textContent = 'READY TO SPIN';
@@ -502,7 +522,7 @@ function removeFromList(winner) {
                 if (countEl) countEl.textContent = SLOT_DATA.length;
 
                 const reel = el('slotReel');
-                reel.style.transform = 'translateY(0)';
+                reel.style.transform = 'translate3d(0, 0, 0)';
                 buildReel(null);
                 const statusEl = el('slotStatus');
                 if (statusEl) statusEl.textContent = 'READY TO SPIN';

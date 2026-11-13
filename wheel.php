@@ -137,76 +137,59 @@ if (count($slot_participants) === 0) {
 
 
 <div class="container1">
+  <div class="wheel-tools">
+    <button type="button" id="wheelFullscreenBtn" class="wheel-tool-btn" title="Fullscreen" aria-label="Toggle fullscreen">
+      <svg viewBox="0 0 24 24" id="wheelFsEnter"><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
+      <svg viewBox="0 0 24 24" id="wheelFsExit" style="display:none"><path d="M8 3v3a2 2 0 0 1-2 2H3M21 8h-3a2 2 0 0 1-2-2V3M3 16h3a2 2 0 0 1 2 2v3M16 21v-3a2 2 0 0 1 2-2h3"/></svg>
+    </button>
+    <button type="button" id="wheelSettingsBtn" class="wheel-tool-btn" title="Wheel settings" aria-label="Wheel settings" aria-expanded="false" aria-controls="wheelSettings">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+    </button>
+    <form method="POST" class="wheel-settings" id="wheelSettings">
+      <input type="hidden" name="save_slot_timing" value="1">
+      <h3>Wheel timing</h3>
+      <div class="slot-timing-row">
+        <label>Spin (sec)
+          <input type="number" name="spin_seconds" min="1" max="60" step="1"
+                 value="<?php echo $slot_spin_seconds; ?>" required>
+        </label>
+        <label>Countdown
+          <input type="number" name="modal_delay_seconds" min="0" max="120" step="1"
+                 value="<?php echo $slot_delay_seconds; ?>" required>
+        </label>
+      </div>
+      <button type="submit" class="btn btn-primary slot-timing-save">Save</button>
+      <div class="slot-timing-hint">Spin cannot be 0. Countdown 0 shows the winner immediately.</div>
+    </form>
+  </div>
+
   <!-- SAME SLOT MACHINE UI AS NUMBERS TAB -->
   <div class="slot-hero">
-    <div class="slot-machine" id="wheelMachine">
+    <div class="slot-machine-wrap">
+      <div class="slot-machine" id="wheelMachine">
 
-      <div class="slot-topper">
-        <span class="star">&#9733;</span><span class="star">&#9733;</span><span class="star">&#9733;</span>
-        <span class="topper-text">LUCKY NUMBER</span>
-        <span class="star">&#9733;</span><span class="star">&#9733;</span><span class="star">&#9733;</span>
-      </div>
-
-      <div class="slot-cabinet">
-        <div class="slot-lights" id="slotLights"></div>
-        <div class="slot-window">
-          <div class="slot-reel" id="slotReel"><!-- cells injected by JS --></div>
-          <div class="slot-shade"></div>
-          <div class="slot-frame"></div>
-        </div>
-      </div>
-
-      <div class="slot-plate">WINNING NUMBER</div>
-    </div>
-  </div>
-
-  <!-- CONTROL PANEL — MATCHES NUMBERS TAB -->
-  <div class="draw-panel">
-    <div class="draw-panel-inner">
-      <div class="draw-header-area">
-        <div class="draw-header-icon">&#127922;</div>
-        <div>
-          <h2 class="draw-heading">Draw a Winner</h2>
-          <p class="draw-subtitle">Spin the machine to draw a random participant</p>
-        </div>
-      </div>
-
-      <div class="wheel-controls">
-        <div class="num-current-range">
-          Participants available:
-          <strong id="wheel_participant_count"><?php echo number_format(count($slot_participants)); ?></strong>
+        <div class="slot-topper">
+          <span class="star">&#9733;</span><span class="star">&#9733;</span><span class="star">&#9733;</span>
+          <span class="topper-text">LUCKY NUMBER</span>
+          <span class="star">&#9733;</span><span class="star">&#9733;</span><span class="star">&#9733;</span>
         </div>
 
-        <div class="spin-wrap">
-          <button type="button" id="spin_btn" class="btn-spin-big">
-            <span class="spin-icon-chip">&#127922;</span>
-            <span class="spin-text">SPIN</span>
-            <span class="spin-arrow">&rarr;</span>
-          </button>
-        </div>
-
-        <div class="slot-countdown" id="slotStatus">READY TO SPIN</div>
-
-        <form method="POST" class="slot-timing" id="wheelCfgForm">
-          <input type="hidden" name="save_slot_timing" value="1">
-          <div class="slot-timing-title">Wheel Timing</div>
-          <div class="slot-timing-row">
-            <label>Spin (sec)
-              <input type="number" name="spin_seconds" min="1" max="60" step="1"
-                     value="<?php echo $slot_spin_seconds; ?>" required>
-            </label>
-            <label>Countdown
-              <input type="number" name="modal_delay_seconds" min="0" max="120" step="1"
-                     value="<?php echo $slot_delay_seconds; ?>" required>
-            </label>
+        <div class="slot-cabinet">
+          <div class="slot-lights" id="slotLights"></div>
+          <div class="slot-window" aria-label="Winning ticket number display">
+            <div class="slot-reels" id="slotReels"></div>
+            <div class="slot-shade"></div>
+            <div class="slot-frame"></div>
           </div>
-          <button type="submit" class="btn btn-primary slot-timing-save">Save</button>
-          <div class="slot-timing-hint">Spin cannot be 0. Countdown 0 = show the winner immediately.</div>
-        </form>
+        </div>
       </div>
+
+      <button type="button" id="spin_btn" class="slot-lever" aria-label="Pull lever to spin">
+        <span class="lever-pivot"><span class="lever-arm"></span><span class="lever-knob"></span></span>
+        <span class="lever-label">SPIN</span>
+      </button>
     </div>
-  </div>
-</div>
+    <div class="slot-countdown" id="slotStatus">READY TO SPIN</div>
 
 <!-- Full-page intense countdown overlay -->
 <div class="page-count-overlay" id="slotCountOverlay">
@@ -234,6 +217,7 @@ if (count($slot_participants) === 0) {
         </div>
     </div>
 </div>
+</div>
 
 <script>
 const SLOT_DATA = <?php echo json_encode($slot_participants, JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE); ?>;
@@ -242,7 +226,6 @@ let currentWinner = null;
 let slotSpinning = false;
 
 /* ===== SLOT MACHINE ===== */
-const REEL_PASSES = 8;
 const MAX_STRIP_CELLS = 96;
 const SPIN_DURATION = Math.max(500, <?php echo $slot_spin_seconds * 1000; ?> * 0.55); // faster wheel spin while keeping timing control
 const FAST_PHASE = 0.82;        // reach top speed quickly, then snap to the stop
@@ -263,40 +246,73 @@ function buildSlotLights() {
     }
 }
 
-/* Build only the cells needed for the animation, even when the event has many entries. */
+function ticketDigits(participant) {
+    return String(participant.number ?? '').trim();
+}
+
+function maxTicketDigits() {
+    return SLOT_DATA.reduce((max, participant) => Math.max(max, ticketDigits(participant).length), 1);
+}
+
+/* Build one vertical reel for each character in the ticket number. */
 function buildReel(winner) {
-    const reel = el('slotReel');
+    const reels = el('slotReels');
     if (SLOT_DATA.length === 0) {
-        reel.replaceChildren();
+        reels.replaceChildren();
+        reels.style.gridTemplateColumns = 'repeat(1, minmax(0, 1fr))';
         return -1;
     }
 
-    const passes = Math.min(REEL_PASSES, Math.max(6, Math.ceil(3000 / SLOT_DATA.length)));
-    const cellCount = Math.min(MAX_STRIP_CELLS, passes * SLOT_DATA.length);
-    const cells = new Array(cellCount);
-    for (let i = 0; i < cellCount; i++) {
-        cells[i] = SLOT_DATA[Math.floor(Math.random() * SLOT_DATA.length)];
-    }
-
-    // Keep one cell after the winner for the mechanical settle.
+    const digitCount = Math.max(maxTicketDigits(), winner ? ticketDigits(winner).length : 1);
+    const cellCount = MAX_STRIP_CELLS - (MAX_STRIP_CELLS % 10);
     const landIndex = cellCount - 2;
-    if (winner) cells[landIndex] = winner;
+    const columns = document.createDocumentFragment();
+    const winnerDigits = winner ? ticketDigits(winner).padStart(digitCount, ' ') : '';
+    const symbolsByColumn = Array.from({ length: digitCount }, (_, columnIndex) => {
+        const symbols = new Set(['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']);
+        SLOT_DATA.forEach(participant => {
+            symbols.add(ticketDigits(participant).padStart(digitCount, ' ')[columnIndex]);
+        });
+        return Array.from(symbols);
+    });
 
-    const frag = document.createDocumentFragment();
-    for (let i = 0; i < cells.length; i++) {
-        const div = document.createElement('div');
-        div.className = 'slot-cell';
-        div.textContent = String(cells[i].number);
-        if (i === landIndex) div.dataset.land = '1';
-        frag.appendChild(div);
+    for (let columnIndex = 0; columnIndex < digitCount; columnIndex++) {
+        const column = document.createElement('div');
+        column.className = 'slot-reel-column';
+        const reel = document.createElement('div');
+        reel.className = 'slot-reel';
+        const cells = document.createDocumentFragment();
+
+        for (let i = 0; i < cellCount; i++) {
+            const symbol = winner && i === landIndex
+                ? winnerDigits[columnIndex]
+                : symbolsByColumn[columnIndex][Math.floor(Math.random() * symbolsByColumn[columnIndex].length)];
+            const cell = document.createElement('div');
+            cell.className = 'slot-cell';
+            cell.textContent = symbol === ' ' ? '\u00a0' : symbol;
+            if (i === landIndex) cell.dataset.land = '1';
+            cells.appendChild(cell);
+        }
+
+        reel.appendChild(cells);
+        column.appendChild(reel);
+        columns.appendChild(column);
     }
-    reel.replaceChildren(frag);
+
+    reels.style.gridTemplateColumns = 'repeat(' + digitCount + ', minmax(0, 1fr))';
+    reels.replaceChildren(columns);
     return landIndex;
 }
 
-function cellHeight() {
-    const cell = el('slotReel').firstElementChild;
+function cellHeight(reel) {
+    const cell = reel.firstElementChild;
     return cell ? cell.offsetHeight : 120;
+}
+
+function resetReels() {
+    el('slotReels').querySelectorAll('.slot-reel').forEach(reel => {
+        reel.style.transform = 'translate3d(0, -' + cellHeight(reel) + 'px, 0)';
+    });
 }
 
 // Swap the whole drum contents (used after a round reset) and rebuild the reel
@@ -305,9 +321,8 @@ function setSlotData(list) {
     SLOT_DATA.length = 0;
     rows.forEach(p => SLOT_DATA.push(p));
 
-    const reel = el('slotReel');
-    reel.style.transform = 'translate3d(0, 0, 0)';
     buildReel(null);
+    resetReels();
 
     const countEl = document.getElementById('wheel_participant_count');
     if (countEl) countEl.textContent = SLOT_DATA.length;
@@ -331,51 +346,52 @@ function spinSlot() {
     spinBtnEl.disabled = true;
     spinBtnEl.classList.add('spinning');
     el('slotLights').classList.add('lights-on');
-    const lever = el('slotLever');
-    if (lever) lever.classList.add('pull');
+    const lever = spinBtnEl;
+    lever.classList.add('pull');
+    window.setTimeout(() => lever.classList.remove('pull'), 240);
     setSlotStatus('\u{1F3B0}', 'ROLLING...');
 
 
     const winner = SLOT_DATA[Math.floor(Math.random() * SLOT_DATA.length)];
     const landIndex = buildReel(winner);
 
-    const reel = el('slotReel');
-    reel.style.transform = 'translate3d(0, 0, 0)';
-
-    const ch = cellHeight();
-    const target = -(landIndex - 1) * ch;   // center the landing cell in the window
+    const reels = Array.from(el('slotReels').querySelectorAll('.slot-reel'));
+    const reelTargets = reels.map(reel => ({
+        reel,
+        target: -(landIndex - 1) * cellHeight(reel)
+    }));
     const start = performance.now();
+    const REEL_STOP_DELAY = 140;
 
     function frame(now) {
-        const t = Math.min((now - start) / SPIN_DURATION, 1);
-        let eased, extra = 0;
-        if (t < FAST_PHASE) {
-            eased = (t / FAST_PHASE) * 0.90;                       // constant blur-fast roll
-        } else {
-            const u = (t - FAST_PHASE) / (1 - FAST_PHASE);
-            eased = 0.90 + (1 - Math.pow(1 - u, 2)) * 0.10;        // hard snap to the stop
-        }
+        const elapsed = now - start;
+        const lastReelDoneAt = SPIN_DURATION + REEL_STOP_DELAY * (reelTargets.length - 1) + BOUNCE_MS;
 
-        // Mechanical kick-back once the reel hits the stop
-        const tb = (now - start - SPIN_DURATION) / BOUNCE_MS;
-        if (tb >= 0) {
-            extra = -OVERSHOOT_PX * Math.exp(-4.5 * tb) * Math.cos(10 * tb);
-        }
+        reelTargets.forEach(({ reel, target }, index) => {
+            const reelElapsed = elapsed - REEL_STOP_DELAY * index;
+            const t = Math.max(0, Math.min(reelElapsed / SPIN_DURATION, 1));
+            const eased = t < FAST_PHASE
+                ? (t / FAST_PHASE) * 0.90
+                : 0.90 + (1 - Math.pow(1 - ((t - FAST_PHASE) / (1 - FAST_PHASE)), 2)) * 0.10;
+            const bounceProgress = (reelElapsed - SPIN_DURATION) / BOUNCE_MS;
+            const extra = bounceProgress >= 0 && bounceProgress <= 1
+                ? -OVERSHOOT_PX * Math.exp(-4.5 * bounceProgress) * Math.cos(10 * bounceProgress)
+                : 0;
 
-        reel.style.transform = 'translate3d(0, ' + (target * eased + extra) + 'px, 0)';
-        reel.classList.toggle('fast', t < FAST_PHASE);
+            reel.style.transform = 'translate3d(0, ' + (target * eased + extra) + 'px, 0)';
+            reel.classList.toggle('fast', reelElapsed >= 0 && reelElapsed < SPIN_DURATION * FAST_PHASE);
+        });
 
-        if (tb < 0 || t < 1 || (now - start) < SPIN_DURATION + BOUNCE_MS) {
+        if (elapsed < lastReelDoneAt) {
             requestAnimationFrame(frame);
         } else {
             slotSpinning = false;
             spinBtnEl.disabled = false;
             spinBtnEl.classList.remove('spinning');
             if (lever) lever.classList.remove('pull');
-            reel.classList.remove('fast');
+            reelTargets.forEach(({ reel }) => reel.classList.remove('fast'));
 
-            const landed = reel.querySelector('[data-land]');
-            if (landed) landed.classList.add('is-winner');
+            el('slotReels').querySelectorAll('[data-land]').forEach(cell => cell.classList.add('is-winner'));
 
             currentWinner = {
                 participant_id: winner.id,
@@ -429,8 +445,59 @@ function spinSlot() {
 document.addEventListener('DOMContentLoaded', function() {
     buildSlotLights();
     buildReel(null);
+    resetReels();
     const spinBtn = el('spin_btn');
     if (spinBtn) spinBtn.addEventListener('click', spinSlot);
+
+    const fullscreenBtn = el('wheelFullscreenBtn');
+    const wheelStage = document.querySelector('.container1');
+    if (fullscreenBtn && wheelStage) {
+        fullscreenBtn.addEventListener('click', function() {
+            if (!document.fullscreenElement) {
+                (wheelStage.requestFullscreen ? wheelStage.requestFullscreen() : Promise.reject())
+                    .catch(() => showToast('Fullscreen is not supported here.', 'error'));
+            } else {
+                document.exitFullscreen().catch(() => showToast('Could not exit fullscreen.', 'error'));
+            }
+        });
+        document.addEventListener('fullscreenchange', function() {
+            const isFullscreen = document.fullscreenElement === wheelStage;
+            const enterIcon = el('wheelFsEnter');
+            const exitIcon = el('wheelFsExit');
+            if (enterIcon) enterIcon.style.display = isFullscreen ? 'none' : '';
+            if (exitIcon) exitIcon.style.display = isFullscreen ? '' : 'none';
+
+            const confettiCanvas = el('confetti-canvas');
+            if (confettiCanvas) {
+                if (isFullscreen) {
+                    wheelStage.appendChild(confettiCanvas);
+                } else {
+                    document.body.appendChild(confettiCanvas);
+                }
+            }
+        });
+    }
+
+    const settingsBtn = el('wheelSettingsBtn');
+    const settingsPanel = el('wheelSettings');
+    if (settingsBtn && settingsPanel) {
+        settingsBtn.addEventListener('click', function(event) {
+            event.stopPropagation();
+            const isOpen = settingsPanel.classList.toggle('show');
+            settingsBtn.setAttribute('aria-expanded', String(isOpen));
+        });
+        settingsPanel.addEventListener('click', event => event.stopPropagation());
+        document.addEventListener('click', function() {
+            settingsPanel.classList.remove('show');
+            settingsBtn.setAttribute('aria-expanded', 'false');
+        });
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                settingsPanel.classList.remove('show');
+                settingsBtn.setAttribute('aria-expanded', 'false');
+            }
+        });
+    }
 });
 
 /* ===== WINNER MODAL ===== */
@@ -480,9 +547,8 @@ function confirmWinner(winner) {
                 const countEl = document.getElementById('wheel_participant_count');
                 if (countEl) countEl.textContent = SLOT_DATA.length;
 
-                const reel = el('slotReel');
-                reel.style.transform = 'translate3d(0, 0, 0)';
                 buildReel(null);
+                resetReels();
                 const statusEl = el('slotStatus');
                 if (statusEl) statusEl.textContent = 'READY TO SPIN';
                 const lastEl = document.getElementById('wheel_last_winner');
@@ -521,9 +587,8 @@ function removeFromList(winner) {
                 const countEl = document.getElementById('wheel_participant_count');
                 if (countEl) countEl.textContent = SLOT_DATA.length;
 
-                const reel = el('slotReel');
-                reel.style.transform = 'translate3d(0, 0, 0)';
                 buildReel(null);
+                resetReels();
                 const statusEl = el('slotStatus');
                 if (statusEl) statusEl.textContent = 'READY TO SPIN';
 
